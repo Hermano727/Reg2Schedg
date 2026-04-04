@@ -67,8 +67,12 @@ export const mockDossier: MockDossierPayload = {
       conflict: {
         title: "Source mismatch",
         detail:
-          "Reddit threads claim “no podcast,” but the 2025 syllabus lists HyFlex capture for this lecture hall.",
+          "Reddit threads claim 'no podcast,' but the 2025 syllabus lists HyFlex capture for this lecture hall.",
       },
+      meetings: [
+        { section_type: "Lecture", days: "MWF", start_time: "10:00 AM", end_time: "10:50 AM", location: "PETER 108" },
+        { section_type: "Discussion", days: "Tu", start_time: "5:00 PM", end_time: "5:50 PM", location: "CSE 2154" },
+      ],
     },
     {
       id: "c2",
@@ -101,6 +105,10 @@ export const mockDossier: MockDossierPayload = {
           text: "Autograder errors are usually MTU or buffer size—check Piazza megathread.",
         },
       ],
+      meetings: [
+        { section_type: "Lecture", days: "TuTh", start_time: "2:00 PM", end_time: "3:20 PM", location: "CSE 1202" },
+        { section_type: "Discussion", days: "F", start_time: "1:00 PM", end_time: "1:50 PM", location: "CSE 4140" },
+      ],
     },
     {
       id: "c3",
@@ -128,6 +136,10 @@ export const mockDossier: MockDossierPayload = {
           text: "Labs are long but fair if you start before Thursday.",
         },
       ],
+      meetings: [
+        { section_type: "Lecture", days: "MWF", start_time: "12:00 PM", end_time: "12:50 PM", location: "WLH 2005" },
+        { section_type: "Lab", days: "W", start_time: "2:00 PM", end_time: "2:50 PM", location: "B230" },
+      ],
     },
     {
       id: "c4",
@@ -154,6 +166,10 @@ export const mockDossier: MockDossierPayload = {
           source: "SET",
           text: "If you’ve never written proofs, start homework the day it drops.",
         },
+      ],
+      meetings: [
+        { section_type: "Lecture", days: "MWF", start_time: "11:00 AM", end_time: "11:50 AM", location: "APM 7421" },
+        { section_type: "Discussion", days: "Th", start_time: "7:00 PM", end_time: "7:50 PM", location: "APM 2402" },
       ],
     },
   ],

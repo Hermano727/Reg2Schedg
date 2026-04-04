@@ -8,6 +8,7 @@ import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
 import { ClassCard } from "@/components/dashboard/ClassCard";
 import { EvaluatorFooter } from "@/components/dashboard/EvaluatorFooter";
+import { WeeklyCalendar } from "@/components/dashboard/WeeklyCalendar";
 import { mockDossier } from "@/lib/mock/dossier";
 import { parseScreenshot } from "@/lib/api/parse";
 import { courseEntryToDossier } from "@/lib/mappers/courseEntryToDossier";
@@ -157,6 +158,7 @@ export function CommandCenter() {
                   transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                   className="space-y-4"
                 >
+                  <WeeklyCalendar classes={classes} />
                   {classes.map((c) => (
                     <ClassCard key={c.id} dossier={c} />
                   ))}

@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --hub-bg: #0a192f;
+  --hub-surface: #112240;
+  --hub-surface-elevated: #162a45;
+  --hub-border: rgba(255, 255, 255, 0.08);
+  --hub-cyan: #00d4ff;
+  --hub-gold: #e3b12f;
+  --hub-text: #e6f1ff;
+  --hub-text-secondary: rgba(230, 241, 255, 0.72);
+  --hub-text-muted: rgba(230, 241, 255, 0.48);
+  --hub-danger: #ff6b6b;
+  --hub-success: #5eead4;
+}
+
+@theme inline {
+  --color-hub-bg: var(--hub-bg);
+  --color-hub-surface: var(--hub-surface);
+  --color-hub-surface-elevated: var(--hub-surface-elevated);
+  --color-hub-cyan: var(--hub-cyan);
+  --color-hub-gold: var(--hub-gold);
+  --color-hub-text: var(--hub-text);
+  --color-hub-text-secondary: var(--hub-text-secondary);
+  --color-hub-text-muted: var(--hub-text-muted);
+  --color-hub-danger: var(--hub-danger);
+  --color-hub-success: var(--hub-success);
+  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--hub-bg);
+  color: var(--hub-text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background-color: color-mix(in srgb, var(--hub-cyan) 35%, transparent);
+}
+
+/* Subtle grid noise for depth without gradient spam */
+.hub-canvas {
+  background-color: var(--hub-bg);
+  background-image: radial-gradient(
+      ellipse 120% 80% at 50% -20%,
+      rgba(0, 212, 255, 0.06),
+      transparent 55%
+    ),
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+}
+
+.glass-panel {
+  background: color-mix(in srgb, var(--hub-surface) 88%, transparent);
+  border: 1px solid var(--hub-border);
+  backdrop-filter: blur(12px);
+}

@@ -2,6 +2,7 @@
 
 # Local project context (goals, backlog, architecture notes — not for the remote repo)
 GLOBAL_CONTEXT.md
+CLAUDE.md
 
 # dependencies
 node_modules/

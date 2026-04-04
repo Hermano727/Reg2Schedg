@@ -46,6 +46,9 @@ Next.js App Router with two route groups:
 ### Backend Services
 
 - `services/api/` — FastAPI scaffold; planned: JWT verification (Supabase), ingest job orchestration, Google Calendar OAuth, agent execution
+  - Requires `services/api/.env` with `SUPABASE_URL` and `SUPABASE_KEY` (see `.env.example`)
+  - Pydantic models in `app/models/domain.py` use camelCase aliasing (`CamelModel` base) — all DB row models live here
+  - DB client singleton in `app/db/client.py`; service layer in `app/db/service.py`
 - `services/worker/` — placeholder for async queue (Redis RQ/Celery TBD) for long-running tasks: ingestion parsing, embeddings, browser automation
 
 ### Tech Stack

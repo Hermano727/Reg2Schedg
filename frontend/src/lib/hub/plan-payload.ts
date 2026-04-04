@@ -41,3 +41,15 @@ export function buildPayloadFromMock(
     evaluation: mockDossier.evaluation,
   };
 }
+
+export function buildPayloadFromClasses(
+  activeQuarterId: string,
+  classes: ClassDossier[],
+  evaluation: ScheduleEvaluation = mockDossier.evaluation,
+): SavedPlanPayloadV1 {
+  return {
+    activeQuarterId,
+    classes,
+    evaluation,
+  };
+}

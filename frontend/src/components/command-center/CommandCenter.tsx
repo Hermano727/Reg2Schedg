@@ -10,10 +10,16 @@ import { ClassCard } from "@/components/dashboard/ClassCard";
 import { EvaluatorFooter } from "@/components/dashboard/EvaluatorFooter";
 import { mockDossier } from "@/lib/mock/dossier";
 import { createClient } from "@/lib/supabase/client";
-import { buildPayloadFromMock, parsePlanPayload } from "@/lib/hub/plan-payload";
+import {
+  buildPayloadFromClasses,
+  parsePlanPayload,
+  type SavedPlanPayloadV1,
+} from "@/lib/hub/plan-payload";
 import { vaultRowToVaultItem } from "@/lib/hub/vault-map";
+import { parseScreenshot } from "@/lib/api/parse";
+import { courseEntryToDossier } from "@/lib/mappers/courseEntryToDossier";
 import type { SavedPlanRow, VaultItemRow } from "@/types/saved-plan";
-import type { UiPhase } from "@/types/dossier";
+import type { ClassDossier, UiPhase } from "@/types/dossier";
 
 const LINE_MS = 360;
 const FINISH_PAD_MS = 650;
@@ -22,6 +28,7 @@ export function CommandCenter() {
   const [phase, setPhase] = useState<UiPhase>("idle");
   const [ingestionCollapsed, setIngestionCollapsed] = useState(false);
   const [activePlanId, setActivePlanId] = useState(mockDossier.activeQuarterId);
+  const [classes, setClasses] = useState<ClassDossier[]>(mockDossier.classes);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const [authed, setAuthed] = useState(false);
   const [remotePlans, setRemotePlans] = useState<SavedPlanRow[]>([]);
@@ -139,37 +146,36 @@ export function CommandCenter() {
   const { viewClasses, viewEvaluation } = useMemo(() => {
     if (phase !== "dashboard") {
       return {
-        viewClasses: mockDossier.classes,
+        viewClasses: classes,
         viewEvaluation: mockDossier.evaluation,
       };
     }
     if (!authed) {
       return {
-        viewClasses: mockDossier.classes,
+        viewClasses: classes,
         viewEvaluation: mockDossier.evaluation,
       };
     }
     const plan = remotePlans.find((p) => p.id === activePlanId);
-    if (!plan) {
-      return { viewClasses: [], viewEvaluation: mockDossier.evaluation };
-    }
-    const parsed = parsePlanPayload(plan.payload);
-    if (parsed.classes.length === 0) {
-      return {
-        viewClasses: [],
-        viewEvaluation: parsed.evaluation,
-      };
+    if (plan) {
+      const parsed = parsePlanPayload(plan.payload);
+      if (parsed.classes.length > 0) {
+        return {
+          viewClasses: parsed.classes,
+          viewEvaluation: parsed.evaluation,
+        };
+      }
     }
     return {
-      viewClasses: parsed.classes,
-      viewEvaluation: parsed.evaluation,
+      viewClasses: classes,
+      viewEvaluation: mockDossier.evaluation,
     };
-  }, [phase, authed, activePlanId, remotePlans]);
+  }, [phase, authed, activePlanId, remotePlans, classes]);
 
   const classCount =
-    phase === "dashboard" ? viewClasses.length : mockDossier.classes.length;
+    phase === "dashboard" ? viewClasses.length : classes.length;
 
-  const persistCompletedDemo = useCallback(async () => {
+  const persistCompletedSession = useCallback(async (payload: SavedPlanPayloadV1) => {
     try {
       const supabase = createClient();
       const {
@@ -187,7 +193,6 @@ export function CommandCenter() {
           mockDossier.quarters.find((q) => q.id === pid)?.label ?? ql;
       }
 
-      const payload = buildPayloadFromMock(mockDossier.activeQuarterId);
       const titleSuffix = new Date().toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
@@ -218,40 +223,89 @@ export function CommandCenter() {
       setRemoteVault((vaultRes.data as VaultItemRow[] | null) ?? []);
       if (inserted?.id) setActivePlanId(inserted.id as string);
     } catch {
-      /* ignore persistence errors in demo flow */
+      /* ignore persistence errors */
     }
   }, []);
 
-  const startProcessing = useCallback(() => {
-    if (processingLockRef.current) return;
-    processingLockRef.current = true;
-    clearRun();
-    setPhase("processing");
-    setTerminalLines([]);
-    const script = mockDossier.terminalScript;
-    script.forEach((line, idx) => {
-      const id = window.setTimeout(() => {
-        setTerminalLines((prev) => [...prev, line]);
-      }, idx * LINE_MS);
-      timeoutsRef.current.push(id);
-    });
-    const doneId = window.setTimeout(() => {
+  const runIngestionFlow = useCallback(
+    async (imageFile: File | undefined) => {
+      if (processingLockRef.current) return;
+      processingLockRef.current = true;
+      clearRun();
+      setPhase("processing");
+      setTerminalLines([]);
+
+      const script = mockDossier.terminalScript;
+      script.forEach((line, idx) => {
+        const id = window.setTimeout(() => {
+          setTerminalLines((prev) => [...prev, line]);
+        }, idx * LINE_MS);
+        timeoutsRef.current.push(id);
+      });
+
+      const minWait = script.length * LINE_MS + FINISH_PAD_MS;
+      const started = Date.now();
+
+      let nextClasses: ClassDossier[] = mockDossier.classes;
+      if (imageFile?.type.startsWith("image/")) {
+        try {
+          const response = await parseScreenshot(imageFile);
+          const parsed = response.courses.map(courseEntryToDossier);
+          if (parsed.length > 0) nextClasses = parsed;
+        } catch {
+          /* keep mock dossier */
+        }
+      }
+
+      const elapsed = Date.now() - started;
+      const remaining = Math.max(0, minWait - elapsed);
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(() => resolve(), remaining);
+        timeoutsRef.current.push(id);
+      });
+
+      clearRun();
+      setClasses(nextClasses);
+      processingLockRef.current = false;
       setPhase("dashboard");
       setIngestionCollapsed(true);
-      processingLockRef.current = false;
-      clearRun();
-      void persistCompletedDemo();
-    }, script.length * LINE_MS + FINISH_PAD_MS);
-    timeoutsRef.current.push(doneId);
-  }, [clearRun, persistCompletedDemo]);
 
-  const handleFilesSelected = useCallback(() => {
-    startProcessing();
-  }, [startProcessing]);
+      const pid = activePlanIdRef.current;
+      const activeQ =
+        !authedRef.current &&
+        mockDossier.quarters.some((q) => q.id === pid)
+          ? pid
+          : mockDossier.activeQuarterId;
+      const payload = buildPayloadFromClasses(
+        activeQ,
+        nextClasses,
+        mockDossier.evaluation,
+      );
+      await persistCompletedSession(payload);
+    },
+    [clearRun, persistCompletedSession],
+  );
 
-  const handleManualSubmit = useCallback(() => {
-    startProcessing();
-  }, [startProcessing]);
+  const handleFilesSelected = useCallback(
+    (files: FileList | File[]) => {
+      const imageFile = Array.from(files).find((f) =>
+        f.type.startsWith("image/"),
+      );
+      void runIngestionFlow(imageFile);
+    },
+    [runIngestionFlow],
+  );
+
+  const handleManualSubmit = useCallback(
+    (_payload: {
+      professor: string;
+      course: string;
+      quarter: string;
+    }) => {
+      void runIngestionFlow(undefined);
+    },
+    [runIngestionFlow],
+  );
 
   const resetDemo = useCallback(() => {
     clearRun();
@@ -259,6 +313,7 @@ export function CommandCenter() {
     setPhase("idle");
     setIngestionCollapsed(false);
     setTerminalLines([]);
+    setClasses(mockDossier.classes);
   }, [clearRun]);
 
   const handleNewPlan = useCallback(async () => {

@@ -32,6 +32,14 @@ export interface RawQuote {
   text: string;
 }
 
+export interface SectionMeeting {
+  section_type: string; // "Lecture", "Discussion", "Lab"
+  days: string;         // "MWF", "TuTh", "MW", etc.
+  start_time: string;   // "10:00 AM"
+  end_time: string;     // "10:50 AM"
+  location: string;
+}
+
 export interface ClassDossier {
   id: string;
   courseCode: string;
@@ -44,6 +52,7 @@ export interface ClassDossier {
   chips: StatusChipData[];
   rawQuotes: RawQuote[];
   conflict?: ClassConflict;
+  meetings: SectionMeeting[];
 }
 
 export interface ScheduleAlert {

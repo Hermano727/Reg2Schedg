@@ -27,5 +27,6 @@ export function courseEntryToDossier(entry: CourseEntry): ClassDossier {
       tone: i === 0 ? "cyan" : "muted",
     })),
     rawQuotes: [],
+    meetings: entry.meetings,
   };
 }

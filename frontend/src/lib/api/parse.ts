@@ -1,10 +1,5 @@
-export interface SectionMeeting {
-  section_type: string;
-  days: string;
-  start_time: string;
-  end_time: string;
-  location: string;
-}
+import type { SectionMeeting } from "@/types/dossier";
+export type { SectionMeeting };
 
 export interface CourseEntry {
   course_code: string;

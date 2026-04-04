@@ -8,6 +8,7 @@ import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
 import { ClassCard } from "@/components/dashboard/ClassCard";
 import { EvaluatorFooter } from "@/components/dashboard/EvaluatorFooter";
+import { WeeklyCalendar } from "@/components/dashboard/WeeklyCalendar";
 import { mockDossier } from "@/lib/mock/dossier";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -389,6 +390,7 @@ export function CommandCenter() {
                   transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                   className="space-y-4"
                 >
+                  <WeeklyCalendar classes={viewClasses} />
                   {viewClasses.length === 0 ? (
                     <p className="rounded-xl border border-white/[0.08] bg-hub-bg/40 px-4 py-8 text-center text-sm text-hub-text-muted">
                       No dossier data for this plan yet. Run ingestion above or

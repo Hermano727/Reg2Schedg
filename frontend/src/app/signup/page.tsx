@@ -4,22 +4,22 @@ import { AuthFooterLinks } from "@/components/auth/AuthFooterLinks";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12">
       <PageHeader
-        title="Sign in"
-        subtitle="Existing accounts only for email and password. New passwords are created on the sign-up page."
+        title="Create account"
+        subtitle="Email registration creates a password identity. Google and GitHub create or sign in a separate identity."
       />
       <Suspense
         fallback={
           <div className="h-40 animate-pulse rounded-xl bg-white/[0.04]" />
         }
       >
-        <AuthForm intent="login" />
+        <AuthForm intent="signup" />
       </Suspense>
       <Suspense fallback={null}>
-        <AuthFooterLinks variant="login" />
+        <AuthFooterLinks variant="signup" />
       </Suspense>
       <p className="mt-3 text-center text-sm text-hub-text-muted">
         <Link href="/" className="text-hub-text-secondary hover:text-hub-cyan hover:underline">

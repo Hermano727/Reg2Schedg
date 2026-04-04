@@ -1,10 +1,14 @@
 from functools import lru_cache
+
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     supabase_url: str
-    supabase_key: str
+    supabase_key: str = Field(
+        validation_alias=AliasChoices("SUPABASE_KEY", "SUPABASE_ANON_KEY"),
+    )
     supabase_jwt_secret: str
     gemini_api_key: str
 

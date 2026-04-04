@@ -2,9 +2,8 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ChevronDown, LogOut, Settings, User } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { clientSignOut } from "@/lib/auth/client-sign-out";
 
 type UserAccountMenuProps = {
   displayName?: string;
@@ -20,7 +19,6 @@ export function UserAccountMenu({
   email = "Sign in when auth is wired",
   signedIn = false,
 }: UserAccountMenuProps) {
-  const router = useRouter();
   const initials =
     displayName
       .split(/\s+/)
@@ -28,13 +26,6 @@ export function UserAccountMenu({
       .slice(0, 2)
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?";
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.refresh();
-    router.push("/login");
-  }
 
   return (
     <DropdownMenu.Root>
@@ -100,7 +91,7 @@ export function UserAccountMenu({
                 className={menuItemClass}
                 onSelect={(e) => {
                   e.preventDefault();
-                  void handleSignOut();
+                  void clientSignOut("/login");
                 }}
               >
                 <LogOut className="h-4 w-4 text-hub-text-muted" aria-hidden />

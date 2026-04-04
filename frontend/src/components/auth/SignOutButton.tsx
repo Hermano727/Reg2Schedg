@@ -2,8 +2,7 @@
 
 import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { clientSignOut } from "@/lib/auth/client-sign-out";
 import { Button } from "@/components/ui/Button";
 import type { ButtonProps } from "@/components/ui/Button";
 
@@ -19,13 +18,8 @@ export function SignOutButton({
   className = "",
   ...props
 }: SignOutButtonProps) {
-  const router = useRouter();
-
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.refresh();
-    router.push(redirectTo);
+    await clientSignOut(redirectTo);
   }
 
   return (

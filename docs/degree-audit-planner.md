@@ -8,23 +8,22 @@ This document locks decisions from the degree-audit planner ideation review: **s
 
 ### 1.1 Definitions
 
-| Input | Meaning |
-|--------|--------|
-| **Audit PDF** | User-uploaded export (e.g. degree audit / advising report). Point-in-time, may be stale. |
-| **Live snapshot** | Data retrieved while the user is present (e.g. after Duo), via Browser Use or future official APIs. Represents portal state at capture time. |
-| **Catalog / rules snapshot** | TritonHub-held curriculum data (versions, prereqs, offerings). Used for suggestions, not as a substitute for the registrar. |
+
+| Input                        | Meaning                                                                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audit PDF**                | User-uploaded export (e.g. degree audit / advising report). Point-in-time, may be stale.                                                     |
+| **Live snapshot**            | Data retrieved while the user is present (e.g. after Duo), via Browser Use or future official APIs. Represents portal state at capture time. |
+| **Catalog / rules snapshot** | TritonHub-held curriculum data (versions, prereqs, offerings). Used for suggestions, not as a substitute for the registrar.                  |
+
 
 ### 1.2 Canonical precedence (merge logic)
 
-1. **Enrollment facts** — Courses shown as completed, in progress, transferred, or repeated; term labels; unit totals that the portal treats as authoritative.  
-   - **Canonical source:** **Live snapshot** when a capture job completed successfully in the user’s session and passed validation (session marker, checksum, or DOM sanity checks).  
-   - **Fallback:** Values extracted from the **Audit PDF** when no valid live snapshot exists for that fact class.
-
-2. **Requirement lines and substitutions** — Complex rows (GE bundles, major-specific electives, waivers).  
-   - **Canonical source:** **Neither auto-wins.** If live snapshot and PDF (or two PDFs) disagree on the same requirement row, the merge engine sets status **`REVIEW_REQUIRED`** and stores both provenances. The UI must not silently pick one.
-
+1. **Enrollment facts** — Courses shown as completed, in progress, transferred, or repeated; term labels; unit totals that the portal treats as authoritative.
+  - **Canonical source:** **Live snapshot** when a capture job completed successfully in the user’s session and passed validation (session marker, checksum, or DOM sanity checks).  
+  - **Fallback:** Values extracted from the **Audit PDF** when no valid live snapshot exists for that fact class.
+2. **Requirement lines and substitutions** — Complex rows (GE bundles, major-specific electives, waivers).
+  - **Canonical source:** **Neither auto-wins.** If live snapshot and PDF (or two PDFs) disagree on the same requirement row, the merge engine sets status `**REVIEW_REQUIRED`** and stores both provenances. The UI must not silently pick one.
 3. **Planner-suggested future courses** — Not canonical; always labeled **proposed**. Driven by preferences + graph + catalog snapshot, subject to user edits.
-
 4. **Timestamps** — When both PDF and live exist, persist `pdf_captured_at` (user-provided or inferred) and `live_captured_at`. Show them in the UI for transparency.
 
 ### 1.3 Merge algorithm (implementation sketch)
@@ -53,14 +52,16 @@ For each requirement row R:
 
 Use these verbatim or as close variants so legal and support stay aligned.
 
-| Context | Copy |
-|---------|------|
-| Global disclaimer (banner / footer) | **This plan is unofficial.** Your degree audit in **TritonLink / Virtual Advising Center** is the authority. TritonHub does not replace your college or the registrar. |
-| Live + PDF both present | **We combined your uploaded audit with a fresh snapshot from your session.** Enrollment facts prefer the live snapshot; conflicting requirement lines need your review. |
-| Live preferred for enrollment | **Enrollment and progress** shown here prefer your **latest signed-in session** when available. |
-| PDF only | **Based on your uploaded audit only.** Sign in and refresh to pull the latest from the portal when that feature is available. |
-| `REVIEW_REQUIRED` | **Mismatch detected** between your file and the portal (or between two sources). Pick the correct row or ask an advisor before relying on this line. |
-| Proposed courses | **Suggested placement only.** Verify prerequisites, enrollment restrictions, and annual catalog changes. |
+
+| Context                             | Copy                                                                                                                                                                    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Global disclaimer (banner / footer) | **This plan is unofficial.** Your degree audit in **TritonLink / Virtual Advising Center** is the authority. TritonHub does not replace your college or the registrar.  |
+| Live + PDF both present             | **We combined your uploaded audit with a fresh snapshot from your session.** Enrollment facts prefer the live snapshot; conflicting requirement lines need your review. |
+| Live preferred for enrollment       | **Enrollment and progress** shown here prefer your **latest signed-in session** when available.                                                                         |
+| PDF only                            | **Based on your uploaded audit only.** Sign in and refresh to pull the latest from the portal when that feature is available.                                           |
+| `REVIEW_REQUIRED`                   | **Mismatch detected** between your file and the portal (or between two sources). Pick the correct row or ask an advisor before relying on this line.                    |
+| Proposed courses                    | **Suggested placement only.** Verify prerequisites, enrollment restrictions, and annual catalog changes.                                                                |
+
 
 ---
 
@@ -95,11 +96,13 @@ Audit PDFs and extracted fields may contain **FERPA-adjacent** academic and iden
 
 ### 3.2 Retention (defaults to implement in policy + jobs)
 
-| Data | Policy |
-|------|--------|
-| Raw uploaded PDF | Retain while the **plan workspace is active**; allow user **delete now**. Optional TTL (e.g. **90 days**) after last activity unless user pins “keep for advising.” **Delete on account deletion.** |
-| Parsed graph + UI state | Same as user’s saved planner project; cascade delete with account. |
-| Logs | **No raw PDF bodies** in application logs; structured IDs and error classes only. |
+
+| Data                    | Policy                                                                                                                                                                                              |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Raw uploaded PDF        | Retain while the **plan workspace is active**; allow user **delete now**. Optional TTL (e.g. **90 days**) after last activity unless user pins “keep for advising.” **Delete on account deletion.** |
+| Parsed graph + UI state | Same as user’s saved planner project; cascade delete with account.                                                                                                                                  |
+| Logs                    | **No raw PDF bodies** in application logs; structured IDs and error classes only.                                                                                                                   |
+
 
 Tune TTL with legal review; document final numbers in Supabase / worker config.
 
@@ -117,7 +120,7 @@ Tune TTL with legal review; document final numbers in Supabase / worker config.
 ### 3.5 Supabase Storage + RLS (target)
 
 - **Object keys:** Prefix with `user_id` / tenant id; no world-readable buckets.  
-- **RLS:** Policies tied to **`auth.uid()`** (or equivalent) for rows holding metadata (`storage_path`, `plan_id`, `pdf_hash`).  
+- **RLS:** Policies tied to `**auth.uid()`** (or equivalent) for rows holding metadata (`storage_path`, `plan_id`, `pdf_hash`).  
 - **FastAPI:** Verify JWT; only issue signed URLs or proxy downloads for the owning user.
 
 ---
@@ -132,13 +135,16 @@ Tune TTL with legal review; document final numbers in Supabase / worker config.
 
 ## 5. Summary table
 
-| Topic | Decision |
-|-------|-----------|
-| Enrollment facts | Live snapshot when valid; else PDF. |
-| Conflicting requirement rows | `REVIEW_REQUIRED`; no silent winner. |
-| Proposed schedule | Always unofficial; user-editable. |
-| v1 | PDF + preferences + graph + UI + disclaimers + COMPLETE LATER. |
-| Browser Use | v2+; user-present Duo only; optional enrichment. |
-| PDF vs live narrative | Never “bypass security”; “refresh while you’re signed in.” |
-| Retention | User delete + account delete; optional TTL; no PDFs in logs. |
-| Storage | Supabase Storage + RLS-by-user. |
+
+| Topic                        | Decision                                                       |
+| ---------------------------- | -------------------------------------------------------------- |
+| Enrollment facts             | Live snapshot when valid; else PDF.                            |
+| Conflicting requirement rows | `REVIEW_REQUIRED`; no silent winner.                           |
+| Proposed schedule            | Always unofficial; user-editable.                              |
+| v1                           | PDF + preferences + graph + UI + disclaimers + COMPLETE LATER. |
+| Browser Use                  | v2+; user-present Duo only; optional enrichment.               |
+| PDF vs live narrative        | Never “bypass security”; “refresh while you’re signed in.”     |
+| Retention                    | User delete + account delete; optional TTL; no PDFs in logs.   |
+| Storage                      | Supabase Storage + RLS-by-user.                                |
+
+

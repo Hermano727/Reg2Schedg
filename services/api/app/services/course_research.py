@@ -8,8 +8,13 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, ValidationError
 
 from app.db.client import get_supabase_client
-from app.db.service import get_course_research_cache, upsert_course_research_cache
+from app.db.service import (
+    get_course_research_cache,
+    get_sunset_grade_distribution,
+    upsert_course_research_cache,
+)
 from app.models.course_parse import CourseEntry, SectionMeeting
+from app.models.domain import SunsetGradeDistributionRow
 
 
 load_dotenv()
@@ -71,12 +76,22 @@ class CourseRunCost(BaseModel):
     total_cost_usd: float | None = None
 
 
+class SunsetGradeDistribution(BaseModel):
+    term_label: str | None = None
+    professor_name: str | None = None
+    grade_distribution: dict[str, Any] = Field(default_factory=dict)
+    recommend_professor_percent: float | None = None
+    submission_time: str | None = None
+    source_url: str | None = None
+
+
 class CourseResearchResult(BaseModel):
     course_code: str
     course_title: str | None = None
     professor_name: str | None = None
     meetings: list[SectionMeeting] = Field(default_factory=list)
     logistics: CourseLogistics | None = None
+    sunset_grade_distribution: SunsetGradeDistribution | None = None
     cache_hit: bool = False
     cached_at: str | None = None
     cache_error: str | None = None
@@ -260,6 +275,21 @@ def parse_course_logistics_output(raw_output: Any) -> CourseLogistics:
     return CourseLogistics.model_validate(raw_output)
 
 
+def build_sunset_grade_distribution(
+    row: SunsetGradeDistributionRow | None,
+) -> SunsetGradeDistribution | None:
+    if row is None:
+        return None
+    return SunsetGradeDistribution(
+        term_label=row.term_label,
+        professor_name=row.professor_name or None,
+        grade_distribution=row.grade_distribution,
+        recommend_professor_percent=row.recommend_professor_percent,
+        submission_time=row.submission_time,
+        source_url=row.source_url,
+    )
+
+
 def build_task(course: str, instructor: str | None) -> str:
     subject = normalize_param(course, fallback="unknown course")
     normalized_instructor = normalize_param(instructor, fallback="unknown")
@@ -367,8 +397,20 @@ async def research_course(
 ) -> CourseResearchResult:
     label = entry.course_code if not entry.professor_name else f"{entry.course_code} / {entry.professor_name}"
     cache_error: str | None = None
+    sunset_grade_distribution: SunsetGradeDistribution | None = None
     if progress:
         progress(f"[{index}/{total}] Researching {label}")
+
+    try:
+        sunset_row = get_sunset_grade_distribution(
+            cache_client,
+            course_code=entry.course_code,
+            professor_name=entry.professor_name or None,
+        )
+        sunset_grade_distribution = build_sunset_grade_distribution(sunset_row)
+    except Exception as exc:
+        if progress:
+            progress(f"[{index}/{total}] SunSET lookup failed for {label}: {exc}")
 
     try:
         cache_row = get_course_research_cache(
@@ -393,6 +435,7 @@ async def research_course(
                 professor_name=entry.professor_name or None,
                 meetings=entry.meetings,
                 logistics=cached_logistics,
+                sunset_grade_distribution=sunset_grade_distribution,
                 cache_hit=True,
                 cached_at=cache_row.updated_at,
                 cache_error=cache_error,
@@ -418,6 +461,7 @@ async def research_course(
             course_title=entry.course_title or None,
             professor_name=entry.professor_name or None,
             meetings=entry.meetings,
+            sunset_grade_distribution=sunset_grade_distribution,
             cache_error=cache_error,
             cost=exc.cost,
             error=str(exc),
@@ -430,6 +474,7 @@ async def research_course(
             course_title=entry.course_title or None,
             professor_name=entry.professor_name or None,
             meetings=entry.meetings,
+            sunset_grade_distribution=sunset_grade_distribution,
             cache_error=cache_error,
             error=str(exc),
         )
@@ -459,6 +504,7 @@ async def research_course(
         professor_name=entry.professor_name or None,
         meetings=entry.meetings,
         logistics=outcome.logistics,
+        sunset_grade_distribution=sunset_grade_distribution,
         cache_hit=False,
         cached_at=cached_at,
         cache_error=cache_error,

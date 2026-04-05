@@ -312,7 +312,23 @@ def build_sunset_grade_distribution(
         except Exception:
             return 0
 
-    def compute_set_summary(grade_dist: dict[str, Any]) -> SetSummary:
+    def _parse_float(value: Any) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            return float(value)
+        s = str(value).strip().replace(",", "")
+        s = re.sub(r"[^0-9.\-]", "", s)
+        if not s:
+            return None
+        try:
+            return float(s)
+        except Exception:
+            return None
+
+    def compute_set_summary(payload: dict[str, Any]) -> SetSummary:
+        nested_distribution = payload.get("distribution")
+        grade_dist = nested_distribution if isinstance(nested_distribution, dict) else payload
         counts: dict[str, int] = {}
         total = 0
         weighted = 0.0
@@ -327,7 +343,10 @@ def build_sunset_grade_distribution(
             if label in _GRADE_TO_GPA:
                 weighted += cnt * _GRADE_TO_GPA[label]
 
-        avg = (weighted / total) if total > 0 and weighted >= 0 else None
+        explicit_avg = _parse_float(payload.get("average_gpa"))
+        explicit_total = _parse_count(payload.get("total_students")) or None
+
+        avg = explicit_avg if explicit_avg is not None else ((weighted / total) if total > 0 else None)
 
         median = None
         if total > 0:
@@ -353,11 +372,13 @@ def build_sunset_grade_distribution(
                 passing += cnt
         pass_rate = (passing / total * 100.0) if total > 0 else None
 
+        sample_size = explicit_total if explicit_total is not None else (total if total > 0 else None)
+
         return SetSummary(
             average_gpa=round(avg, 2) if avg is not None else None,
             median_gpa=round(median, 2) if median is not None else None,
             pass_rate_percent=round(pass_rate, 1) if pass_rate is not None else None,
-            sample_size=total if total > 0 else None,
+            sample_size=sample_size,
             grade_counts=counts,
         )
 

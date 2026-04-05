@@ -21,14 +21,27 @@ export function HubShell({ children, user }: HubShellProps) {
         data: { session },
       } = await supabase.auth.getSession();
       const token = session?.access_token;
+      console.log("supabase session", session);
+      console.log("access token", token);
 
       const res = await fetch(`${getApiBaseUrl()}/api/calendar/authorize`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
+      console.log("calendar authorize response status", res.status);
+      console.log("calendar authorize response headers", Object.fromEntries(res.headers.entries()));
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { detail?: string }).detail ?? "Authorization failed");
+        const body = await res.text().catch(() => "");
+        console.error("calendar authorize failed:", res.status, body);
+        const err = (() => {
+          try {
+            return JSON.parse(body);
+          } catch {
+            return {};
+          }
+        })();
+        throw new Error((err as { detail?: string }).detail ?? `Authorization failed (status ${res.status})`);
       }
 
       const { url } = (await res.json()) as { url: string };

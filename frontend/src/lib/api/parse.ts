@@ -6,6 +6,10 @@ export interface SectionMeeting {
   start_time: string;
   end_time: string;
   location: string;
+  building_code?: string;
+  lat?: number;
+  lng?: number;
+  geocode_status?: "resolved" | "ambiguous" | "unresolved";
 }
 
 export interface CourseEntry {

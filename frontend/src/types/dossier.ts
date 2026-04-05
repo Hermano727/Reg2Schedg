@@ -38,6 +38,10 @@ export interface SectionMeeting {
   start_time: string;   // "10:00 AM"
   end_time: string;     // "10:50 AM"
   location: string;
+  building_code?: string;
+  lat?: number;
+  lng?: number;
+  geocode_status?: "resolved" | "ambiguous" | "unresolved";
 }
 
 /** User-defined block on the weekly grid (work, club, etc.) */
@@ -138,6 +142,8 @@ export interface ScheduleItem {
   location?: string;
   zone?: string;
   buildingCode?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface TransitionInsight {

@@ -17,6 +17,7 @@ import {
 import { vaultRowToVaultItem } from "@/lib/hub/vault-map";
 import { analyzeFit, researchScreenshot } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
+import { dossiersToScheduleItems } from "@/lib/mappers/dossiersToScheduleItems";
 import type { SavedPlanRow, VaultItemRow } from "@/types/saved-plan";
 import type { ClassDossier, ScheduleEvaluation, UiPhase } from "@/types/dossier";
 
@@ -553,8 +554,8 @@ export function CommandCenter() {
                       viewClasses={viewClasses}
                       evaluation={viewEvaluation}
                       hydrateKey={`${activePlanId}:${authed}`}
-                      scheduleItems={mockDossier.scheduleItems}
-                      transitionInsights={mockDossier.transitionInsights}
+                      scheduleItems={dossiersToScheduleItems(viewClasses)}
+                      transitionInsights={[]}
                       initialCommitments={viewCommitments}
                       ref={workspaceRef}
                       calendarHeaderActions={(

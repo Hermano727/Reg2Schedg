@@ -171,7 +171,7 @@ export function CampusPathLeafletMap({
 
         {plottedItems.map((item, index) => (
           <Marker
-            key={item.id}
+            key={`${item.id}-${index}`}
             position={[item.lat, item.lng]}
             icon={sequenceIcons[index]}
           >

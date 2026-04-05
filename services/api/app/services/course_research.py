@@ -15,6 +15,7 @@ from app.db.service import (
 )
 from app.models.course_parse import CourseEntry, SectionMeeting
 from app.models.domain import SunsetGradeDistributionRow
+from app.services.geocode import geocode_location
 
 
 load_dotenv()
@@ -470,6 +471,23 @@ async def run_course_logistics(
     return CourseRunOutcome(logistics=logistics, cost=cost)
 
 
+def enrich_meetings_with_geocode(meetings: list[SectionMeeting]) -> list[SectionMeeting]:
+    """Attach lat/lng/building_code to each meeting that has a non-empty location string."""
+    enriched = []
+    for meeting in meetings:
+        if meeting.location and meeting.lat is None:
+            result = geocode_location(meeting.location)
+            if result:
+                meeting = meeting.model_copy(update={
+                    "building_code": result.building_code,
+                    "lat": result.lat,
+                    "lng": result.lng,
+                    "geocode_status": result.status,
+                })
+        enriched.append(meeting)
+    return enriched
+
+
 async def research_course(
     client: Any,
     cache_client: Any,
@@ -485,6 +503,9 @@ async def research_course(
     sunset_grade_distribution: SunsetGradeDistribution | None = None
     if progress:
         progress(f"[{index}/{total}] Researching {label}")
+
+    # Geocode meeting locations (synchronous static lookup; fast, no I/O for known buildings)
+    geocoded_meetings = enrich_meetings_with_geocode(list(entry.meetings))
 
     try:
         sunset_row = get_sunset_grade_distribution(
@@ -518,7 +539,7 @@ async def research_course(
                 course_code=entry.course_code,
                 course_title=entry.course_title or None,
                 professor_name=entry.professor_name or None,
-                meetings=entry.meetings,
+                meetings=geocoded_meetings,
                 logistics=cached_logistics,
                 sunset_grade_distribution=sunset_grade_distribution,
                 cache_hit=True,

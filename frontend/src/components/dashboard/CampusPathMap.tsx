@@ -58,15 +58,15 @@ export function CampusPathMap({
 
   const plottedItems = scheduleItems
     .map((item) => {
+      // Prefer direct coordinates (provided by backend geocoding)
+      if (item.lat != null && item.lng != null) {
+        return { ...item, lat: item.lat, lng: item.lng };
+      }
+      // Fall back to campusLocations lookup by building code
       if (!item.buildingCode) return null;
       const loc = locationMap.get(item.buildingCode);
       if (!loc) return null;
-
-      return {
-        ...item,
-        lat: loc.lat,
-        lng: loc.lng,
-      };
+      return { ...item, lat: loc.lat, lng: loc.lng };
     })
     .filter((item): item is PlottedItem => item !== null);
 
@@ -101,7 +101,7 @@ export function CampusPathMap({
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {plottedItems.map((item, index) => (
               <div
-                key={`item-${item.id}`}
+                key={`item-${item.id}-${index}`}
                 className="rounded-lg border border-white/[0.08] bg-hub-surface/75 p-2"
               >
                 <p className="text-sm font-semibold text-hub-text">
@@ -132,8 +132,8 @@ export function CampusPathMap({
           <h3 className="text-sm font-semibold text-hub-text">Needs mapping</h3>
           <div className="mt-2 space-y-2">
             {unmappedItems.length ? (
-              unmappedItems.map((item) => (
-                <p key={`unmapped-${item.id}`} className="text-xs text-hub-text-muted">
+              unmappedItems.map((item, i) => (
+                <p key={`unmapped-${item.id}-${i}`} className="text-xs text-hub-text-muted">
                   {item.title}: add a `buildingCode` to include this on map.
                 </p>
               ))

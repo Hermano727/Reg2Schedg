@@ -1,4 +1,4 @@
-import type { ClassDossier, StatusChipData } from "@/types/dossier";
+import type { ClassDossier, SetSummary, StatusChipData, SunsetGradeDistribution } from "@/types/dossier";
 import type { CourseEntry, CourseResearchResult } from "@/lib/api/parse";
 
 function getInitials(name: string): string {
@@ -75,8 +75,6 @@ export function courseResearchResultToDossier(
 
   const condensedSummary = log?.grade_breakdown ? [log.grade_breakdown] : [];
 
-  enrichCondensedSummaryWithSunset(result, condensedSummary);
-
   return {
     id: result.course_code.toLowerCase().replace(/\s+/g, "-"),
     courseCode: result.course_code,
@@ -94,16 +92,31 @@ export function courseResearchResultToDossier(
   };
 }
 
-// enhance condensedSummary with SunSET summary if available
-export function enrichCondensedSummaryWithSunset(result: CourseResearchResult, condensed: string[]) {
-  const sunset = result.sunset_grade_distribution;
-  const setSummary = sunset?.set_summary;
-  if (setSummary?.sample_size) {
-    const avg = setSummary.average_gpa ?? "—";
-    condensed.push(`Avg GPA ${avg} · n=${setSummary.sample_size}`);
-  } else if (sunset?.recommend_professor_percent != null) {
-    condensed.push(`Recommend ${Math.round(sunset.recommend_professor_percent)}%`);
+export function getSunsetSummary(
+  sunset: SunsetGradeDistribution | null | undefined,
+): SetSummary | null {
+  if (!sunset) return null;
+  if (sunset.set_summary) return sunset.set_summary;
+
+  const payload = sunset.grade_distribution ?? {};
+  const distribution =
+    payload.distribution && typeof payload.distribution === "object"
+      ? (payload.distribution as Record<string, number>)
+      : {};
+  const averageGpa =
+    typeof payload.average_gpa === "number" ? payload.average_gpa : null;
+  const totalStudents =
+    typeof payload.total_students === "number" ? payload.total_students : null;
+
+  if (Object.keys(distribution).length === 0 && averageGpa == null && totalStudents == null) {
+    return null;
   }
+
+  return {
+    average_gpa: averageGpa,
+    sample_size: totalStudents,
+    grade_counts: distribution,
+  };
 }
 
 export function courseEntryToDossier(entry: CourseEntry): ClassDossier {

@@ -6,6 +6,7 @@ import { ExternalLink, HelpCircle, RotateCcw, Star, Zap } from "lucide-react";
 import type { ClassDossier } from "@/types/dossier";
 import { ConflictBadge } from "@/components/dashboard/ConflictBadge";
 import { StatusChips } from "@/components/dashboard/StatusChips";
+import { getSunsetSummary } from "@/lib/mappers/courseEntryToDossier";
 
 type ClassCardProps = {
   dossier: ClassDossier;
@@ -16,6 +17,26 @@ export function ClassCard({ dossier }: ClassCardProps) {
   const [showConfidenceInfo, setShowConfidenceInfo] = useState(false);
 
   const rmp = dossier.logistics?.rate_my_professor;
+  const sunsetSummary = getSunsetSummary(dossier.sunsetGradeDistribution);
+  const sunsetSampleSize =
+    sunsetSummary?.sample_size ??
+    Object.values(sunsetSummary?.grade_counts ?? {}).reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+  const sunsetPrimaryGroups = getPrimarySunsetGroups(
+    sunsetSummary?.grade_counts ?? {},
+    sunsetSampleSize,
+  );
+  const sunsetSegments = getSunsetSegments(
+    sunsetSummary?.grade_counts ?? {},
+    sunsetSampleSize,
+  );
+  const hasSunsetSummary =
+    sunsetSummary?.average_gpa != null ||
+    sunsetSummary?.sample_size != null ||
+    Object.keys(sunsetSummary?.grade_counts ?? {}).length > 0 ||
+    dossier.sunsetGradeDistribution?.recommend_professor_percent != null;
   const hasRmp =
     rmp &&
     (rmp.rating != null ||
@@ -185,21 +206,72 @@ export function ClassCard({ dossier }: ClassCardProps) {
               </div>
             )}
             {/* SunSET summary bubble - shows avg GPA and sample size when available */}
-            {dossier.sunsetGradeDistribution?.set_summary && (
+            {hasSunsetSummary && (
               <div className="rounded-xl border border-white/[0.06] bg-hub-bg/30 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-text-muted">
-                  SunSET
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-text-muted">
+                    SunSET
+                  </p>
+                  {dossier.sunsetGradeDistribution?.term_label ? (
+                    <span className="text-[11px] text-hub-text-muted">
+                      {dossier.sunsetGradeDistribution.term_label}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-2 flex items-center gap-3">
-                  {dossier.sunsetGradeDistribution.set_summary.average_gpa != null ? (
+                  {sunsetSummary?.average_gpa != null ? (
                     <div className="inline-flex items-baseline gap-2">
-                      <span className="text-sm font-semibold text-hub-text">Avg GPA {dossier.sunsetGradeDistribution.set_summary.average_gpa}</span>
-                      <span className="text-[11px] text-hub-text-muted">· n={dossier.sunsetGradeDistribution.set_summary.sample_size}</span>
+                      <span className="text-sm font-semibold text-hub-text">Avg GPA {sunsetSummary.average_gpa}</span>
+                      {sunsetSummary.sample_size != null ? (
+                        <span className="text-[11px] text-hub-text-muted">· n={sunsetSummary.sample_size}</span>
+                      ) : null}
                     </div>
                   ) : dossier.sunsetGradeDistribution.recommend_professor_percent != null ? (
                     <span className="text-sm font-semibold text-hub-text">Recommend {Math.round(dossier.sunsetGradeDistribution.recommend_professor_percent)}%</span>
                   ) : null}
                 </div>
+                {sunsetPrimaryGroups.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex flex-wrap gap-x-6 gap-y-2">
+                      {sunsetPrimaryGroups.map((group) => (
+                        <div key={group.label} className="min-w-[88px]">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: group.color }}
+                              aria-hidden
+                            />
+                            <span className="text-sm font-semibold text-hub-text">
+                              {group.label}: {formatPercent(group.percent)}
+                            </span>
+                          </div>
+                          {group.breakdown.length > 0 ? (
+                            <p className="mt-1 text-[11px] text-hub-text-muted">
+                              {group.breakdown.join("   ")}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                    {sunsetSegments.length > 0 ? (
+                      <div className="overflow-hidden rounded-full border border-white/[0.06] bg-hub-bg/70">
+                        <div className="flex h-4 w-full">
+                          {sunsetSegments.map((segment) => (
+                            <div
+                              key={segment.grade}
+                              className="h-full border-r border-hub-bg/80 last:border-r-0"
+                              style={{
+                                width: `${Math.max(segment.percent, 1)}%`,
+                                backgroundColor: segment.color,
+                              }}
+                              title={`${segment.grade}: ${formatPercent(segment.percent)} (${segment.count})`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -255,4 +327,127 @@ function sanitizeDashes(input: string) {
   if (!input) return input;
   // Replace em-dash, en-dash, and double-hyphen with a colon for clarity
   return input.replace(/[–—]|--/g, ":");
+}
+
+type SunsetGroup = {
+  label: string;
+  color: string;
+  percent: number;
+  breakdown: string[];
+};
+
+type SunsetSegment = {
+  grade: string;
+  count: number;
+  percent: number;
+  color: string;
+};
+
+const SUNSET_GROUPS: Array<{
+  label: string;
+  grades: string[];
+  color: string;
+}> = [
+  { label: "A", grades: ["A+", "A", "A-"], color: "#26c6da" },
+  { label: "B", grades: ["B+", "B", "B-"], color: "#4f8dfd" },
+  { label: "C", grades: ["C+", "C", "C-"], color: "#8b5cf6" },
+  { label: "D/F", grades: ["D+", "D", "D-", "F"], color: "#ff4d73" },
+];
+
+const SUNSET_SEGMENT_COLORS: Record<string, string> = {
+  "A+": "#21c1df",
+  "A": "#20b6d9",
+  "A-": "#1599cb",
+  "B+": "#6ca8ff",
+  "B": "#4f8dfd",
+  "B-": "#386fda",
+  "C+": "#a78bfa",
+  "C": "#8b5cf6",
+  "C-": "#7c3aed",
+  "D+": "#ff7b94",
+  "D": "#ff6281",
+  "D-": "#ff5578",
+  "F": "#ff4169",
+  "P": "#7dd3fc",
+  "NP": "#94a3b8",
+  "S": "#67e8f9",
+  "U": "#a78bfa",
+  "W": "#64748b",
+  "EW": "#475569",
+  "I": "#334155",
+};
+
+function formatPercent(percent: number) {
+  if (percent >= 10) return `${Math.round(percent)}%`;
+  if (percent >= 1) return `${percent.toFixed(1).replace(/\.0$/, "")}%`;
+  return `${percent.toFixed(1)}%`;
+}
+
+function getPrimarySunsetGroups(
+  gradeCounts: Record<string, number>,
+  sampleSize: number,
+): SunsetGroup[] {
+  if (!sampleSize) return [];
+
+  return SUNSET_GROUPS.map((group) => {
+    const breakdown = group.grades
+      .filter((grade) => (gradeCounts[grade] ?? 0) > 0)
+      .map((grade) => `${grade}: ${formatPercent(((gradeCounts[grade] ?? 0) / sampleSize) * 100)}`);
+
+    const total = group.grades.reduce(
+      (sum, grade) => sum + (gradeCounts[grade] ?? 0),
+      0,
+    );
+
+    return {
+      label: group.label,
+      color: group.color,
+      percent: (total / sampleSize) * 100,
+      breakdown,
+    };
+  }).filter((group) => group.percent > 0);
+}
+
+function getSunsetSegments(
+  gradeCounts: Record<string, number>,
+  sampleSize: number,
+): SunsetSegment[] {
+  if (!sampleSize) return [];
+
+  return Object.entries(gradeCounts)
+    .filter(([, count]) => count > 0)
+    .map(([grade, count]) => ({
+      grade,
+      count,
+      percent: (count / sampleSize) * 100,
+      color: SUNSET_SEGMENT_COLORS[grade] ?? "#64748b",
+    }))
+    .sort((a, b) => gradeSortIndex(a.grade) - gradeSortIndex(b.grade));
+}
+
+function gradeSortIndex(grade: string) {
+  const order = [
+    "A+",
+    "A",
+    "A-",
+    "B+",
+    "B",
+    "B-",
+    "C+",
+    "C",
+    "C-",
+    "D+",
+    "D",
+    "D-",
+    "F",
+    "P",
+    "NP",
+    "S",
+    "U",
+    "W",
+    "EW",
+    "I",
+  ];
+  const index = order.indexOf(grade);
+  return index === -1 ? order.length : index;
 }

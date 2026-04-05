@@ -74,7 +74,7 @@ export interface SetSummary {
 export interface SunsetGradeDistribution {
   term_label?: string | null;
   professor_name?: string | null;
-  grade_distribution: Record<string, any>;
+  grade_distribution: Record<string, unknown>;
   recommend_professor_percent?: number | null;
   submission_time?: string | null;
   source_url?: string | null;

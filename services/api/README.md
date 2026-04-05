@@ -119,6 +119,55 @@ curl -X POST "http://127.0.0.1:8000/api/research-screenshot?concurrency=1" \
 
 Expect a JSON response with one result per deduped course. The backend checks Supabase cache first and only calls Browser Use on cache miss.
 
+### Import SunSET grade data (optional)
+
+If you want to import directly from the public SunSET CSV into a normalized table, create:
+
+```sql
+create table if not exists public.sunset_grade_distributions (
+  id uuid primary key default gen_random_uuid(),
+  source_row_hash text unique not null,
+  course_code text not null,
+  professor_name text,
+  term_label text,
+  normalized_course_code text not null,
+  normalized_professor_name text not null default '',
+  grade_distribution jsonb not null,
+  recommend_professor_percent numeric,
+  submission_time timestamptz,
+  source_url text not null,
+  raw_row jsonb not null,
+  raw_user_id text,
+  imported_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists sunset_grade_distributions_course_idx
+  on public.sunset_grade_distributions (normalized_course_code, normalized_professor_name);
+```
+
+Then you can import the public SunSET CSV with:
+
+```bash
+cd services/api
+python import_sunset.py --dry-run
+python import_sunset.py
+```
+
+The importer uses the published Google Sheets CSV export by default and upserts by `source_row_hash`. If the CSV uses unexpected column names, you can override them:
+
+```bash
+python import_sunset.py --course-column "Course" --professor-column "Professor" --term-column "Quarter"
+```
+
+If you already imported the CSV into a raw table first, create a raw table such as `sunset_grade_distributions_raw` with the original CSV columns, then normalize it into the app table:
+
+```bash
+cd services/api
+python normalize_sunset.py --dry-run
+python normalize_sunset.py
+```
+
 ### Test `/plans` (optional)
 
 Requires a valid Supabase **access token** (same JWT the browser gets after sign-in):

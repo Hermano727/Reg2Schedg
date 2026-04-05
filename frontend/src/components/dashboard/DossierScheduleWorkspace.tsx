@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Alert } from "@/components/ui/Alert";
 import { ClassCard } from "@/components/dashboard/ClassCard";
+import { CampusPathMap } from "@/components/dashboard/CampusPathMap";
 import { EvaluatorFooter } from "@/components/dashboard/EvaluatorFooter";
 import { WeeklyCalendar } from "@/components/dashboard/WeeklyCalendar";
 import { useCalendarSyncHandler } from "@/components/layout/calendar-sync-context";
@@ -30,7 +31,7 @@ import {
   useScheduleEditor,
   useScheduleFingerprint,
 } from "@/hooks/useScheduleEditor";
-import type { ClassDossier, ScheduleCommitment, ScheduleEvaluation } from "@/types/dossier";
+import type { ClassDossier, ScheduleCommitment, ScheduleEvaluation, ScheduleItem, TransitionInsight } from "@/types/dossier";
 
 const COMMITMENT_PRESETS = [
   { label: "Coral", value: "#f97316" },
@@ -56,12 +57,16 @@ type Props = {
   viewClasses: ClassDossier[];
   evaluation: ScheduleEvaluation;
   hydrateKey: string;
+  scheduleItems?: ScheduleItem[];
+  transitionInsights?: TransitionInsight[];
 };
 
 export function DossierScheduleWorkspace({
   viewClasses,
   evaluation,
   hydrateKey,
+  scheduleItems = [],
+  transitionInsights = [],
 }: Props) {
   const fingerprint = useScheduleFingerprint(viewClasses);
   const fullKey = `${hydrateKey}|${fingerprint}`;
@@ -357,6 +362,20 @@ export function DossierScheduleWorkspace({
             <ClassCard key={c.id} dossier={c} />
           ))}
         </div>
+        {scheduleItems.length > 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className={mainTab === "schedule" ? "hidden lg:block" : ""}
+          >
+            <CampusPathMap
+              scheduleItems={scheduleItems}
+              transitionInsights={transitionInsights}
+            />
+          </motion.div>
+        ) : null}
+
         <div className={mainTab === "schedule" ? "hidden lg:block" : ""}>
           <EvaluatorFooter evaluation={evaluation} />
         </div>

@@ -403,6 +403,8 @@ export function CommandCenter() {
                       viewClasses={viewClasses}
                       evaluation={viewEvaluation}
                       hydrateKey={`${activePlanId}:${authed}`}
+                      scheduleItems={mockDossier.scheduleItems}
+                      transitionInsights={mockDossier.transitionInsights}
                     />
                   )}
                 </motion.div>

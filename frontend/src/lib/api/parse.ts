@@ -1,3 +1,5 @@
+import type { CourseLogistics } from "@/types/dossier";
+
 export interface SectionMeeting {
   section_type: string;
   days: string;
@@ -33,4 +35,37 @@ export async function parseScreenshot(
   }
 
   return res.json() as Promise<ParseScreenshotResponse>;
+}
+
+export interface CourseResearchResult {
+  course_code: string;
+  course_title: string | null;
+  professor_name: string | null;
+  meetings: SectionMeeting[];
+  logistics: CourseLogistics | null;
+  cache_hit: boolean;
+  error: string | null;
+}
+
+export interface BatchResearchResponse {
+  course_count: number;
+  results: CourseResearchResult[];
+}
+
+export async function researchScreenshot(
+  file: File,
+): Promise<BatchResearchResponse> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch("http://localhost:8000/api/research-screenshot", {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Research failed: ${res.status} ${res.statusText}`);
+  }
+
+  return res.json() as Promise<BatchResearchResponse>;
 }

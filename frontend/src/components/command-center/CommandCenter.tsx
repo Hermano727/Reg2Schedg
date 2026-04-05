@@ -15,8 +15,8 @@ import {
   type SavedPlanPayloadV1,
 } from "@/lib/hub/plan-payload";
 import { vaultRowToVaultItem } from "@/lib/hub/vault-map";
-import { parseScreenshot } from "@/lib/api/parse";
-import { courseEntryToDossier } from "@/lib/mappers/courseEntryToDossier";
+import { researchScreenshot } from "@/lib/api/parse";
+import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import type { SavedPlanRow, VaultItemRow } from "@/types/saved-plan";
 import type { ClassDossier, UiPhase } from "@/types/dossier";
 
@@ -248,8 +248,8 @@ export function CommandCenter() {
       let nextClasses: ClassDossier[] = mockDossier.classes;
       if (imageFile?.type.startsWith("image/")) {
         try {
-          const response = await parseScreenshot(imageFile);
-          const parsed = response.courses.map(courseEntryToDossier);
+          const response = await researchScreenshot(imageFile);
+          const parsed = response.results.map(courseResearchResultToDossier);
           if (parsed.length > 0) nextClasses = parsed;
         } catch {
           /* keep mock dossier */

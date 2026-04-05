@@ -1,5 +1,5 @@
-import type { ClassDossier } from "@/types/dossier";
-import type { CourseEntry } from "@/lib/api/parse";
+import type { ClassDossier, StatusChipData } from "@/types/dossier";
+import type { CourseEntry, CourseResearchResult } from "@/lib/api/parse";
 
 function getInitials(name: string): string {
   return name
@@ -7,6 +7,86 @@ function getInitials(name: string): string {
     .filter(Boolean)
     .map((w) => w[0].toUpperCase())
     .join("");
+}
+
+export function courseResearchResultToDossier(
+  result: CourseResearchResult,
+): ClassDossier {
+  const log = result.logistics;
+
+  // Build logistics chips from booleans; fall back to meeting chips
+  let chips: StatusChipData[];
+  if (log) {
+    chips = [];
+    if (log.attendance_required != null) {
+      chips.push({
+        id: `${result.course_code}-attendance`,
+        label: log.attendance_required ? "Attendance required" : "Attendance optional",
+        tone: log.attendance_required ? "muted" : "green",
+      });
+    }
+    if (log.podcasts_available != null && log.podcasts_available) {
+      chips.push({
+        id: `${result.course_code}-podcasts`,
+        label: "Podcasts available",
+        tone: "purple",
+      });
+    }
+    if (log.textbook_required != null) {
+      chips.push({
+        id: `${result.course_code}-textbook`,
+        label: log.textbook_required ? "Textbook required" : "No textbook",
+        tone: log.textbook_required ? "muted" : "green",
+      });
+    }
+    // fall back to meeting chips if no logistics chips were generated
+    if (chips.length === 0) {
+      chips = result.meetings.map((m, i) => ({
+        id: `${result.course_code}-${i}`,
+        label: `${m.section_type}: ${m.days} ${m.start_time}–${m.end_time}${m.location ? ` · ${m.location}` : ""}`,
+        tone: i === 0 ? "cyan" : "muted",
+      }));
+    }
+  } else {
+    chips = result.meetings.map((m, i) => ({
+      id: `${result.course_code}-${i}`,
+      label: `${m.section_type}: ${m.days} ${m.start_time}–${m.end_time}${m.location ? ` · ${m.location}` : ""}`,
+      tone: i === 0 ? "cyan" : "muted",
+    }));
+  }
+
+  // Confidence: count non-null logistics fields out of 7
+  let confidencePercent = 0;
+  if (log) {
+    const fields = [
+      log.attendance_required,
+      log.grade_breakdown,
+      log.course_webpage_url,
+      log.textbook_required,
+      log.podcasts_available,
+      log.student_sentiment_summary,
+      log.rate_my_professor?.rating,
+    ];
+    const nonNull = fields.filter((f) => f != null).length;
+    confidencePercent = Math.min(100, Math.round((nonNull / 7) * 100));
+  }
+
+  const professorName = result.professor_name || "TBA";
+
+  return {
+    id: result.course_code.toLowerCase().replace(/\s+/g, "-"),
+    courseCode: result.course_code,
+    courseTitle: result.course_title ?? result.course_code,
+    professorName,
+    professorInitials: result.professor_name ? getInitials(result.professor_name) : "?",
+    condensedSummary: log?.grade_breakdown ? [log.grade_breakdown] : [],
+    tldr: log?.student_sentiment_summary ?? "",
+    confidencePercent,
+    chips,
+    rawQuotes: [],
+    meetings: result.meetings,
+    logistics: log ?? undefined,
+  };
 }
 
 export function courseEntryToDossier(entry: CourseEntry): ClassDossier {

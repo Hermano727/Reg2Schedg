@@ -11,7 +11,7 @@ type ClassCardProps = {
 };
 
 export function ClassCard({ dossier }: ClassCardProps) {
-  const [tab, setTab] = useState<"summary" | "raw">("summary");
+  const [tab, setTab] = useState<"summary" | "raw" | "logistics">("summary");
 
   return (
     <motion.article
@@ -60,6 +60,17 @@ export function ClassCard({ dossier }: ClassCardProps) {
           >
             Raw feedback
           </button>
+          <button
+            type="button"
+            onClick={() => setTab("logistics")}
+            className={`rounded-md px-3 py-1.5 transition ${
+              tab === "logistics"
+                ? "bg-hub-surface-elevated text-hub-text shadow-sm"
+                : "text-hub-text-muted hover:text-hub-text-secondary"
+            }`}
+          >
+            Logistics
+          </button>
         </div>
       </header>
 
@@ -105,7 +116,7 @@ export function ClassCard({ dossier }: ClassCardProps) {
               </ul>
             </div>
           </div>
-        ) : (
+        ) : tab === "raw" ? (
           <div className="max-h-56 space-y-3 overflow-y-auto pr-1">
             {dossier.rawQuotes.map((q) => (
               <blockquote
@@ -116,11 +127,69 @@ export function ClassCard({ dossier }: ClassCardProps) {
                   {q.source}
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-hub-text-secondary">
-                  “{q.text}”
+                  &ldquo;{q.text}&rdquo;
                 </p>
               </blockquote>
             ))}
           </div>
+        ) : dossier.logistics ? (
+          <div className="space-y-3">
+            <div className="rounded-xl border border-white/[0.06] bg-hub-bg/35 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-text-muted mb-2">
+                RMP Stats
+              </p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                {dossier.logistics.rate_my_professor?.rating != null && (
+                  <span className="text-hub-text-secondary">
+                    <span className="text-hub-gold mr-1">★</span>
+                    {dossier.logistics.rate_my_professor.rating.toFixed(1)}
+                    <span className="text-hub-text-muted"> / 5</span>
+                  </span>
+                )}
+                {dossier.logistics.rate_my_professor?.difficulty != null && (
+                  <span className="text-hub-text-secondary">
+                    <span className="mr-1 text-orange-400">🔥</span>
+                    {dossier.logistics.rate_my_professor.difficulty.toFixed(1)}
+                    <span className="text-hub-text-muted"> difficulty</span>
+                  </span>
+                )}
+                {dossier.logistics.rate_my_professor?.would_take_again_percent != null && (
+                  <span className="text-hub-text-secondary">
+                    ↩{" "}
+                    {Math.round(dossier.logistics.rate_my_professor.would_take_again_percent)}%
+                    <span className="text-hub-text-muted"> would retake</span>
+                  </span>
+                )}
+                {dossier.logistics.rate_my_professor?.rating == null &&
+                  dossier.logistics.rate_my_professor?.difficulty == null &&
+                  dossier.logistics.rate_my_professor?.would_take_again_percent == null && (
+                    <span className="text-hub-text-muted text-xs">No RMP data</span>
+                  )}
+              </div>
+            </div>
+            {dossier.logistics.grade_breakdown && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-text-muted">
+                  Grade breakdown
+                </p>
+                <p className="mt-1 text-sm text-hub-text-secondary">
+                  {dossier.logistics.grade_breakdown}
+                </p>
+              </div>
+            )}
+            {dossier.logistics.course_webpage_url && (
+              <a
+                href={dossier.logistics.course_webpage_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-hub-cyan hover:underline"
+              >
+                Course Page ↗
+              </a>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-hub-text-muted">No research data available.</p>
         )}
 
         {dossier.conflict ? <ConflictBadge conflict={dossier.conflict} /> : null}

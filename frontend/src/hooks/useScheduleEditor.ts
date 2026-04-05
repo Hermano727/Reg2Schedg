@@ -22,7 +22,7 @@ function cloneSnap(s: ScheduleSnapshot): ScheduleSnapshot {
 }
 
 type Action =
-  | { type: "HYDRATE"; payload: { classes: ClassDossier[] } }
+  | { type: "HYDRATE"; payload: { classes: ClassDossier[]; commitments?: ScheduleCommitment[] } }
   | { type: "APPLY"; payload: ScheduleSnapshot }
   | { type: "UNDO" }
   | { type: "REDO" }
@@ -39,9 +39,9 @@ function reducer(state: EditorState, action: Action): EditorState {
 
   switch (action.type) {
     case "HYDRATE": {
-      const classes = structuredClone(action.payload.classes);
-      const commitments: ScheduleCommitment[] = [];
-      const baseline = { classes: structuredClone(classes), commitments: [] };
+        const classes = structuredClone(action.payload.classes);
+        const commitments: ScheduleCommitment[] = structuredClone(action.payload.commitments ?? []);
+        const baseline = { classes: structuredClone(classes), commitments: structuredClone(commitments) };
       return {
         classes,
         commitments,
@@ -150,15 +150,18 @@ export function useScheduleFingerprint(viewClasses: ClassDossier[]) {
 export function useScheduleEditor(
   viewClasses: ClassDossier[],
   hydrateKey: string,
+  viewCommitments: ScheduleCommitment[] = [],
 ) {
   const [state, dispatch] = useReducer(reducer, viewClasses, initialEditor);
   const viewClassesRef = useRef(viewClasses);
   viewClassesRef.current = viewClasses;
+  const viewCommitmentsRef = useRef<ScheduleCommitment[]>(viewCommitments);
+  viewCommitmentsRef.current = viewCommitments;
 
   useEffect(() => {
     dispatch({
       type: "HYDRATE",
-      payload: { classes: viewClassesRef.current },
+      payload: { classes: viewClassesRef.current, commitments: viewCommitmentsRef.current },
     });
   }, [hydrateKey]);
 

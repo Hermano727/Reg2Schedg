@@ -76,6 +76,14 @@ class CourseRunCost(BaseModel):
     total_cost_usd: float | None = None
 
 
+class SetSummary(BaseModel):
+    average_gpa: float | None = None
+    median_gpa: float | None = None
+    pass_rate_percent: float | None = None
+    sample_size: int | None = None
+    grade_counts: dict[str, int] = Field(default_factory=dict)
+
+
 class SunsetGradeDistribution(BaseModel):
     term_label: str | None = None
     professor_name: str | None = None
@@ -83,6 +91,7 @@ class SunsetGradeDistribution(BaseModel):
     recommend_professor_percent: float | None = None
     submission_time: str | None = None
     source_url: str | None = None
+    set_summary: SetSummary | None = None
 
 
 class CourseResearchResult(BaseModel):
@@ -278,8 +287,83 @@ def parse_course_logistics_output(raw_output: Any) -> CourseLogistics:
 def build_sunset_grade_distribution(
     row: SunsetGradeDistributionRow | None,
 ) -> SunsetGradeDistribution | None:
+    # Helper: map common letter grades to GPA
+    _GRADE_TO_GPA = {
+        "A+": 4.0, "A": 4.0, "A-": 3.7,
+        "B+": 3.3, "B": 3.0, "B-": 2.7,
+        "C+": 2.3, "C": 2.0, "C-": 1.7,
+        "D+": 1.3, "D": 1.0, "D-": 0.7,
+        "F": 0.0,
+    }
+
+    def _parse_count(value: Any) -> int:
+        if value is None:
+            return 0
+        if isinstance(value, (int, float)):
+            try:
+                return int(value)
+            except Exception:
+                return 0
+        s = str(value).strip().replace(",", "")
+        s = re.sub(r"[^0-9.\-]", "", s)
+        try:
+            return int(float(s))
+        except Exception:
+            return 0
+
+    def compute_set_summary(grade_dist: dict[str, Any]) -> SetSummary:
+        counts: dict[str, int] = {}
+        total = 0
+        weighted = 0.0
+
+        for k, v in (grade_dist or {}).items():
+            label = str(k).strip()
+            cnt = _parse_count(v)
+            if cnt <= 0:
+                continue
+            counts[label] = counts.get(label, 0) + cnt
+            total += cnt
+            if label in _GRADE_TO_GPA:
+                weighted += cnt * _GRADE_TO_GPA[label]
+
+        avg = (weighted / total) if total > 0 and weighted >= 0 else None
+
+        median = None
+        if total > 0:
+            bucketed: list[tuple[float, int]] = []
+            for lbl, cnt in counts.items():
+                gpa = _GRADE_TO_GPA.get(lbl)
+                if gpa is not None:
+                    bucketed.append((gpa, cnt))
+            if bucketed:
+                bucketed.sort(key=lambda x: -x[0])
+                cum = 0
+                half = total / 2.0
+                for gpa, cnt in bucketed:
+                    cum += cnt
+                    if cum >= half:
+                        median = gpa
+                        break
+
+        passing = 0
+        for lbl, cnt in counts.items():
+            gpa = _GRADE_TO_GPA.get(lbl)
+            if gpa is not None and gpa > 0:
+                passing += cnt
+        pass_rate = (passing / total * 100.0) if total > 0 else None
+
+        return SetSummary(
+            average_gpa=round(avg, 2) if avg is not None else None,
+            median_gpa=round(median, 2) if median is not None else None,
+            pass_rate_percent=round(pass_rate, 1) if pass_rate is not None else None,
+            sample_size=total if total > 0 else None,
+            grade_counts=counts,
+        )
+
     if row is None:
         return None
+    dist = row.grade_distribution or {}
+    summary = compute_set_summary(dist)
     return SunsetGradeDistribution(
         term_label=row.term_label,
         professor_name=row.professor_name or None,
@@ -287,6 +371,7 @@ def build_sunset_grade_distribution(
         recommend_professor_percent=row.recommend_professor_percent,
         submission_time=row.submission_time,
         source_url=row.source_url,
+        set_summary=summary,
     )
 
 

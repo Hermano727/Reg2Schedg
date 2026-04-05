@@ -1,9 +1,11 @@
 "use client";
 
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useId,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -53,6 +55,11 @@ function minutesFromTimeInput(iso: string): number | null {
 
 type MainTab = "dossier" | "schedule";
 
+export type DossierScheduleWorkspaceHandle = {
+  getCurrentClasses: () => ClassDossier[];
+  getCurrentCommitments: () => ScheduleCommitment[];
+};
+
 type Props = {
   viewClasses: ClassDossier[];
   evaluation: ScheduleEvaluation;
@@ -60,16 +67,20 @@ type Props = {
   scheduleItems?: ScheduleItem[];
   transitionInsights?: TransitionInsight[];
   calendarHeaderActions?: ReactNode;
+  initialCommitments?: ScheduleCommitment[];
 };
-
-export function DossierScheduleWorkspace({
-  viewClasses,
-  evaluation,
-  hydrateKey,
-  scheduleItems = [],
-  transitionInsights = [],
-  calendarHeaderActions,
-}: Props) {
+export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorkspace(
+  {
+    viewClasses,
+    evaluation,
+    hydrateKey,
+    scheduleItems = [],
+    transitionInsights = [],
+    calendarHeaderActions,
+    initialCommitments = [],
+  }: Props,
+  ref: React.Ref<DossierScheduleWorkspaceHandle | null>,
+) {
   const fingerprint = useScheduleFingerprint(viewClasses);
   const fullKey = `${hydrateKey}|${fingerprint}`;
 
@@ -86,7 +97,12 @@ export function DossierScheduleWorkspace({
     canUndo,
     canRedo,
     isDirty,
-  } = useScheduleEditor(viewClasses, fullKey);
+  } = useScheduleEditor(viewClasses, fullKey, initialCommitments);
+
+  useImperativeHandle(ref, () => ({
+    getCurrentClasses: () => classes,
+    getCurrentCommitments: () => commitments,
+  }), [classes, commitments]);
 
   const [mainTab, setMainTab] = useState<MainTab>("dossier");
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
@@ -439,7 +455,9 @@ export function DossierScheduleWorkspace({
           ref={calendarRef}
           className={mainTab === "dossier" ? "hidden lg:block" : ""}
         >
-          {calendarNode(78, calendarHeaderActions ?? defaultCalendarHeaderActions)}
+          {calendarNode(78, calendarHeaderActions ? (
+            <>{defaultCalendarHeaderActions}{calendarHeaderActions}</>
+          ) : defaultCalendarHeaderActions)}
         </div>
 
         {/* Dossier cards below */}
@@ -885,4 +903,4 @@ export function DossierScheduleWorkspace({
       </AnimatePresence>
     </>
   );
-}
+});

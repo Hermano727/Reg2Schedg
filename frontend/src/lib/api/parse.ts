@@ -19,6 +19,24 @@ export interface ParseScreenshotResponse {
   courses: CourseEntry[];
 }
 
+export interface SetSummary {
+  average_gpa?: number | null;
+  median_gpa?: number | null;
+  pass_rate_percent?: number | null;
+  sample_size?: number | null;
+  grade_counts?: Record<string, number>;
+}
+
+export interface SunsetGradeDistribution {
+  term_label?: string | null;
+  professor_name?: string | null;
+  grade_distribution: Record<string, any>;
+  recommend_professor_percent?: number | null;
+  submission_time?: string | null;
+  source_url?: string | null;
+  set_summary?: SetSummary | null;
+}
+
 export async function parseScreenshot(
   file: File,
 ): Promise<ParseScreenshotResponse> {
@@ -43,6 +61,7 @@ export interface CourseResearchResult {
   professor_name: string | null;
   meetings: SectionMeeting[];
   logistics: CourseLogistics | null;
+  sunset_grade_distribution: SunsetGradeDistribution | null;
   cache_hit: boolean;
   error: string | null;
 }

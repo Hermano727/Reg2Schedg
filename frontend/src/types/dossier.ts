@@ -59,6 +59,24 @@ export interface RateMyProfessorStats {
   url: string | null;
 }
 
+export interface SetSummary {
+  average_gpa?: number | null;
+  median_gpa?: number | null;
+  pass_rate_percent?: number | null;
+  sample_size?: number | null;
+  grade_counts?: Record<string, number>;
+}
+
+export interface SunsetGradeDistribution {
+  term_label?: string | null;
+  professor_name?: string | null;
+  grade_distribution: Record<string, any>;
+  recommend_professor_percent?: number | null;
+  submission_time?: string | null;
+  source_url?: string | null;
+  set_summary?: SetSummary | null;
+}
+
 export interface CourseLogistics {
   attendance_required: boolean | null;
   grade_breakdown: string | null;
@@ -83,6 +101,7 @@ export interface ClassDossier {
   conflict?: ClassConflict;
   meetings: SectionMeeting[];
   logistics?: CourseLogistics;
+  sunsetGradeDistribution?: SunsetGradeDistribution | null;
 }
 
 export interface ScheduleAlert {

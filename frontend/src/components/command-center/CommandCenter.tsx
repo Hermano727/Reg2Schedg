@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
-import { DossierScheduleWorkspace } from "@/components/dashboard/DossierScheduleWorkspace";
+import { DossierScheduleWorkspace, type DossierScheduleWorkspaceHandle } from "@/components/dashboard/DossierScheduleWorkspace";
 import { mockDossier } from "@/lib/mock/dossier";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -34,6 +34,7 @@ export function CommandCenter() {
   const [remotePlans, setRemotePlans] = useState<SavedPlanRow[]>([]);
   const [remoteVault, setRemoteVault] = useState<VaultItemRow[]>([]);
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const workspaceRef = useRef<DossierScheduleWorkspaceHandle | null>(null);
   const timeoutsRef = useRef<number[]>([]);
   const processingLockRef = useRef(false);
   const activePlanIdRef = useRef(activePlanId);
@@ -144,17 +145,19 @@ export function CommandCenter() {
       .map(vaultRowToVaultItem);
   }, [authed, remoteVault, activePlanId]);
 
-  const { viewClasses, viewEvaluation } = useMemo(() => {
+  const { viewClasses, viewEvaluation, viewCommitments } = useMemo(() => {
     if (phase !== "dashboard") {
       return {
         viewClasses: classes,
         viewEvaluation: evaluation,
+        viewCommitments: [],
       };
     }
     if (!authed) {
       return {
         viewClasses: classes,
         viewEvaluation: evaluation,
+        viewCommitments: [],
       };
     }
     const plan = remotePlans.find((p) => p.id === activePlanId);
@@ -164,12 +167,14 @@ export function CommandCenter() {
         return {
           viewClasses: parsed.classes,
           viewEvaluation: parsed.evaluation,
+          viewCommitments: parsed.commitments ?? [],
         };
       }
     }
     return {
       viewClasses: classes,
       viewEvaluation: evaluation,
+      viewCommitments: [],
     };
   }, [phase, authed, activePlanId, remotePlans, classes, evaluation]);
 
@@ -243,7 +248,9 @@ export function CommandCenter() {
           ? pid
           : mockDossier.activeQuarterId;
 
-      const payload = buildPayloadFromClasses(activeQ, viewClasses, viewEvaluation);
+      const editorClasses = workspaceRef.current?.getCurrentClasses() ?? viewClasses;
+      const editorCommitments = workspaceRef.current?.getCurrentCommitments() ?? [];
+      const payload = buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, viewEvaluation);
 
       if (!pid) {
         const titleSuffix = new Date().toLocaleDateString(undefined, {
@@ -291,7 +298,9 @@ export function CommandCenter() {
           ? pid
           : mockDossier.activeQuarterId;
 
-      const payload = buildPayloadFromClasses(activeQ, viewClasses, viewEvaluation);
+      const editorClasses = workspaceRef.current?.getCurrentClasses() ?? viewClasses;
+      const editorCommitments = workspaceRef.current?.getCurrentCommitments() ?? [];
+      const payload = buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, viewEvaluation);
 
       const titleSuffix = new Date().toLocaleDateString(undefined, {
         month: "short",
@@ -401,6 +410,7 @@ export function CommandCenter() {
       const payload = buildPayloadFromClasses(
         activeQ,
         nextClasses,
+        [],
         nextEvaluation,
       );
       await persistCompletedSession(payload);
@@ -545,6 +555,8 @@ export function CommandCenter() {
                       hydrateKey={`${activePlanId}:${authed}`}
                       scheduleItems={mockDossier.scheduleItems}
                       transitionInsights={mockDossier.transitionInsights}
+                      initialCommitments={viewCommitments}
+                      ref={workspaceRef}
                       calendarHeaderActions={(
                         <>
                           <div className="flex items-center gap-2">

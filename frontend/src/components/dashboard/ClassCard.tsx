@@ -164,9 +164,9 @@ export function ClassCard({ dossier }: ClassCardProps) {
                       href={rmp.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-auto flex items-center gap-1 text-[10px] text-hub-text-muted transition hover:text-hub-cyan"
+                      className="ml-auto flex items-center gap-2 text-sm font-semibold text-hub-cyan transition hover:underline"
                     >
-                      RMP <ExternalLink className="h-2.5 w-2.5" />
+                      Rate my prof <ExternalLink className="h-4 w-4" />
                     </a>
                   )}
                 </div>
@@ -184,6 +184,25 @@ export function ClassCard({ dossier }: ClassCardProps) {
                 )}
               </div>
             )}
+            {/* SunSET summary bubble - shows avg GPA and sample size when available */}
+            {dossier.sunsetGradeDistribution?.set_summary && (
+              <div className="rounded-xl border border-white/[0.06] bg-hub-bg/30 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-text-muted">
+                  SunSET
+                </p>
+                <div className="mt-2 flex items-center gap-3">
+                  {dossier.sunsetGradeDistribution.set_summary.average_gpa != null ? (
+                    <div className="inline-flex items-baseline gap-2">
+                      <span className="text-sm font-semibold text-hub-text">Avg GPA {dossier.sunsetGradeDistribution.set_summary.average_gpa}</span>
+                      <span className="text-[11px] text-hub-text-muted">· n={dossier.sunsetGradeDistribution.set_summary.sample_size}</span>
+                    </div>
+                  ) : dossier.sunsetGradeDistribution.recommend_professor_percent != null ? (
+                    <span className="text-sm font-semibold text-hub-text">Recommend {Math.round(dossier.sunsetGradeDistribution.recommend_professor_percent)}%</span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-xl border border-white/[0.06] bg-hub-bg/35 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-cyan">
                 Information

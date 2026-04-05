@@ -73,20 +73,37 @@ export function courseResearchResultToDossier(
 
   const professorName = result.professor_name || "TBA";
 
+  const condensedSummary = log?.grade_breakdown ? [log.grade_breakdown] : [];
+
+  enrichCondensedSummaryWithSunset(result, condensedSummary);
+
   return {
     id: result.course_code.toLowerCase().replace(/\s+/g, "-"),
     courseCode: result.course_code,
     courseTitle: result.course_title ?? result.course_code,
     professorName,
     professorInitials: result.professor_name ? getInitials(result.professor_name) : "?",
-    condensedSummary: log?.grade_breakdown ? [log.grade_breakdown] : [],
+    condensedSummary,
     tldr: log?.student_sentiment_summary ?? "",
     confidencePercent,
     chips,
     rawQuotes: [],
     meetings: result.meetings,
     logistics: log ?? undefined,
+    sunsetGradeDistribution: result.sunset_grade_distribution ?? undefined,
   };
+}
+
+// enhance condensedSummary with SunSET summary if available
+export function enrichCondensedSummaryWithSunset(result: CourseResearchResult, condensed: string[]) {
+  const sunset = result.sunset_grade_distribution;
+  const setSummary = sunset?.set_summary;
+  if (setSummary?.sample_size) {
+    const avg = setSummary.average_gpa ?? "—";
+    condensed.push(`Avg GPA ${avg} · n=${setSummary.sample_size}`);
+  } else if (sunset?.recommend_professor_percent != null) {
+    condensed.push(`Recommend ${Math.round(sunset.recommend_professor_percent)}%`);
+  }
 }
 
 export function courseEntryToDossier(entry: CourseEntry): ClassDossier {

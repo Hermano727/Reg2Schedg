@@ -52,6 +52,13 @@ class CourseLogistics(BaseModel):
         default=None,
         description="True if lectures are podcasted or officially recorded, false otherwise",
     )
+    student_sentiment_summary: str | None = Field(
+        default=None,
+        description=(
+            "One short summary of what students commonly say about the class or professor, "
+            "based on Reddit and Rate My Professors"
+        ),
+    )
     rate_my_professor: RateMyProfessorStats = Field(default_factory=RateMyProfessorStats)
 
 
@@ -272,7 +279,8 @@ def build_task(course: str, instructor: str | None) -> str:
         "Priority sources:\n"
         "1. Official UCSD course webpage, syllabus, department page, or podcast/lecture page.\n"
         "2. Rate My Professors page for the UCSD instructor.\n"
-        "3. Other public web pages only if the first two source types do not answer a field.\n\n"
+        "3. Relevant Reddit discussions about the class or professor.\n"
+        "4. Other public web pages only if the first three source types do not answer a field.\n\n"
         "Goal:\n"
         "Return only these fields:\n"
         "- attendance_required as true or false\n"
@@ -280,6 +288,7 @@ def build_task(course: str, instructor: str | None) -> str:
         "- course_webpage_url\n"
         "- textbook_required as true or false\n"
         "- podcasts_available as true or false\n"
+        "- student_sentiment_summary as one short sentence based only on Reddit and Rate My Professors\n"
         "- rate_my_professor.rating\n"
         "- rate_my_professor.would_take_again_percent\n"
         "- rate_my_professor.difficulty\n"
@@ -287,6 +296,8 @@ def build_task(course: str, instructor: str | None) -> str:
         "Rules:\n"
         "- Prefer official UCSD pages for attendance, grading, textbook, podcasts, and course webpage.\n"
         "- Prefer Rate My Professors only for the instructor stats fields.\n"
+        "- Use Reddit and Rate My Professors for student_sentiment_summary, not official UCSD pages.\n"
+        "- Keep student_sentiment_summary concise and balanced, summarizing common opinions rather than a single extreme review.\n"
         f"{instructor_rule}"
         "- Only use an official course page or syllabus if the page clearly matches both the course code and the requested instructor.\n"
         "- If an official page is for the same course code but a different instructor, do not use it for course_webpage_url or any logistics fields.\n"

@@ -40,11 +40,11 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://127.0.0.1:8000/api/calendar/callback"
     frontend_origin: str = "http://localhost:3000"
 
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8",
-        "extra": "ignore",  # allow NEXT_PUBLIC_* etc. if .env is shared with frontend
-    }
+    model_config = SettingsConfigDict(
+        env_file=(API_DIR / ".env", REPO_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 @lru_cache(maxsize=1)

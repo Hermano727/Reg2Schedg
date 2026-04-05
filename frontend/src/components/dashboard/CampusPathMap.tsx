@@ -14,6 +14,8 @@ type CampusPathMapProps = {
 export type PlottedItem = ScheduleItem & {
   lat: number;
   lng: number;
+  /** All days this course meets at this location, e.g. ["Mon","Wed","Fri"] */
+  days: string[];
 };
 
 const CampusPathLeafletMap = dynamic(
@@ -56,24 +58,37 @@ export function CampusPathMap({
     [],
   );
 
-  const plottedItems = scheduleItems
-    .map((item) => {
-      // Prefer direct coordinates (provided by backend geocoding)
-      if (item.lat != null && item.lng != null) {
-        return { ...item, lat: item.lat, lng: item.lng };
-      }
-      // Fall back to campusLocations lookup by building code
-      if (!item.buildingCode) return null;
+  // Deduplicate by (title + buildingCode/location) so MWF lectures become one map pin.
+  // Collect all days for each unique course-location pair.
+  const plottedMap = new Map<string, PlottedItem>();
+  for (const item of scheduleItems) {
+    let lat: number | undefined = item.lat;
+    let lng: number | undefined = item.lng;
+    if ((lat == null || lng == null) && item.buildingCode) {
       const loc = locationMap.get(item.buildingCode);
-      if (!loc) return null;
-      return { ...item, lat: loc.lat, lng: loc.lng };
-    })
-    .filter((item): item is PlottedItem => item !== null);
+      if (loc) { lat = loc.lat; lng = loc.lng; }
+    }
+    if (lat == null || lng == null) continue;
 
-  const mappedCodes = new Set(plottedItems.map((item) => item.buildingCode));
-  const unmappedItems = scheduleItems.filter(
-    (item) => !item.buildingCode || !mappedCodes.has(item.buildingCode),
-  );
+    const key = `${item.title}|${item.buildingCode ?? item.location ?? ""}`;
+    if (plottedMap.has(key)) {
+      const existing = plottedMap.get(key)!;
+      if (!existing.days.includes(item.day)) existing.days.push(item.day);
+    } else {
+      plottedMap.set(key, { ...item, lat, lng, days: [item.day] });
+    }
+  }
+  const plottedItems = [...plottedMap.values()];
+
+  const mappedKeys = new Set(plottedMap.keys());
+  const unmappedSeen = new Set<string>();
+  const unmappedItems = scheduleItems.filter((item) => {
+    const key = `${item.title}|${item.buildingCode ?? item.location ?? ""}`;
+    if (mappedKeys.has(key)) return false;
+    if (unmappedSeen.has(key)) return false;
+    unmappedSeen.add(key);
+    return true;
+  });
 
   return (
     <section className="glass-panel rounded-xl border border-white/[0.08] p-4">
@@ -110,6 +125,11 @@ export function CampusPathMap({
                 {item.location && (
                   <p className="text-xs text-hub-text-muted">{item.location}</p>
                 )}
+                {item.days.length > 0 && (
+                  <p className="mt-0.5 text-xs text-hub-text-muted">
+                    {item.days.join(" · ")}
+                  </p>
+                )}
                 {item.start && item.end && (
                   <p className="mt-0.5 text-xs text-hub-cyan">
                     {fmt12(item.start)} – {fmt12(item.end)}
@@ -132,11 +152,15 @@ export function CampusPathMap({
           <h3 className="text-sm font-semibold text-hub-text">Needs mapping</h3>
           <div className="mt-2 space-y-2">
             {unmappedItems.length ? (
-              unmappedItems.map((item, i) => (
-                <p key={`unmapped-${item.id}-${i}`} className="text-xs text-hub-text-muted">
-                  {item.title}: add a `buildingCode` to include this on map.
-                </p>
-              ))
+              unmappedItems.map((item, i) => {
+                const isRemote = item.location?.toUpperCase().startsWith("RCLAS");
+                return (
+                  <p key={`unmapped-${item.id}-${i}`} className="text-xs text-hub-text-muted">
+                    {item.title}:{" "}
+                    {isRemote ? "Remote / online section." : "add a `buildingCode` to include this on map."}
+                  </p>
+                );
+              })
             ) : (
               <p className="text-xs text-emerald-300">All schedule items are mapped.</p>
             )}

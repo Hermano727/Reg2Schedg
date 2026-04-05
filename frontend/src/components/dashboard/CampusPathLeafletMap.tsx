@@ -156,6 +156,16 @@ export function CampusPathLeafletMap({
     [plottedItems],
   );
 
+  // Detect items sharing the same lat/lng (different courses, same building)
+  const locationCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of plottedItems) {
+      const k = `${item.lat.toFixed(5)},${item.lng.toFixed(5)}`;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return counts;
+  }, [plottedItems]);
+
   return (
     <div className="relative h-[420px] overflow-hidden rounded-xl border border-white/[0.08] bg-[#071124]">
       <MapContainer
@@ -180,6 +190,9 @@ export function CampusPathLeafletMap({
               {item.location && (
                 <div className="rp-tooltip__sub">{item.location}</div>
               )}
+              {item.days?.length > 0 && (
+                <div className="rp-tooltip__sub">{item.days.join(" · ")}</div>
+              )}
               {item.start && item.end && (
                 <div className="rp-tooltip__time">{fmt12(item.start)} — {fmt12(item.end)}</div>
               )}
@@ -192,11 +205,19 @@ export function CampusPathLeafletMap({
                     {item.location && (
                       <div className="text-[12px] text-hub-text-muted mt-1">{item.location}</div>
                     )}
+                    {item.days?.length > 0 && (
+                      <div className="text-[12px] text-hub-text-muted mt-0.5">{item.days.join(" · ")}</div>
+                    )}
                   </div>
                   <div className="rp-popup-badge ml-2 text-[12px] font-semibold text-hub-cyan">{index + 1}</div>
                 </div>
                 {item.start && item.end && (
                   <div className="mt-3 text-[13px] text-hub-cyan">{fmt12(item.start)} — {fmt12(item.end)}</div>
+                )}
+                {locationCounts.get(`${item.lat.toFixed(5)},${item.lng.toFixed(5)}`)! > 1 && (
+                  <div className="mt-2 text-[11px] text-amber-300">
+                    Multiple classes meet at this building
+                  </div>
                 )}
               </div>
             </Popup>

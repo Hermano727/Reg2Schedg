@@ -3,21 +3,13 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { TritonMark } from "@/components/ui/TritonMark";
-import { TerminalWindow } from "@/components/modals/TerminalWindow";
 
 type ProcessingModalProps = {
   open: boolean;
-  lines: string[];
 };
 
-export function ProcessingModal({ open, lines }: ProcessingModalProps) {
+export function ProcessingModal({ open }: ProcessingModalProps) {
   const reduce = useReducedMotion();
-
-  useEffect(() => {
-    if (!open || lines.length === 0) return;
-    const el = document.activeElement as HTMLElement | null;
-    el?.blur?.();
-  }, [open, lines.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -48,34 +40,54 @@ export function ProcessingModal({ open, lines }: ProcessingModalProps) {
             exit={{ opacity: 0 }}
           />
           <motion.div
-            layout
-            className="relative z-10 w-full max-w-lg rounded-2xl border border-white/[0.1] bg-hub-surface p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
-            initial={
-              reduce
-                ? false
-                : { opacity: 0, y: 16, scale: 0.98, filter: "blur(6px)" }
-            }
-            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-            exit={
-              reduce ? undefined : { opacity: 0, y: 8, scale: 0.99, filter: "blur(4px)" }
-            }
+            className="relative z-10 flex flex-col items-center gap-6 text-center"
+            initial={reduce ? false : { opacity: 0, y: 12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={reduce ? undefined : { opacity: 0, y: 6, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
           >
-            <div className="flex flex-col items-center text-center">
-              <TritonMark pulse size={56} />
+            {/* Spinner ring around the mark */}
+            <div className="relative flex items-center justify-center">
+              <motion.div
+                className="absolute h-20 w-20 rounded-full border-2 border-transparent border-t-hub-cyan/60"
+                animate={reduce ? {} : { rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1.1, ease: "linear" }}
+              />
+              <motion.div
+                className="absolute h-28 w-28 rounded-full border border-transparent border-t-hub-cyan/20"
+                animate={reduce ? {} : { rotate: -360 }}
+                transition={{ repeat: Infinity, duration: 2.2, ease: "linear" }}
+              />
+              <TritonMark pulse size={48} />
+            </div>
+
+            <div>
               <h2
                 id="processing-title"
-                className="mt-4 font-[family-name:var(--font-outfit)] text-lg font-semibold text-hub-text"
+                className="font-[family-name:var(--font-outfit)] text-lg font-semibold text-hub-text"
               >
-                Synthesis in progress
+                Analyzing your schedule
               </h2>
               <p className="mt-1 text-sm text-hub-text-secondary">
-                The agent is scraping SETs, Reddit, and your syllabus cues. Logs
-                stream below for transparency.
+                Researching courses, professors, and grade data…
               </p>
             </div>
-            <div className="mt-5">
-              <TerminalWindow lines={lines} />
+
+            {/* Animated dots */}
+            <div className="flex gap-2">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className="h-1.5 w-1.5 rounded-full bg-hub-cyan/60"
+                  animate={reduce ? {} : { opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.2,
+                    delay: i * 0.2,
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
             </div>
           </motion.div>
         </motion.div>

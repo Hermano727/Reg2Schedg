@@ -37,7 +37,7 @@ UCSD_BUILDINGS: dict[str, dict[str, Any]] = {
     "LEDDN":  {"display": "Leichtag Family Foundation Hall", "lat": 32.87467, "lng": -117.23684},
     "YORK":   {"display": "York Hall",                       "lat": 32.87540, "lng": -117.23561},
     "SOLIS":  {"display": "Solis Hall",                      "lat": 32.88173, "lng": -117.23394},
-    "PETER":  {"display": "Peterson Hall",                   "lat": 32.87605, "lng": -117.23676},
+    "PETER":  {"display": "Peterson Hall",                   "lat": 32.87749, "lng": -117.23528},
     "GALB":   {"display": "Galbraith Hall",                  "lat": 32.87711, "lng": -117.23478},
     "GH":     {"display": "Galbraith Hall",                  "lat": 32.87711, "lng": -117.23478},
 
@@ -51,7 +51,8 @@ UCSD_BUILDINGS: dict[str, dict[str, Any]] = {
     "CSE":    {"display": "Computer Science & Engineering", "lat": 32.88145, "lng": -117.23315},
 
     # Science buildings
-    "APM":    {"display": "Applied Physics & Mathematics",  "lat": 32.87898, "lng": -117.23451},
+    "APM":    {"display": "Applied Physics & Mathematics",  "lat": 32.87938, "lng": -117.24053},
+    "CTL":    {"display": "Clinical Teaching Facility",    "lat": 32.87408, "lng": -117.23522},
     "MAYER":  {"display": "Mayer Hall",                     "lat": 32.87524, "lng": -117.23732},
     "UREY":   {"display": "Urey Hall",                      "lat": 32.87514, "lng": -117.23784},
     "BONNER": {"display": "Bonner Hall",                    "lat": 32.87438, "lng": -117.23861},

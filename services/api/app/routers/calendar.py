@@ -126,7 +126,7 @@ def authorize(
 
     url, _ = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
+        include_granted_scopes="false",
         prompt="consent",
         state=state,
         code_challenge=code_challenge,
@@ -163,7 +163,11 @@ def callback(code: str, state: str) -> RedirectResponse:
             except Exception:
                 logger.debug("Failed to attach code_verifier to flow; token exchange may fail")
 
-    flow.fetch_token(code=code)
+    try:
+        flow.fetch_token(code=code)
+    except Exception as exc:  # pragma: no cover - network / external error
+        logger.exception("Failed to fetch token from Google OAuth")
+        raise HTTPException(status_code=502, detail=f"Failed to exchange code for token: {exc}")
 
     creds = flow.credentials
     _token_store[user_id] = {
@@ -195,6 +199,7 @@ def sync_calendar(
     try:
         from google.oauth2.credentials import Credentials  # type: ignore[import-untyped]
         from googleapiclient.discovery import build  # type: ignore[import-untyped]
+        from google.auth.transport.requests import Request  # type: ignore[import-untyped]
     except ImportError as exc:
         raise HTTPException(
             status_code=503,
@@ -202,11 +207,33 @@ def sync_calendar(
         ) from exc
 
     creds = Credentials(**_token_store[user_id])
+
+    # Attempt to refresh expired tokens if a refresh_token is available.
+    try:
+        if not creds.valid:
+            if creds.expired and creds.refresh_token:
+                logger.info("Refreshing expired Google credentials for user %s", user_id)
+                creds.refresh(Request())
+                # persist refreshed token back to in-memory store so subsequent calls use it
+                _token_store[user_id]["token"] = creds.token
+            else:
+                logger.info("Google credentials not valid and cannot be refreshed (no refresh_token)")
+    except Exception as exc:  # pragma: no cover - external network
+        logger.exception("Failed to refresh Google credentials")
+        raise HTTPException(status_code=502, detail=f"Failed to refresh Google credentials: {exc}")
+
     service = build("calendar", "v3", credentials=creds)
 
     created_ids: list[str] = []
+    results: list[dict[str, Any]] = []
     for event in events:
-        result = service.events().insert(calendarId="primary", body=event).execute()
-        created_ids.append(result.get("id", ""))
+        try:
+            result = service.events().insert(calendarId="primary", body=event).execute()
+            created_ids.append(result.get("id", ""))
+            results.append({"id": result.get("id"), "status": "inserted"})
+        except Exception as exc:  # pragma: no cover - external error
+            logger.exception("Failed to insert calendar event for user %s", user_id)
+            results.append({"error": str(exc)})
 
-    return {"created": created_ids, "count": len(created_ids)}
+    logger.info("Inserted %d events for user %s", len(created_ids), user_id)
+    return {"created": created_ids, "count": len(created_ids), "results": results}

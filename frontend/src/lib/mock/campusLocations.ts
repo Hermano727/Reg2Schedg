@@ -17,7 +17,7 @@ export const campusLocations: CampusLocation[] = [
   { code: "LEDDN",  name: "Leichtag Family Foundation Hall",  x: 360, y: 380, lat: 32.87467, lng: -117.23684 },
   { code: "YORK",   name: "York Hall",                        x: 380, y: 360, lat: 32.87540, lng: -117.23561 },
   { code: "SOLIS",  name: "Solis Hall",                       x: 620, y: 150, lat: 32.88173, lng: -117.23394 },
-  { code: "PETER",  name: "Peterson Hall",                    x: 370, y: 330, lat: 32.87605, lng: -117.23676 },
+  { code: "PETER",  name: "Peterson Hall",                    x: 370, y: 330, lat: 32.87749, lng: -117.23528 },
   { code: "GALB",   name: "Galbraith Hall",                   x: 390, y: 340, lat: 32.87711, lng: -117.23478 },
   { code: "GH",     name: "Galbraith Hall",                   x: 390, y: 340, lat: 32.87711, lng: -117.23478 },
 
@@ -30,7 +30,8 @@ export const campusLocations: CampusLocation[] = [
   { code: "ATK",    name: "Atkinson Hall",                    x: 660, y: 190, lat: 32.88229, lng: -117.23346 },
 
   // Science buildings
-  { code: "APM",    name: "Applied Physics & Mathematics",    x: 440, y: 230, lat: 32.87898, lng: -117.23451 },
+  { code: "APM",    name: "Applied Physics & Mathematics",    x: 440, y: 230, lat: 32.87938, lng: -117.24053 },
+  { code: "CTL",    name: "Clinical Teaching Facility",       x: 430, y: 410, lat: 32.87408, lng: -117.23522 },
   { code: "MAYER",  name: "Mayer Hall",                       x: 350, y: 360, lat: 32.87524, lng: -117.23732 },
   { code: "UREY",   name: "Urey Hall",                        x: 340, y: 370, lat: 32.87514, lng: -117.23784 },
   { code: "BONNER", name: "Bonner Hall",                      x: 320, y: 390, lat: 32.87438, lng: -117.23861 },

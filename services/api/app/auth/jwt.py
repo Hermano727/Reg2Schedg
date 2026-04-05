@@ -5,6 +5,11 @@ from app.config import settings
 
 
 def verify_access_token(token: str) -> str:
+    if not settings.supabase_jwt_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SUPABASE_JWT_SECRET is not configured on the server",
+        )
     try:
         payload = jwt.decode(
             token,

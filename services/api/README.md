@@ -1,12 +1,13 @@
 # TritonHub API (FastAPI)
 
-Supabase-backed API: **JWT-verified saved plans**, **Gemini screenshot parsing** for WebReg-style images, and DB health checks. CORS allows `http://localhost:3000` for the Next.js app.
+Supabase-backed API: **JWT-verified saved plans**, **Gemini screenshot parsing**, **Browser Use course research**, and DB health checks. CORS allows `http://localhost:3000` for the Next.js app.
 
 ## Prerequisites
 
 - **Python 3.11+** (3.14 on Windows is OK). `supabase` is **pinned to 2.12.0** so `pip` does not pull `storage3` 2.x → `pyiceberg` (which often fails to build on Windows without Visual C++ Build Tools). To use the latest `supabase` package, prefer **Python 3.12** and/or install [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
 - A **Supabase** project with the schema applied (see below).
-- A **Gemini API key** if you want `/api/parse-screenshot` to run (get one at [Google AI Studio](https://aistudio.google.com/apikey)).
+- A **Gemini API key** if you want screenshot parsing to run (get one at [Google AI Studio](https://aistudio.google.com/apikey)).
+- A **Browser Use API key** if you want `/api/research-screenshot` or `test_scraper.py` to run.
 
 ## 1. Virtual environment
 
@@ -45,6 +46,7 @@ Edit **`services/api/.env`** and set:
 | `SUPABASE_KEY` | **anon public** key (same page). Used for PostgREST with RLS. |
 | `SUPABASE_JWT_SECRET` | **Settings → API → JWT Settings → JWT Secret** |
 | `GEMINI_API_KEY` | Google AI Studio API key |
+| `BROWSER_USE_API_KEY` | Browser Use Cloud API key |
 
 > **Note:** `SUPABASE_KEY` should be the **anon** key when using user JWTs on `/plans`. Do not put the **service_role** key in a file that ships to clients; it is only for trusted server-only tools.
 
@@ -58,6 +60,25 @@ Do **not** use the old `quarters` / `class_dossiers` snippet. Apply the real mig
 2. Paste the full contents of that file and run it.
 
 This creates `profiles`, `saved_plans`, `vault_items`, RLS, the `auth.users` → `profiles` trigger, and Storage policies for the `user-content` bucket.
+
+For shared course research caching, also create:
+
+```sql
+create table if not exists public.course_research_cache (
+  id uuid primary key default gen_random_uuid(),
+  course_code text not null,
+  professor_name text not null default '',
+  course_title text,
+  normalized_course_code text not null,
+  normalized_professor_name text not null default '',
+  logistics jsonb not null,
+  model text,
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists course_research_cache_lookup_idx
+  on public.course_research_cache (normalized_course_code, normalized_professor_name);
+```
 
 ## 4. Run locally
 
@@ -89,6 +110,15 @@ curl -X POST http://127.0.0.1:8000/api/parse-screenshot -F "file=@C:\path\to\scr
 
 Expect JSON with a `courses` array. If `GEMINI_API_KEY` is missing or invalid, this route will error.
 
+### Test research endpoint (optional)
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/research-screenshot?concurrency=1" \
+  -F "file=@/path/to/screenshot.png"
+```
+
+Expect a JSON response with one result per deduped course. The backend checks Supabase cache first and only calls Browser Use on cache miss.
+
 ### Test `/plans` (optional)
 
 Requires a valid Supabase **access token** (same JWT the browser gets after sign-in):
@@ -110,6 +140,7 @@ curl -X POST http://127.0.0.1:8000/plans ^
 | `GET` | `/db-health` | Hits `profiles` via Supabase |
 | `GET` | `/docs` | Swagger UI |
 | `POST` | `/api/parse-screenshot` | Multipart image → Gemini structured `courses` |
+| `POST` | `/api/research-screenshot` | Multipart image → parse + Browser Use research + shared Supabase cache |
 | `POST` | `/plans` | Create `saved_plans` row (Bearer = Supabase user JWT) |
 
 ## Troubleshooting

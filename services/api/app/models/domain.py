@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
@@ -47,3 +47,15 @@ class ClassDossierRow(CamelModel):
     confidence_percent: int = 0
     chips: list[StatusChipRow] = []
     conflict: Optional[ClassConflictRow] = None
+
+
+class CourseResearchCacheRow(CamelModel):
+    id: str
+    course_code: str
+    professor_name: str
+    course_title: str | None = None
+    normalized_course_code: str
+    normalized_professor_name: str
+    logistics: dict[str, Any]
+    model: str | None = None
+    updated_at: str

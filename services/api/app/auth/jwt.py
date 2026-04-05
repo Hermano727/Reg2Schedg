@@ -1,7 +1,7 @@
 import jwt
 from jwt import PyJWKClient
 from fastapi import HTTPException, status
-
+from app.config import settings
 
 # Lazily initialised — fetches Supabase's JWKS once and caches the signing keys.
 _jwks_client: PyJWKClient | None = None

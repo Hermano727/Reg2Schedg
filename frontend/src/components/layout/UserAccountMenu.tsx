@@ -2,7 +2,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
-import { ChevronDown, LogOut, Settings, User } from "lucide-react";
+import { ChevronDown, LogOut, MessageSquare, Settings, User } from "lucide-react";
 import { clientSignOut } from "@/lib/auth/client-sign-out";
 
 type UserAccountMenuProps = {
@@ -69,6 +69,12 @@ export function UserAccountMenu({
                   <Link href="/profile">
                     <User className="h-4 w-4 text-hub-text-muted" aria-hidden />
                     My profile
+                  </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild className={menuItemClass}>
+                  <Link href="/community">
+                    <MessageSquare className="h-4 w-4 text-hub-text-muted" aria-hidden />
+                    Community
                   </Link>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item asChild className={menuItemClass}>

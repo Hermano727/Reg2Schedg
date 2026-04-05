@@ -8,5 +8,6 @@ python-dotenv>=1.0.0
 PyJWT>=2.9.0
 google-genai>=1.0.0
 python-multipart>=0.0.9
+browser-use-sdk
 google-auth-oauthlib>=1.2.0
 google-api-python-client>=2.140.0

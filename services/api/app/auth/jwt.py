@@ -19,12 +19,11 @@ def _get_jwks_client() -> PyJWKClient:
 
 
 def verify_access_token(token: str) -> str:
-    """Verify a Supabase JWT using the project's public JWKS.
-
-    Works with both ES256 (newer Supabase projects) and RS256 tokens.
-    The signing key is fetched from the JWKS endpoint on first call and
-    cached in memory — no per-request network round-trip after warm-up.
-    """
+    if not settings.supabase_jwt_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="SUPABASE_JWT_SECRET is not configured on the server",
+        )
     try:
         signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
         payload = jwt.decode(

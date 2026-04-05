@@ -52,6 +52,23 @@ export interface ScheduleCommitment {
   endMin: number;
 }
 
+export interface RateMyProfessorStats {
+  rating: number | null;
+  would_take_again_percent: number | null;
+  difficulty: number | null;
+  url: string | null;
+}
+
+export interface CourseLogistics {
+  attendance_required: boolean | null;
+  grade_breakdown: string | null;
+  course_webpage_url: string | null;
+  textbook_required: boolean | null;
+  podcasts_available: boolean | null;
+  student_sentiment_summary: string | null;
+  rate_my_professor: RateMyProfessorStats;
+}
+
 export interface ClassDossier {
   id: string;
   courseCode: string;
@@ -65,6 +82,7 @@ export interface ClassDossier {
   rawQuotes: RawQuote[];
   conflict?: ClassConflict;
   meetings: SectionMeeting[];
+  logistics?: CourseLogistics;
 }
 
 export interface ScheduleAlert {
@@ -79,6 +97,7 @@ export interface ScheduleEvaluation {
   fitnessMax: number;
   trendLabel: string;
   alerts: ScheduleAlert[];
+  recommendation?: string;
 }
 
 export interface ScheduleItem {

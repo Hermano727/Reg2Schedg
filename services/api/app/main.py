@@ -6,6 +6,7 @@ from app.db.client import get_supabase_client, get_supabase_for_access_token
 from app.db.service import insert_saved_plan
 from app.models.plan import SavedPlanCreate
 from app.routers.calendar import router as calendar_router
+from app.routers.fit_analysis import router as fit_analysis_router
 from app.routers.parse import router as parse_router
 
 app = FastAPI(title="TritonHub API", version="0.1.0")
@@ -19,6 +20,7 @@ app.add_middleware(
 
 app.include_router(parse_router, prefix="/api")
 app.include_router(calendar_router, prefix="/api")
+app.include_router(fit_analysis_router, prefix="/api")
 
 
 @app.get("/health")

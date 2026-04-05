@@ -1,3 +1,5 @@
+import type { CourseLogistics } from "@/types/dossier";
+
 export interface SectionMeeting {
   section_type: string;
   days: string;
@@ -33,4 +35,55 @@ export async function parseScreenshot(
   }
 
   return res.json() as Promise<ParseScreenshotResponse>;
+}
+
+export interface CourseResearchResult {
+  course_code: string;
+  course_title: string | null;
+  professor_name: string | null;
+  meetings: SectionMeeting[];
+  logistics: CourseLogistics | null;
+  cache_hit: boolean;
+  error: string | null;
+}
+
+export interface BatchResearchResponse {
+  course_count: number;
+  results: CourseResearchResult[];
+}
+
+export interface FitAnalysisResult {
+  fitness_score: number;
+  fitness_max: number;
+  trend_label: string;
+  alerts: Array<{ id: string; severity: "critical" | "warning" | "info"; title: string; detail: string }>;
+  recommendation: string;
+}
+
+export async function analyzeFit(results: CourseResearchResult[]): Promise<FitAnalysisResult> {
+  const res = await fetch("http://localhost:8000/api/fit-analysis", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ results }),
+  });
+  if (!res.ok) throw new Error(`Fit analysis failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<FitAnalysisResult>;
+}
+
+export async function researchScreenshot(
+  file: File,
+): Promise<BatchResearchResponse> {
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch("http://localhost:8000/api/research-screenshot", {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Research failed: ${res.status} ${res.statusText}`);
+  }
+
+  return res.json() as Promise<BatchResearchResponse>;
 }

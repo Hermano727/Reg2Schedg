@@ -15,10 +15,10 @@ import {
   type SavedPlanPayloadV1,
 } from "@/lib/hub/plan-payload";
 import { vaultRowToVaultItem } from "@/lib/hub/vault-map";
-import { parseScreenshot } from "@/lib/api/parse";
-import { courseEntryToDossier } from "@/lib/mappers/courseEntryToDossier";
+import { analyzeFit, researchScreenshot } from "@/lib/api/parse";
+import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import type { SavedPlanRow, VaultItemRow } from "@/types/saved-plan";
-import type { ClassDossier, UiPhase } from "@/types/dossier";
+import type { ClassDossier, ScheduleEvaluation, UiPhase } from "@/types/dossier";
 
 const LINE_MS = 360;
 const FINISH_PAD_MS = 650;
@@ -28,6 +28,7 @@ export function CommandCenter() {
   const [ingestionCollapsed, setIngestionCollapsed] = useState(false);
   const [activePlanId, setActivePlanId] = useState(mockDossier.activeQuarterId);
   const [classes, setClasses] = useState<ClassDossier[]>(mockDossier.classes);
+  const [evaluation, setEvaluation] = useState<ScheduleEvaluation>(mockDossier.evaluation);
   const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const [authed, setAuthed] = useState(false);
   const [remotePlans, setRemotePlans] = useState<SavedPlanRow[]>([]);
@@ -146,13 +147,13 @@ export function CommandCenter() {
     if (phase !== "dashboard") {
       return {
         viewClasses: classes,
-        viewEvaluation: mockDossier.evaluation,
+        viewEvaluation: evaluation,
       };
     }
     if (!authed) {
       return {
         viewClasses: classes,
-        viewEvaluation: mockDossier.evaluation,
+        viewEvaluation: evaluation,
       };
     }
     const plan = remotePlans.find((p) => p.id === activePlanId);
@@ -167,9 +168,9 @@ export function CommandCenter() {
     }
     return {
       viewClasses: classes,
-      viewEvaluation: mockDossier.evaluation,
+      viewEvaluation: evaluation,
     };
-  }, [phase, authed, activePlanId, remotePlans, classes]);
+  }, [phase, authed, activePlanId, remotePlans, classes, evaluation]);
 
   const classCount =
     phase === "dashboard" ? viewClasses.length : classes.length;
@@ -246,25 +247,51 @@ export function CommandCenter() {
       const started = Date.now();
 
       let nextClasses: ClassDossier[] = mockDossier.classes;
+      let nextEvaluation: ScheduleEvaluation = mockDossier.evaluation;
       if (imageFile?.type.startsWith("image/")) {
         try {
-          const response = await parseScreenshot(imageFile);
-          const parsed = response.courses.map(courseEntryToDossier);
+          const response = await researchScreenshot(imageFile);
+          const parsed = response.results.map(courseResearchResultToDossier);
           if (parsed.length > 0) nextClasses = parsed;
+
+          const minWaitPromise = new Promise<void>((resolve) => {
+            const elapsed = Date.now() - started;
+            const remaining = Math.max(0, minWait - elapsed);
+            const id = window.setTimeout(() => resolve(), remaining);
+            timeoutsRef.current.push(id);
+          });
+
+          const [fitResult] = await Promise.all([
+            analyzeFit(response.results).catch(() => null),
+            minWaitPromise,
+          ]);
+
+          if (fitResult) {
+            nextEvaluation = {
+              fitnessScore: fitResult.fitness_score,
+              fitnessMax: fitResult.fitness_max,
+              trendLabel: fitResult.trend_label,
+              alerts: fitResult.alerts,
+              recommendation: fitResult.recommendation,
+            };
+          }
         } catch {
           /* keep mock dossier */
         }
       }
 
-      const elapsed = Date.now() - started;
-      const remaining = Math.max(0, minWait - elapsed);
-      await new Promise<void>((resolve) => {
-        const id = window.setTimeout(() => resolve(), remaining);
-        timeoutsRef.current.push(id);
-      });
+      if (nextClasses === mockDossier.classes || !imageFile?.type.startsWith("image/")) {
+        const elapsed = Date.now() - started;
+        const remaining = Math.max(0, minWait - elapsed);
+        await new Promise<void>((resolve) => {
+          const id = window.setTimeout(() => resolve(), remaining);
+          timeoutsRef.current.push(id);
+        });
+      }
 
       clearRun();
       setClasses(nextClasses);
+      setEvaluation(nextEvaluation);
       processingLockRef.current = false;
       setPhase("dashboard");
       setIngestionCollapsed(true);
@@ -278,7 +305,7 @@ export function CommandCenter() {
       const payload = buildPayloadFromClasses(
         activeQ,
         nextClasses,
-        mockDossier.evaluation,
+        nextEvaluation,
       );
       await persistCompletedSession(payload);
     },
@@ -313,6 +340,7 @@ export function CommandCenter() {
     setIngestionCollapsed(false);
     setTerminalLines([]);
     setClasses(mockDossier.classes);
+    setEvaluation(mockDossier.evaluation);
   }, [clearRun]);
 
   const handleNewPlan = useCallback(async () => {

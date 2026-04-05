@@ -33,24 +33,36 @@ export function EvaluatorFooter({ evaluation }: EvaluatorFooterProps) {
         <div className="flex flex-1 items-center justify-center border-b border-white/[0.06] pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
           <FitnessDial evaluation={evaluation} />
         </div>
-        <ul className="flex-1 space-y-3">
-          {evaluation.alerts.map((a) => (
-            <li
-              key={a.id}
-              className="flex gap-3 rounded-lg border border-white/[0.06] bg-hub-bg/35 p-3"
-            >
-              <div className="mt-0.5 shrink-0">
-                <SeverityIcon severity={a.severity} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-hub-text">{a.title}</p>
-                <p className="mt-1 text-sm leading-relaxed text-hub-text-secondary">
-                  {a.detail}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="flex-1">
+          <ul className="space-y-3">
+            {evaluation.alerts.map((a) => (
+              <li
+                key={a.id}
+                className="flex gap-3 rounded-lg border border-white/[0.06] bg-hub-bg/35 p-3"
+              >
+                <div className="mt-0.5 shrink-0">
+                  <SeverityIcon severity={a.severity} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-hub-text">{a.title}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-hub-text-secondary">
+                    {a.detail}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {evaluation.recommendation && (
+            <div className="mt-4 rounded-lg border border-white/[0.06] bg-hub-bg/25 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-hub-text-muted mb-1">
+                Advisor recommendation
+              </p>
+              <p className="text-sm leading-relaxed text-hub-text-secondary">
+                {evaluation.recommendation}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

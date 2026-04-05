@@ -20,7 +20,7 @@ export function Header({ user }: HeaderProps) {
         <TritonMark size={36} />
         <div className="min-w-0">
           <p className="font-[family-name:var(--font-outfit)] text-sm font-semibold tracking-tight text-hub-text">
-            TritonHub
+            Reg2Schedg
           </p>
           <p className="truncate text-[11px] text-hub-text-muted">
             Command Center

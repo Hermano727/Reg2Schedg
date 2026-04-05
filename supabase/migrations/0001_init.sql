@@ -1,4 +1,4 @@
--- TritonHub: profiles, saved plans, vault metadata, RLS, Storage bucket policies.
+-- Reg2Schedg: profiles, saved plans, vault metadata, RLS, Storage bucket policies.
 -- Run in Supabase SQL Editor or via supabase db push.
 
 -- ---------------------------------------------------------------------------

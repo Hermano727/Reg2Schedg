@@ -13,7 +13,7 @@ This document locks decisions from the degree-audit planner ideation review: **s
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Audit PDF**                | User-uploaded export (e.g. degree audit / advising report). Point-in-time, may be stale.                                                     |
 | **Live snapshot**            | Data retrieved while the user is present (e.g. after Duo), via Browser Use or future official APIs. Represents portal state at capture time. |
-| **Catalog / rules snapshot** | TritonHub-held curriculum data (versions, prereqs, offerings). Used for suggestions, not as a substitute for the registrar.                  |
+| **Catalog / rules snapshot** | Reg2Schedg-held curriculum data (versions, prereqs, offerings). Used for suggestions, not as a substitute for the registrar.                  |
 
 
 ### 1.2 Canonical precedence (merge logic)
@@ -55,7 +55,7 @@ Use these verbatim or as close variants so legal and support stay aligned.
 
 | Context                             | Copy                                                                                                                                                                    |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Global disclaimer (banner / footer) | **This plan is unofficial.** Your degree audit in **TritonLink / Virtual Advising Center** is the authority. TritonHub does not replace your college or the registrar.  |
+| Global disclaimer (banner / footer) | **This plan is unofficial.** Your degree audit in **TritonLink / Virtual Advising Center** is the authority. Reg2Schedg does not replace your college or the registrar.  |
 | Live + PDF both present             | **We combined your uploaded audit with a fresh snapshot from your session.** Enrollment facts prefer the live snapshot; conflicting requirement lines need your review. |
 | Live preferred for enrollment       | **Enrollment and progress** shown here prefer your **latest signed-in session** when available.                                                                         |
 | PDF only                            | **Based on your uploaded audit only.** Sign in and refresh to pull the latest from the portal when that feature is available.                                           |
@@ -80,7 +80,7 @@ Use these verbatim or as close variants so legal and support stay aligned.
 
 - **Browser Use (optional):** User-present session only; user completes Duo; automation runs only after session is established. Hard timeouts and **detect-and-pause** on DOM/flow breakage—no silent partial merge.  
 - **Purpose:** Enrich or refresh enrollment facts and reduce stale PDFs; optional “export fresh PDF” path if parsing quality demands it.  
-- **Notifications:** Email or in-app ping (e.g. “TritonHub — complete Duo to continue”) are **UX nudges**, not authentication bypasses.
+- **Notifications:** Email or in-app ping (e.g. “Reg2Schedg — complete Duo to continue”) are **UX nudges**, not authentication bypasses.
 
 ### 2.3 Exception path
 

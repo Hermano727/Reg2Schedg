@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TritonHub — Command Center",
+  title: "Reg2Schedg — Command Center",
   description:
     "UCSD academic schedule planner: upload your WebReg schedule, explore course evaluations, and plan your quarter.",
 };

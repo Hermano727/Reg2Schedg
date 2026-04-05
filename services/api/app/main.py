@@ -9,7 +9,7 @@ from app.routers.calendar import router as calendar_router
 from app.routers.fit_analysis import router as fit_analysis_router
 from app.routers.parse import router as parse_router
 
-app = FastAPI(title="TritonHub API", version="0.1.0")
+app = FastAPI(title="Reg2Schedg API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,

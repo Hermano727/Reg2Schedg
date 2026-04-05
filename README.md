@@ -1,4 +1,4 @@
-# TritonHub
+# Reg2Schedg
 
 Monorepo-style layout: **Next.js app** in [`frontend/`](frontend/), **Python services** in [`services/`](services/).
 

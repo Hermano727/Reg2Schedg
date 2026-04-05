@@ -1,4 +1,4 @@
-# TritonHub API (FastAPI)
+# Reg2Schedg API (FastAPI)
 
 Supabase-backed API: **JWT-verified saved plans**, **Gemini screenshot parsing**, **Browser Use course research**, and DB health checks. CORS allows `http://localhost:3000` for the Next.js app.
 

@@ -30,7 +30,6 @@ export function CommandCenter() {
   const [activePlanId, setActivePlanId] = useState(mockDossier.activeQuarterId);
   const [classes, setClasses] = useState<ClassDossier[]>(mockDossier.classes);
   const [evaluation, setEvaluation] = useState<ScheduleEvaluation>(mockDossier.evaluation);
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
   const [authed, setAuthed] = useState(false);
   const [remotePlans, setRemotePlans] = useState<SavedPlanRow[]>([]);
   const [remoteVault, setRemoteVault] = useState<VaultItemRow[]>([]);
@@ -334,17 +333,8 @@ export function CommandCenter() {
       processingLockRef.current = true;
       clearRun();
       setPhase("processing");
-      setTerminalLines([]);
 
-      const script = mockDossier.terminalScript;
-      script.forEach((line, idx) => {
-        const id = window.setTimeout(() => {
-          setTerminalLines((prev) => [...prev, line]);
-        }, idx * LINE_MS);
-        timeoutsRef.current.push(id);
-      });
-
-      const minWait = script.length * LINE_MS + FINISH_PAD_MS;
+      const minWait = FINISH_PAD_MS;
       const started = Date.now();
 
       let nextClasses: ClassDossier[] = mockDossier.classes;
@@ -449,7 +439,6 @@ export function CommandCenter() {
     processingLockRef.current = false;
     setPhase("idle");
     setIngestionCollapsed(false);
-    setTerminalLines([]);
     setClasses(mockDossier.classes);
     setEvaluation(mockDossier.evaluation);
   }, [clearRun]);
@@ -620,7 +609,7 @@ export function CommandCenter() {
         />
       </div>
 
-      <ProcessingModal open={phase === "processing"} lines={terminalLines} />
+      <ProcessingModal open={phase === "processing"} />
     </div>
   );
 }

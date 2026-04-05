@@ -80,15 +80,6 @@ export function CampusPathMap({
   }
   const plottedItems = [...plottedMap.values()];
 
-  const mappedKeys = new Set(plottedMap.keys());
-  const unmappedSeen = new Set<string>();
-  const unmappedItems = scheduleItems.filter((item) => {
-    const key = `${item.title}|${item.buildingCode ?? item.location ?? ""}`;
-    if (mappedKeys.has(key)) return false;
-    if (unmappedSeen.has(key)) return false;
-    unmappedSeen.add(key);
-    return true;
-  });
 
   return (
     <section className="glass-panel rounded-xl border border-white/[0.08] p-4">
@@ -110,10 +101,10 @@ export function CampusPathMap({
         <CampusPathLeafletMap plottedItems={plottedItems} />
       </div>
 
-      <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="mt-3">
         <div className="rounded-xl border border-white/[0.08] bg-hub-bg/30 p-3">
           <h3 className="text-sm font-semibold text-hub-text">Mapped locations</h3>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {plottedItems.map((item, index) => (
               <div
                 key={`item-${item.id}-${index}`}
@@ -145,25 +136,6 @@ export function CampusPathMap({
                 </a>
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-white/[0.08] bg-hub-bg/30 p-3">
-          <h3 className="text-sm font-semibold text-hub-text">Needs mapping</h3>
-          <div className="mt-2 space-y-2">
-            {unmappedItems.length ? (
-              unmappedItems.map((item, i) => {
-                const isRemote = item.location?.toUpperCase().startsWith("RCLAS");
-                return (
-                  <p key={`unmapped-${item.id}-${i}`} className="text-xs text-hub-text-muted">
-                    {item.title}:{" "}
-                    {isRemote ? "Remote / online section." : "add a `buildingCode` to include this on map."}
-                  </p>
-                );
-              })
-            ) : (
-              <p className="text-xs text-emerald-300">All schedule items are mapped.</p>
-            )}
           </div>
         </div>
       </div>

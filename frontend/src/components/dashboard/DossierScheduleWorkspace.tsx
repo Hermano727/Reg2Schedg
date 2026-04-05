@@ -24,7 +24,7 @@ import { Alert } from "@/components/ui/Alert";
 import { ClassCard } from "@/components/dashboard/ClassCard";
 import { CampusPathMap } from "@/components/dashboard/CampusPathMap";
 import { EvaluatorFooter } from "@/components/dashboard/EvaluatorFooter";
-import { WeeklyCalendar } from "@/components/dashboard/WeeklyCalendar";
+import { WeeklyCalendar, type CourseBlock, type CommitmentBlock, COL_TO_DAY, parseDaysToCols, removeDayFromString, minutesToTimeStr, minutesToTimeInput } from "@/components/dashboard/WeeklyCalendar";
 import { useCalendarSyncHandler } from "@/components/layout/calendar-sync-context";
 import { useCalendarState } from "@/components/layout/calendar-state-context";
 import {
@@ -80,6 +80,7 @@ export function DossierScheduleWorkspace({
     resetToBaseline,
     addCommitment,
     removeCommitment,
+    editCommitment,
     canUndo,
     canRedo,
     isDirty,
@@ -97,8 +98,17 @@ export function DossierScheduleWorkspace({
   const [newColor, setNewColor] = useState(COMMITMENT_PRESETS[0].value);
   const [blockError, setBlockError] = useState<string | null>(null);
 
+  const [editingBlock, setEditingBlock] = useState<CourseBlock | CommitmentBlock | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDay, setEditDay] = useState(0);
+  const [editStart, setEditStart] = useState("08:00");
+  const [editEnd, setEditEnd] = useState("09:00");
+  const [editColor, setEditColor] = useState(COMMITMENT_PRESETS[0].value);
+  const [editLocation, setEditLocation] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+
   const onSyncCalendar = useCalendarSyncHandler();
-  const { reportCalendarVisible, registerOpenFullscreen } = useCalendarState();
+  const { calendarVisible, reportCalendarVisible, registerOpenFullscreen, openCalendar } = useCalendarState();
 
   const calendarRef = useRef<HTMLDivElement>(null);
 
@@ -120,20 +130,97 @@ export function DossierScheduleWorkspace({
   }, [reportCalendarVisible]);
 
   useEffect(() => {
-    if (!addOpen && !fullscreenOpen) return;
+    if (!addOpen && !fullscreenOpen && !editingBlock) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (addOpen) setAddOpen(false);
+      else if (editingBlock) setEditingBlock(null);
       else setFullscreenOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [addOpen, fullscreenOpen]);
+  }, [addOpen, fullscreenOpen, editingBlock]);
 
   const openAddModal = useCallback(() => {
     setBlockError(null);
     setAddOpen(true);
   }, []);
+
+  const openEditModal = useCallback((block: CourseBlock | CommitmentBlock) => {
+    setEditError(null);
+    if (block.kind === "commitment") {
+      const c = block.commitment;
+      setEditTitle(c.title);
+      setEditDay(c.dayCol);
+      setEditStart(minutesToTimeInput(c.startMin));
+      setEditEnd(minutesToTimeInput(c.endMin));
+      setEditColor(c.color);
+    } else {
+      setEditDay(block.col);
+      setEditStart(minutesToTimeInput(block.startMin));
+      setEditEnd(minutesToTimeInput(block.endMin));
+      setEditLocation(block.meeting.location);
+    }
+    setEditingBlock(block);
+  }, []);
+
+  const submitEdit = useCallback(() => {
+    if (!editingBlock) return;
+    const s = minutesFromTimeInput(editStart);
+    const e = minutesFromTimeInput(editEnd);
+    if (s === null || e === null) {
+      setEditError("Please enter valid start and end times.");
+      return;
+    }
+    if (e <= s) {
+      setEditError("End time must be after the start time.");
+      return;
+    }
+    if (e - s > 8 * 60) {
+      setEditError("Blocks longer than 8 hours aren't supported.");
+      return;
+    }
+    setEditError(null);
+
+    if (editingBlock.kind === "commitment") {
+      editCommitment({
+        ...editingBlock.commitment,
+        title: editTitle.trim() || "Untitled",
+        dayCol: editDay,
+        startMin: s,
+        endMin: e,
+        color: editColor,
+      });
+    } else {
+      // Course block: update the meeting (same logic as drag-drop)
+      const newDayToken = COL_TO_DAY[editDay];
+      const updatedClasses = classes.map((d) => {
+        if (d.id !== editingBlock.dossierId) return d;
+        const meetings = [...d.meetings];
+        const orig = meetings[editingBlock.meetingIdx];
+        const origCols = parseDaysToCols(orig.days);
+        const updatedMeeting = {
+          ...orig,
+          days: newDayToken,
+          start_time: minutesToTimeStr(s),
+          end_time: minutesToTimeStr(e),
+          location: editLocation,
+        };
+        if (origCols.length === 1) {
+          meetings[editingBlock.meetingIdx] = updatedMeeting;
+        } else {
+          meetings[editingBlock.meetingIdx] = {
+            ...orig,
+            days: removeDayFromString(orig.days, editingBlock.col),
+          };
+          meetings.push(updatedMeeting);
+        }
+        return { ...d, meetings };
+      });
+      apply({ classes: updatedClasses, commitments });
+    }
+    setEditingBlock(null);
+  }, [editingBlock, editStart, editEnd, editTitle, editDay, editColor, editLocation, editCommitment, apply, classes, commitments]);
 
   const submitCommitment = useCallback(() => {
     const s = minutesFromTimeInput(newStart);
@@ -264,6 +351,7 @@ export function DossierScheduleWorkspace({
           pxPerHour={px}
           headerActions={calHeader ?? undefined}
           hideScheduleHeading={calHeader === null}
+          onBlockDoubleClick={openEditModal}
         />
       </div>
       {commitments.length > 0 ? (
@@ -393,8 +481,9 @@ export function DossierScheduleWorkspace({
             role="dialog"
             aria-modal="true"
             aria-label="Full screen schedule"
+            onClick={() => setFullscreenOpen(false)}
           >
-            <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4">
+            <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
                 <div className="min-w-0">
                   <p className="font-[family-name:var(--font-outfit)] text-base font-semibold tracking-tight text-hub-text">
@@ -424,10 +513,29 @@ export function DossierScheduleWorkspace({
                   onApply={apply}
                   pxPerHour={96}
                   hideScheduleHeading
+                  onBlockDoubleClick={openEditModal}
                 />
               </div>
             </div>
           </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {!calendarVisible && !fullscreenOpen ? (
+          <motion.button
+            key="view-cal-fab"
+            type="button"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }}
+            onClick={openCalendar}
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-hub-cyan/40 bg-hub-surface/90 px-4 py-2.5 text-xs font-semibold text-hub-cyan shadow-lg backdrop-blur-sm transition hover:bg-hub-cyan/10"
+          >
+            <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
+            View Calendar
+          </motion.button>
         ) : null}
       </AnimatePresence>
 
@@ -593,6 +701,181 @@ export function DossierScheduleWorkspace({
                 >
                   Add to grid
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* Edit block modal */}
+      <AnimatePresence>
+        {editingBlock ? (
+          <motion.div
+            key="edit-block"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-4 sm:items-center"
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingBlock.kind === "commitment" ? "Edit personal block" : "Edit course meeting"}
+            onClick={() => setEditingBlock(null)}
+          >
+            <motion.div
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 16, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              className="w-full max-w-md rounded-2xl border border-white/[0.1] bg-hub-surface p-5 shadow-2xl shadow-black/40"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-[family-name:var(--font-outfit)] text-lg font-semibold text-hub-text">
+                  {editingBlock.kind === "commitment" ? "Edit block" : `Edit ${editingBlock.courseCode}`}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setEditingBlock(null)}
+                  className="rounded-lg p-1.5 text-hub-text-muted hover:bg-white/5 hover:text-hub-text"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {editingBlock.kind === "commitment" && (
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-hub-text-muted">
+                      Title
+                    </span>
+                    <input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-white/[0.1] bg-hub-bg/60 px-3 py-2 text-sm text-hub-text outline-none ring-hub-cyan/30 placeholder:text-hub-text-muted focus:ring-2"
+                    />
+                  </label>
+                )}
+
+                <label className="block">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-hub-text-muted">
+                    Day
+                  </span>
+                  <select
+                    value={editDay}
+                    onChange={(e) => setEditDay(Number(e.target.value))}
+                    className="mt-1.5 w-full rounded-lg border border-white/[0.1] bg-hub-bg/60 px-3 py-2 text-sm text-hub-text outline-none focus:ring-2 focus:ring-hub-cyan/30"
+                  >
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((d, i) => (
+                      <option key={d} value={i}>{d}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-hub-text-muted">
+                      Start
+                    </span>
+                    <input
+                      type="time"
+                      value={editStart}
+                      onChange={(e) => setEditStart(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-white/[0.1] bg-hub-bg/60 px-3 py-2 text-sm text-hub-text outline-none focus:ring-2 focus:ring-hub-cyan/30"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-hub-text-muted">
+                      End
+                    </span>
+                    <input
+                      type="time"
+                      value={editEnd}
+                      onChange={(e) => setEditEnd(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-white/[0.1] bg-hub-bg/60 px-3 py-2 text-sm text-hub-text outline-none focus:ring-2 focus:ring-hub-cyan/30"
+                    />
+                  </label>
+                </div>
+
+                {editingBlock.kind === "course" && (
+                  <label className="block">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-hub-text-muted">
+                      Location
+                    </span>
+                    <input
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-white/[0.1] bg-hub-bg/60 px-3 py-2 text-sm text-hub-text outline-none ring-hub-cyan/30 placeholder:text-hub-text-muted focus:ring-2"
+                      placeholder="e.g. CSB 001"
+                    />
+                  </label>
+                )}
+
+                {editingBlock.kind === "commitment" && (
+                  <div>
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-hub-text-muted">
+                      Color
+                    </span>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {COMMITMENT_PRESETS.map((p) => (
+                        <button
+                          key={p.value}
+                          type="button"
+                          onClick={() => setEditColor(p.value)}
+                          title={p.label}
+                          className={`h-8 w-8 rounded-full border-2 transition ${
+                            editColor === p.value
+                              ? "scale-110 border-white"
+                              : "border-transparent hover:border-white/30"
+                          }`}
+                          style={{ backgroundColor: p.value }}
+                        />
+                      ))}
+                    </div>
+                    <div className="mt-3 relative h-10 w-full overflow-hidden rounded-lg border border-white/[0.14] bg-hub-bg/50">
+                      <input
+                        type="color"
+                        value={editColor}
+                        onChange={(e) => setEditColor(e.target.value)}
+                        className="absolute inset-0 h-full min-h-[3rem] w-full cursor-pointer border-0 bg-transparent p-0 [appearance:none] [-webkit-appearance:none] [&::-webkit-color-swatch-wrapper]:border-none [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-moz-color-swatch]:rounded-md [&::-moz-color-swatch]:border-0 [&::-webkit-color-swatch]:rounded-md"
+                        aria-label="Custom color hue picker"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {editError && (
+                  <Alert variant="error">{editError}</Alert>
+                )}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-2">
+                {editingBlock.kind === "commitment" ? (
+                  <button
+                    type="button"
+                    onClick={() => { removeCommitment(editingBlock.commitment.id); setEditingBlock(null); }}
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-hub-danger hover:bg-hub-danger/10"
+                  >
+                    Delete
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingBlock(null)}
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-hub-text-muted hover:bg-white/5 hover:text-hub-text"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitEdit}
+                    className="rounded-lg bg-hub-cyan/20 px-4 py-2 text-sm font-semibold text-hub-cyan ring-1 ring-hub-cyan/40 hover:bg-hub-cyan/25"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

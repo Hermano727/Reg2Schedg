@@ -13,7 +13,7 @@ type HeaderProps = {
 export function Header({ user }: HeaderProps) {
   return (
     <header className="glass-panel sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-white/[0.08] px-4">
-      <Link
+      <a
         href="/"
         className="flex min-w-0 items-center gap-3 rounded-lg outline-none ring-hub-cyan/40 focus-visible:ring-2"
       >
@@ -23,7 +23,7 @@ export function Header({ user }: HeaderProps) {
             Reg2Schedg
           </p>
         </div>
-      </Link>
+      </a>
 
       <div className="mx-auto flex max-w-xl flex-1 justify-center px-2">
         <label className="relative w-full">

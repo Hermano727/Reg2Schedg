@@ -68,12 +68,23 @@ export function TransitionWarnings({
               key={transition.id}
               className="rounded-xl border border-white/[0.08] bg-hub-bg/30 p-4"
             >
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-hub-text">
-                  {fromItem?.title ?? "Unknown"} → {toItem?.title ?? "Unknown"}
-                </p>
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-hub-text-muted">
+                    After
+                  </p>
+                  <p className="text-sm font-semibold text-hub-text truncate">
+                    {fromItem?.title ?? "Unknown"}
+                  </p>
+                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-hub-text-muted">
+                    Head to
+                  </p>
+                  <p className="text-sm font-semibold text-hub-text truncate">
+                    {toItem?.title ?? "Unknown"}
+                  </p>
+                </div>
                 <span
-                  className={`rounded-full border px-2 py-1 text-xs font-medium capitalize ${getRiskClasses(transition.risk)}`}
+                  className={`mt-0.5 shrink-0 rounded-full border px-2 py-1 text-xs font-medium capitalize ${getRiskClasses(transition.risk)}`}
                 >
                   {transition.risk}
                 </span>

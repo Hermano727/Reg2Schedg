@@ -28,7 +28,8 @@ type Action =
   | { type: "REDO" }
   | { type: "RESET" }
   | { type: "ADD_COMMITMENT"; payload: ScheduleCommitment }
-  | { type: "REMOVE_COMMITMENT"; payload: { id: string } };
+  | { type: "REMOVE_COMMITMENT"; payload: { id: string } }
+  | { type: "EDIT_COMMITMENT"; payload: ScheduleCommitment };
 
 function reducer(state: EditorState, action: Action): EditorState {
   const present: ScheduleSnapshot = {
@@ -72,6 +73,16 @@ function reducer(state: EditorState, action: Action): EditorState {
         past: [...state.past, cloneSnap(present)],
         future: [],
         commitments: state.commitments.filter((c) => c.id !== action.payload.id),
+      };
+    }
+    case "EDIT_COMMITMENT": {
+      return {
+        ...state,
+        past: [...state.past, cloneSnap(present)],
+        future: [],
+        commitments: state.commitments.map((c) =>
+          c.id === action.payload.id ? action.payload : c
+        ),
       };
     }
     case "UNDO": {
@@ -167,6 +178,10 @@ export function useScheduleEditor(
     dispatch({ type: "REMOVE_COMMITMENT", payload: { id } });
   }, []);
 
+  const editCommitment = useCallback((c: ScheduleCommitment) => {
+    dispatch({ type: "EDIT_COMMITMENT", payload: c });
+  }, []);
+
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
 
@@ -188,6 +203,7 @@ export function useScheduleEditor(
     resetToBaseline,
     addCommitment,
     removeCommitment,
+    editCommitment,
     canUndo,
     canRedo,
     isDirty,

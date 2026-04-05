@@ -62,3 +62,101 @@ body {
   border: 1px solid var(--hub-border);
   backdrop-filter: blur(12px);
 }
+
+/* Leaflet popup dark theme */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  /* Remove Leaflet's default white background and outline so our custom panel shows through */
+  background: transparent !important;
+  color: inherit !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  background: transparent !important;
+}
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  top: 6px !important;
+  right: 6px !important;
+}
+
+/* Custom map popup and marker styles for Reg2Schedg */
+.rp-seq-icon__inner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(34,211,238,0.95), rgba(6,146,150,0.95));
+  border: 2px solid rgba(255,255,255,0.9);
+  box-shadow: 0 0 0 4px rgba(8,47,73,0.28);
+  color: #062132;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rp-tooltip {
+  padding: 8px 10px !important;
+  min-width: 160px;
+  border-radius: 8px;
+}
+.rp-tooltip__title {
+  font-weight: 700;
+  color: var(--hub-text);
+}
+.rp-tooltip__sub {
+  color: var(--hub-text-muted);
+  font-size: 12px;
+}
+.rp-tooltip__time {
+  color: #67e8f9;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.rp-popup-content {
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(2,8,23,0.6);
+}
+.rp-popup-header .rp-popup-badge {
+  background: rgba(103,232,249,0.06);
+  border: 1px solid rgba(103,232,249,0.18);
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+/* Leaflet tooltip dark theme */
+.leaflet-tooltip {
+  background: #0d1b2e !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  box-shadow: 0 6px 18px rgba(2,8,23,0.6) !important;
+}
+.leaflet-tooltip-top::before {
+  border-top-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Ensure the popup tip does not show a white triangle */
+.leaflet-popup-tip.leaflet-popup-tip {
+  display: none !important;
+}
+
+/* Make our content panel inside the wrapper fully control background and outline */
+.leaflet-popup-content-wrapper .rp-popup-content,
+.leaflet-popup-content-wrapper .glass-panel.rp-popup-content {
+  background: color-mix(in srgb, var(--hub-surface) 88%, transparent) !important;
+  border: 1px solid var(--hub-border) !important;
+  box-shadow: 0 10px 30px rgba(2,8,23,0.6) !important;
+  border-radius: 10px !important;
+}

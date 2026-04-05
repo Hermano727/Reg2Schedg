@@ -3,8 +3,17 @@
 import { useEffect, useMemo } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapContainer, Marker, useMap } from "react-leaflet";
+import { MapContainer, Marker, Tooltip, Popup, useMap } from "react-leaflet";
 import type { PlottedItem } from "./CampusPathMap";
+
+function fmt12(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr ?? "0", 10);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
 
 type CampusPathLeafletMapProps = {
   plottedItems: PlottedItem[];
@@ -33,24 +42,12 @@ const TILE_OPTIONS: TileLayerOptions = {
 function makeSequenceIcon(order: number) {
   const label = String(order);
   return L.divIcon({
-    className: "",
+    className: "rp-seq-icon",
     html: `
-      <div style="
-        width: 24px; height: 24px;
-        border-radius: 999px;
-        background: rgba(34, 211, 238, 0.95);
-        border: 2px solid rgba(255,255,255,0.9);
-        box-shadow: 0 0 0 3px rgba(8, 47, 73, 0.35);
-        color: #062132;
-        font-weight: 700;
-        font-size: 11px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      ">${label}</div>
+      <div class="rp-seq-icon__inner">${label}</div>
     `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
 }
 
@@ -177,8 +174,33 @@ export function CampusPathLeafletMap({
             key={item.id}
             position={[item.lat, item.lng]}
             icon={sequenceIcons[index]}
-            title={item.location ?? item.title}
-          />
+          >
+            <Tooltip direction="top" offset={[0, -20]} opacity={1} className="rp-tooltip">
+              <div className="rp-tooltip__title">{item.title}</div>
+              {item.location && (
+                <div className="rp-tooltip__sub">{item.location}</div>
+              )}
+              {item.start && item.end && (
+                <div className="rp-tooltip__time">{fmt12(item.start)} — {fmt12(item.end)}</div>
+              )}
+            </Tooltip>
+            <Popup>
+              <div className="glass-panel rp-popup-content p-3" style={{ minWidth: 220 }}>
+                <div className="rp-popup-header flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-hub-text">{item.title}</div>
+                    {item.location && (
+                      <div className="text-[12px] text-hub-text-muted mt-1">{item.location}</div>
+                    )}
+                  </div>
+                  <div className="rp-popup-badge ml-2 text-[12px] font-semibold text-hub-cyan">{index + 1}</div>
+                </div>
+                {item.start && item.end && (
+                  <div className="mt-3 text-[13px] text-hub-cyan">{fmt12(item.start)} — {fmt12(item.end)}</div>
+                )}
+              </div>
+            </Popup>
+          </Marker>
         ))}
       </MapContainer>
 

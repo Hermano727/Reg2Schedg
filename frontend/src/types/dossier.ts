@@ -92,10 +92,19 @@ export interface ScheduleAlert {
   detail: string;
 }
 
+export interface FitnessCategory {
+  label: string;
+  score: number;
+  max: number;
+  color: string;
+  detail: string;
+}
+
 export interface ScheduleEvaluation {
   fitnessScore: number;
   fitnessMax: number;
   trendLabel: string;
+  categories?: FitnessCategory[];
   alerts: ScheduleAlert[];
   recommendation?: string;
 }

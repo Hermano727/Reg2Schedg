@@ -43,10 +43,24 @@ export const mockDossier: MockDossierPayload = {
         "Pasquale runs a fair but fast-paced architecture course. Students who grind the discussion worksheets and the textbook’s practice sets report the fewest surprises on exams. Podcasting is reliable for this room historically, but verify HyFlex each quarter.",
       confidencePercent: 88,
       chips: [
-        { id: "ch1", label: "Podcasted (95%)", tone: "purple" },
-        { id: "ch2", label: "Attendance (Optional)", tone: "cyan" },
-        { id: "ch3", label: "Fees ($0)", tone: "green" },
+        { id: "ch1", label: "Podcasted (95% coverage)", tone: "purple" },
+        { id: "ch2", label: "Optional attendance", tone: "green" },
+        { id: "ch3", label: "Partial credit on exams", tone: "cyan" },
       ],
+      logistics: {
+        attendance_required: false,
+        grade_breakdown: "30% Homework, 30% Midterm, 40% Final",
+        course_webpage_url: null,
+        textbook_required: true,
+        podcasts_available: true,
+        student_sentiment_summary: null,
+        rate_my_professor: {
+          rating: 4.2,
+          would_take_again_percent: 78,
+          difficulty: 3.8,
+          url: null,
+        },
+      },
       rawQuotes: [
         {
           id: "q1",
@@ -89,10 +103,24 @@ export const mockDossier: MockDossierPayload = {
         "Project-heavy networks class with clear rubrics. Voelker’s staff emphasizes incremental commits; the autograder is strict on timeouts and edge cases.",
       confidencePercent: 81,
       chips: [
-        { id: "ch4", label: "Heavy Projects", tone: "purple" },
-        { id: "ch5", label: "Lecture Attendance (tracked)", tone: "cyan" },
+        { id: "ch4", label: "Project-heavy grading", tone: "purple" },
+        { id: "ch5", label: "Attendance tracked via iClicker", tone: "cyan" },
         { id: "ch6", label: "Textbook optional", tone: "muted" },
       ],
+      logistics: {
+        attendance_required: true,
+        grade_breakdown: "50% Projects, 20% Quizzes, 30% Final",
+        course_webpage_url: null,
+        textbook_required: false,
+        podcasts_available: false,
+        student_sentiment_summary: null,
+        rate_my_professor: {
+          rating: 3.9,
+          would_take_again_percent: 65,
+          difficulty: 4.1,
+          url: null,
+        },
+      },
       rawQuotes: [
         {
           id: "q4",
@@ -125,9 +153,9 @@ export const mockDossier: MockDossierPayload = {
         "Data systems course with weekly labs. Staff publishes reference DAGs; follow their folder layout to avoid autograder path issues.",
       confidencePercent: 76,
       chips: [
-        { id: "ch7", label: "Labs (weekly)", tone: "cyan" },
-        { id: "ch8", label: "Podcast N/A", tone: "muted" },
-        { id: "ch9", label: "Exam (take-home)", tone: "green" },
+        { id: "ch7", label: "Weekly labs", tone: "cyan" },
+        { id: "ch8", label: "No recordings", tone: "muted" },
+        { id: "ch9", label: "Take-home final exam", tone: "green" },
       ],
       rawQuotes: [
         {
@@ -156,9 +184,9 @@ export const mockDossier: MockDossierPayload = {
         "Intro proofs with weekly written assignments. Eggers emphasizes clarity over cleverness; office hours help unblock notation issues early.",
       confidencePercent: 92,
       chips: [
-        { id: "ch10", label: "Discussion required", tone: "cyan" },
-        { id: "ch11", label: "No midterm", tone: "green" },
-        { id: "ch12", label: "Weekly quizzes", tone: "purple" },
+        { id: "ch10", label: "Discussion attendance required", tone: "cyan" },
+        { id: "ch11", label: "No midterm — weekly quizzes only", tone: "green" },
+        { id: "ch12", label: "Gradescope 48h regrade window", tone: "purple" },
       ],
       rawQuotes: [
         {
@@ -177,27 +205,57 @@ export const mockDossier: MockDossierPayload = {
     fitnessScore: 7.4,
     fitnessMax: 10,
     trendLabel: "Manageable with constraints",
+    categories: [
+      {
+        label: "Campus Flow",
+        score: 5.5,
+        max: 10,
+        color: "#00d4ff",
+        detail: "One transition is physically unrealistic without leaving class early",
+      },
+      {
+        label: "Workload",
+        score: 7.5,
+        max: 10,
+        color: "#f59e0b",
+        detail: "Four technical courses is heavy but achievable with consistent pacing",
+      },
+      {
+        label: "Time Spread",
+        score: 8.0,
+        max: 10,
+        color: "#a78bfa",
+        detail: "Classes are distributed across the week with reasonable breathing room",
+      },
+      {
+        label: "Life Balance",
+        score: 8.5,
+        max: 10,
+        color: "#34d399",
+        detail: "Work shifts carry enough buffer around class times to avoid conflicts",
+      },
+    ],
     alerts: [
       {
         id: "a1",
         severity: "critical",
         title: "Campus gap risk",
         detail:
-          "Muir → Warren with only 10 minutes between CSE 120 and MATH 109 is unrealistic on foot (≈18–22 min).",
+          "CSE 120 ends at 10:50 AM near Warren, and MATH 109 starts at 11:00 AM at APM. Walking between those two buildings takes roughly 18–22 minutes, so you will arrive 8–12 minutes late unless you leave the CSE 120 lecture a few minutes early.",
       },
       {
         id: "a2",
         severity: "warning",
         title: "Crunch week",
         detail:
-          "Week 6 stacks CSE 123 project checkpoint, DSC 102 lab, and a Math 109 quiz—plan buffer now.",
+          "Week 6 stacks a CSE 123 project checkpoint, a DSC 102 lab deadline, and a MATH 109 quiz all within a 72-hour window. None of those overlap in time, but they share the same study bandwidth. Block out the preceding weekend now.",
       },
       {
         id: "a3",
         severity: "info",
         title: "Workload vs employment",
         detail:
-          "With 20h/week job + commute, four technicals is viable if you protect Sunday blocks for CSE 123.",
+          "At 20 hours of work per week alongside four technical courses, the schedule is viable — but only if you treat Sunday as protected study time, particularly for the CSE 123 project. Losing one weekend to unplanned commitments can set off a chain reaction heading into Week 6.",
       },
     ],
   },
@@ -266,7 +324,7 @@ transitionInsights: [
     walkMinutes: 9,
     gapMinutes: 10,
     risk: "tight",
-    detail: "This transition is possible but you may need to leave immediately.",
+    detail: "The gap is technically enough, but only if you pack up and leave the moment class ends. Any lingering — questions for the professor, a slow exit row — puts you late to discussion.",
   },
   {
     id: "t2",
@@ -275,7 +333,7 @@ transitionInsights: [
     walkMinutes: 18,
     gapMinutes: 30,
     risk: "safe",
-    detail: "You have enough buffer to get to work after discussion.",
+    detail: "The 30-minute window is comfortable. You have time to walk to UTC, grab water, and get settled before your shift begins.",
   },
 ],
 };

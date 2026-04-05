@@ -34,7 +34,7 @@ const PALETTE = [
   },
 ] as const;
 
-function parseTimeToMinutes(t: string): number {
+export function parseTimeToMinutes(t: string): number {
   const [timePart, period] = t.trim().split(" ");
   const [hStr, mStr] = timePart.split(":");
   let h = parseInt(hStr, 10);
@@ -44,7 +44,7 @@ function parseTimeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
-function parseDaysToCols(days: string): number[] {
+export function parseDaysToCols(days: string): number[] {
   const cols: number[] = [];
   let i = 0;
   while (i < days.length) {
@@ -71,7 +71,7 @@ function parseDaysToCols(days: string): number[] {
   return cols;
 }
 
-const COL_TO_DAY: Record<number, string> = {
+export const COL_TO_DAY: Record<number, string> = {
   0: "M",
   1: "Tu",
   2: "W",
@@ -79,7 +79,7 @@ const COL_TO_DAY: Record<number, string> = {
   4: "F",
 };
 
-function minutesToTimeStr(min: number): string {
+export function minutesToTimeStr(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   const period = h < 12 ? "AM" : "PM";
@@ -87,12 +87,16 @@ function minutesToTimeStr(min: number): string {
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-function removeDayFromString(days: string, colToRemove: number): string {
+export function minutesToTimeInput(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+}
+
+export function removeDayFromString(days: string, colToRemove: number): string {
   const remaining = parseDaysToCols(days).filter((c) => c !== colToRemove);
   return remaining.map((c) => COL_TO_DAY[c]).join("");
 }
 
-interface CourseBlock {
+export interface CourseBlock {
   kind: "course";
   meeting: SectionMeeting;
   color: (typeof PALETTE)[number];
@@ -105,7 +109,7 @@ interface CourseBlock {
   blockKey: string;
 }
 
-interface CommitmentBlock {
+export interface CommitmentBlock {
   kind: "commitment";
   commitment: ScheduleCommitment;
   blockKey: string;
@@ -123,6 +127,8 @@ export interface WeeklyCalendarProps {
   headerActions?: ReactNode;
   /** Hide the title row (e.g. when the parent already shows a schedule heading). */
   hideScheduleHeading?: boolean;
+  /** Called when a block is double-clicked — use to open an edit modal. */
+  onBlockDoubleClick?: (block: CourseBlock | CommitmentBlock) => void;
 }
 
 export function WeeklyCalendar({
@@ -133,6 +139,7 @@ export function WeeklyCalendar({
   className = "",
   headerActions,
   hideScheduleHeading = false,
+  onBlockDoubleClick,
 }: WeeklyCalendarProps) {
   const pxPerMin = pxPerHour / 60;
   const [dragKey, setDragKey] = useState<string | null>(null);
@@ -411,6 +418,7 @@ export function WeeklyCalendar({
                           draggable
                           onDragStart={(e) => handleDragStart(e, b.blockKey)}
                           onDragEnd={handleDragEnd}
+                          onDoubleClick={(e) => { e.stopPropagation(); onBlockDoubleClick?.(b); }}
                           className={`absolute inset-x-0.5 overflow-hidden rounded border ${b.color.border} ${b.color.bg} px-1 py-0.5
                           ${dragKey === b.blockKey ? "cursor-grabbing opacity-40" : "cursor-grab"}`}
                           style={{ top, height }}
@@ -418,7 +426,7 @@ export function WeeklyCalendar({
                           <p
                             className={`truncate text-[10px] font-bold leading-tight ${b.color.text}`}
                           >
-                            {b.courseCode}
+                            {b.courseCode}: {minutesToTimeStr(b.startMin)}–{minutesToTimeStr(b.endMin)}
                           </p>
                           {height >= 28 && (
                             <p className="truncate text-[9px] leading-tight text-hub-text-muted">
@@ -440,6 +448,7 @@ export function WeeklyCalendar({
                         draggable
                         onDragStart={(e) => handleDragStart(e, b.blockKey)}
                         onDragEnd={handleDragEnd}
+                        onDoubleClick={(e) => { e.stopPropagation(); onBlockDoubleClick?.(b); }}
                         className={`absolute inset-x-0.5 overflow-hidden rounded border px-1 py-0.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]
                           ${dragKey === b.blockKey ? "cursor-grabbing opacity-40" : "cursor-grab"}`}
                         style={{
@@ -457,7 +466,7 @@ export function WeeklyCalendar({
                         </p>
                         {height >= 30 && (
                           <p className="truncate text-[9px] leading-tight text-hub-text-muted">
-                            Personal
+                            {minutesToTimeStr(b.commitment.startMin)}–{minutesToTimeStr(b.commitment.endMin)}
                           </p>
                         )}
                       </div>

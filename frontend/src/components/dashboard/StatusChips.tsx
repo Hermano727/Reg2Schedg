@@ -1,10 +1,17 @@
 import type { StatusChipData } from "@/types/dossier";
 
-const toneClass: Record<StatusChipData["tone"], string> = {
-  cyan: "border-cyan-400/25 bg-cyan-400/10 text-cyan-200",
-  purple: "border-violet-400/25 bg-violet-400/10 text-violet-200",
-  green: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
-  muted: "border-white/[0.08] bg-white/[0.04] text-hub-text-secondary",
+const dotClass: Record<StatusChipData["tone"], string> = {
+  cyan: "bg-cyan-400",
+  purple: "bg-violet-400",
+  green: "bg-emerald-400",
+  muted: "bg-white/25",
+};
+
+const textClass: Record<StatusChipData["tone"], string> = {
+  cyan: "text-hub-text-secondary",
+  purple: "text-hub-text-secondary",
+  green: "text-hub-text-secondary",
+  muted: "text-hub-text-muted",
 };
 
 type StatusChipsProps = {
@@ -12,15 +19,15 @@ type StatusChipsProps = {
 };
 
 export function StatusChips({ chips }: StatusChipsProps) {
+  if (chips.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-2">
+    <ul className="flex flex-col gap-1.5">
       {chips.map((c) => (
-        <li key={c.id}>
+        <li key={c.id} className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${toneClass[c.tone]}`}
-          >
-            {c.label}
-          </span>
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass[c.tone]}`}
+          />
+          <span className={`text-sm ${textClass[c.tone]}`}>{c.label}</span>
         </li>
       ))}
     </ul>

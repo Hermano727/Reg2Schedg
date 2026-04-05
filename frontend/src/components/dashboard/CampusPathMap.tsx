@@ -31,6 +31,15 @@ const CampusPathLeafletMap = dynamic(
   },
 );
 
+function fmt12(hhmm: string): string {
+  const [hStr, mStr] = hhmm.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr ?? "0", 10);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 function getGoogleMapsUrl(locationName: string) {
   const query = `${locationName}, UC San Diego`;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
@@ -98,7 +107,14 @@ export function CampusPathMap({
                 <p className="text-sm font-semibold text-hub-text">
                   {index + 1}. {item.title}
                 </p>
-                <p className="text-xs text-hub-text-muted">{item.location}</p>
+                {item.location && (
+                  <p className="text-xs text-hub-text-muted">{item.location}</p>
+                )}
+                {item.start && item.end && (
+                  <p className="mt-0.5 text-xs text-hub-cyan">
+                    {fmt12(item.start)} – {fmt12(item.end)}
+                  </p>
+                )}
                 <a
                   href={getGoogleMapsUrl(item.location ?? item.title)}
                   target="_blank"

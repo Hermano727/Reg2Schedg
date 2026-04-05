@@ -29,8 +29,8 @@ export function EvaluatorFooter({ evaluation }: EvaluatorFooterProps) {
           quarter.
         </p>
       </div>
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-stretch">
-        <div className="flex flex-1 items-center justify-center border-b border-white/[0.06] pb-6 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex items-center justify-center border-b border-white/[0.06] pb-6 lg:w-[300px] lg:shrink-0 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6">
           <FitnessDial evaluation={evaluation} />
         </div>
         <div className="flex-1">

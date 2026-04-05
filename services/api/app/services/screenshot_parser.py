@@ -1,17 +1,12 @@
-import os
-
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from app.config import settings
 from app.models.course_parse import ParseScreenshotResponse
 
 
-load_dotenv()
-
-
 def resolve_gemini_api_key() -> str:
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = getattr(settings, "gemini_api_key", None)
     if not api_key:
         raise RuntimeError("Missing GEMINI_API_KEY in your environment or .env file.")
     return api_key

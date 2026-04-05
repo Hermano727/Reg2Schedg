@@ -22,7 +22,7 @@ export function EvaluatorFooter({ evaluation }: EvaluatorFooterProps) {
     <section className="mt-8 rounded-xl border border-white/[0.08] bg-hub-surface/95 p-4">
       <div className="mb-4 border-b border-white/[0.06] pb-3">
         <h2 className="font-[family-name:var(--font-outfit)] text-base font-semibold text-hub-text">
-          Schedule doctor
+          Schedule Evaluation
         </h2>
         <p className="mt-1 text-sm text-hub-text-secondary">
           Combined commute, employment hours, and density alerts for this

@@ -8,22 +8,14 @@ type TritonMarkProps = {
   size?: number;
 };
 
-function TridentGlyph({ className }: { className?: string }) {
+function IconImage({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
+    <img
+      src="/images/web2schedg_icon.png"
+      alt="Reg2Schedg"
       className={className}
       aria-hidden
-    >
-      <path
-        d="M12 2v20M12 2c-2.5 3-4 6.2-4 9.5a4 4 0 008 0c0-3.3-1.5-6.5-4-9.5M7 8.5h3.5M13.5 8.5H17"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    />
   );
 }
 
@@ -50,7 +42,7 @@ export function TritonMark({
       }
       aria-hidden
     >
-      <TridentGlyph className="h-[55%] w-[55%]" />
+      <IconImage className="h-[55%] w-[55%] object-contain" />
     </motion.div>
   );
 }

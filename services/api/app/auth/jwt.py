@@ -19,6 +19,7 @@ def _get_jwks_client() -> PyJWKClient:
 
 
 def verify_access_token(token: str) -> str:
+    from app.config import settings
     if not settings.supabase_jwt_secret:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

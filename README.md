@@ -1,4 +1,4 @@
-# TritonHub
+# Reg2Schedg
 
 Monorepo: **Next.js app** in [`frontend/`](frontend/), **Python services** in [`services/`](services/), **database migrations** in [`supabase/`](supabase/).
 

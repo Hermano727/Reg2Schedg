@@ -22,9 +22,17 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TritonHub — Command Center",
+  title: "Reg2Schedg",
   description:
     "UCSD academic schedule planner: upload your WebReg schedule, explore course evaluations, and plan your quarter.",
+  icons: {
+    icon: [
+      { url: "/images/web2schedg_icon.png", sizes: "64x64", type: "image/png" },
+      { url: "/images/web2schedg_icon.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/images/web2schedg_icon.png",
+    apple: "/images/web2schedg_icon.png",
+  },
 };
 
 export default function RootLayout({

@@ -129,7 +129,7 @@ export function AuthForm({ intent }: AuthFormProps) {
         <p className="text-sm font-medium text-hub-text">Sign in with Google or GitHub</p>
         <p className="mt-1 text-xs leading-relaxed text-hub-text-muted">
           If you are new here, completing Google or GitHub sign-in{" "}
-          <span className="text-hub-text-secondary">creates your TritonHub account</span>{" "}
+          <span className="text-hub-text-secondary">creates your Reg2Schedg account</span>{" "}
           automatically. That is separate from email and password below, which only work
           after you have created a password on the Create account page.
         </p>
@@ -140,7 +140,7 @@ export function AuthForm({ intent }: AuthFormProps) {
         <p className="mt-1 text-xs leading-relaxed text-hub-text-muted">
           Your first successful sign-in with Google or GitHub{" "}
           <span className="text-hub-text-secondary">registers your account</span>. If you
-          already use TritonHub with that provider, you will just be signed in.
+          already use Reg2Schedg with that provider, you will just be signed in.
         </p>
       </>
     );

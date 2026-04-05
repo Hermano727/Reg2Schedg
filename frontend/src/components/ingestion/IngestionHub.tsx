@@ -156,7 +156,7 @@ export function IngestionHub({
               </button>
             </div>
             <img
-              src="/images/print-schedule-help.png"
+              src="/images/print_schedule_help.png"
               alt="Screenshot showing the WebReg print flow to save your schedule as a PDF"
               className="w-full rounded-lg border border-white/[0.08]"
             />

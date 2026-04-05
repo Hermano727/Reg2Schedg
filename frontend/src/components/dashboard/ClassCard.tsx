@@ -99,7 +99,7 @@ export function ClassCard({ dossier }: ClassCardProps) {
           <div className="space-y-3">
             <div className="rounded-xl border border-white/[0.06] bg-hub-bg/35 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-cyan">
-                TL;DR
+                Information
               </p>
               <p className="mt-2 text-sm leading-relaxed text-hub-text-secondary">
                 {dossier.tldr}
@@ -107,7 +107,7 @@ export function ClassCard({ dossier }: ClassCardProps) {
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-hub-text-muted">
-                Action items
+                Logistics
               </p>
               <ul className="mt-2 list-inside list-disc space-y-1.5 text-sm text-hub-text-secondary">
                 {dossier.condensedSummary.map((line, i) => (

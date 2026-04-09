@@ -110,6 +110,7 @@ async def research_course(
     index: int,
     total: int,
     progress: Callable[[str], None] | None = None,
+    force_refresh: bool = False,
 ) -> CourseResearchResult:
     label = entry.course_code if not entry.professor_name else f"{entry.course_code} / {entry.professor_name}"
     cache_error: str | None = None
@@ -152,7 +153,7 @@ async def research_course(
         if progress:
             progress(f"[{index}/{total}] Cache lookup failed for {label}: {exc}")
 
-    if cache_row is not None:
+    if cache_row is not None and not force_refresh:
         try:
             cached_logistics = CourseLogistics.model_validate(cache_row.logistics)
             if progress:
@@ -247,6 +248,7 @@ async def research_courses(
     model: str = "claude-sonnet-4.6",
     concurrency: int = 0,
     progress: Callable[[str], None] | None = None,
+    force_refresh: bool = False,
 ) -> BatchResearchResponse:
     if concurrency < 0:
         raise RuntimeError("Concurrency must be 0 or greater.")
@@ -269,6 +271,7 @@ async def research_courses(
             index=index,
             total=len(unique_entries),
             progress=progress,
+            force_refresh=force_refresh,
         )
         for index, entry in enumerate(unique_entries, start=1)
     ]

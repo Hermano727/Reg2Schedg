@@ -34,8 +34,8 @@ export function ExamsPanel({ classes }: { classes: ClassDossier[] }) {
     <section className="rounded-xl border border-white/[0.08] bg-hub-surface/90 px-4 py-3 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <GraduationCap className="h-4 w-4 text-hub-gold" aria-hidden />
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-hub-text-muted">
-          Exam Logistics
+        <h2 className="text-xs font-semibold text-hub-text-muted">
+          Exam logistics
         </h2>
       </div>
       <div className="divide-y divide-white/[0.05]">

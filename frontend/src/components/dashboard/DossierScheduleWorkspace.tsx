@@ -316,7 +316,12 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
         <div ref={calendarRef} className={mainTab === "dossier" ? "hidden" : ""}>
           {calendarNode(78, calendarHeaderActions ? <>{defaultCalendarActions}{calendarHeaderActions}</> : defaultCalendarActions)}
         </div>
-        <div className={`grid gap-4 sm:grid-cols-2 ${mainTab === "schedule" ? "hidden" : ""}`}>
+        <motion.div
+          className={`grid gap-4 sm:grid-cols-2 ${mainTab === "schedule" ? "hidden" : ""}`}
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } } }}
+        >
           {classes.map((c, idx) => (
             <ClassCard
               key={c.id} dossier={c}
@@ -328,7 +333,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
               onOpenDashboard={() => setDashboardOpenIndex(idx)}
             />
           ))}
-        </div>
+        </motion.div>
         {scheduleItems.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -353,7 +358,12 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
 
         <div className="grid grid-cols-2 gap-8 items-start">
           {/* Left: ClassCard list */}
-          <div className="space-y-3 pr-1">
+          <motion.div
+            className="space-y-3 pr-1"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } } }}
+          >
             {classes.map((c, idx) => (
               <ClassCard
                 key={c.id} dossier={c}
@@ -365,7 +375,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                 onOpenDashboard={() => setDashboardOpenIndex(idx)}
               />
             ))}
-          </div>
+          </motion.div>
 
           {/* Right: sticky map + calendar */}
           <div className="sticky top-4 space-y-4 overflow-y-auto hub-scroll" style={{ maxHeight: "calc(100vh - 6rem)" }}>

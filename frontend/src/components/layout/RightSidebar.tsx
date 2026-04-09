@@ -62,7 +62,7 @@ export function RightSidebar({
       )}
 
       <div className="border-b border-white/[0.06] p-4">
-        <p className="font-[family-name:var(--font-outfit)] text-xs font-semibold uppercase tracking-[0.14em] text-hub-text-muted">
+        <p className="font-[family-name:var(--font-outfit)] text-xs font-semibold text-hub-text-muted">
           {planSectionTitle}
         </p>
         <ul className="mt-3 space-y-1">
@@ -135,8 +135,8 @@ export function RightSidebar({
       <div className="flex min-h-0 flex-1 flex-col p-4">
         <div className="flex items-center gap-2">
           <FolderOpen className="h-4 w-4 text-hub-cyan" aria-hidden />
-          <p className="font-[family-name:var(--font-outfit)] text-xs font-semibold uppercase tracking-[0.14em] text-hub-text-muted">
-            Saved Files
+          <p className="font-[family-name:var(--font-outfit)] text-xs font-semibold text-hub-text-muted">
+            Saved files
           </p>
         </div>
         <p className="mt-1 text-[11px] leading-relaxed text-hub-text-muted">

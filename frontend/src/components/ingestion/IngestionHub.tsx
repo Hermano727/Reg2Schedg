@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, HelpCircle, Upload, X } from "lucide-react";
 import { DropZone } from "@/components/ingestion/DropZone";
-import { ManualResearchForm } from "@/components/ingestion/ManualResearchForm";
 
 type IngestionHubProps = {
   phase: "idle" | "processing" | "dashboard";
@@ -125,9 +124,8 @@ export function IngestionHub({
         ) : null}
       </div>
 
-      <motion.div layout className="space-y-4">
+      <motion.div layout>
         <DropZone onFilesSelected={onFilesSelected} disabled={busy} />
-        <ManualResearchForm onSubmitResearch={onManualSubmit} disabled={busy} />
       </motion.div>
 
       {helpOpen && (

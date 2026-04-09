@@ -27,11 +27,11 @@ export const metadata: Metadata = {
     "UCSD academic schedule planner: upload your WebReg schedule, explore course evaluations, and plan your quarter.",
   icons: {
     icon: [
-      { url: "/images/web2schedg_icon.png", sizes: "64x64", type: "image/png" },
-      { url: "/images/web2schedg_icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/images/reg2schedg_64x64icon.png", sizes: "64x64", type: "image/png" },
+      { url: "/images/reg2schedg_64x64icon.png", sizes: "32x32", type: "image/png" },
     ],
-    shortcut: "/images/web2schedg_icon.png",
-    apple: "/images/web2schedg_icon.png",
+    shortcut: "/images/reg2schedg_64x64icon.png",
+    apple: "/images/reg2schedg_64x64icon.png",
   },
 };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Clipboard, FileCode, FileImage, FileText, Upload } from "lucide-react";
 
 type DropZoneProps = {
@@ -8,8 +9,11 @@ type DropZoneProps = {
   disabled?: boolean;
 };
 
+const DROP_ICONS = [FileCode, FileText, FileImage] as const;
+
 export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
   const [dragActive, setDragActive] = useState(false);
+  const reduce = useReducedMotion();
 
   const handleFiles = useCallback(
     (list: FileList | null) => {
@@ -88,10 +92,19 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
         onChange={(e) => handleFiles(e.target.files)}
       />
       <div className="flex flex-col items-center text-center">
-        <div className="mb-4 flex gap-3 text-hub-text-muted">
-          <FileCode className="h-6 w-6" aria-hidden />
-          <FileText className="h-6 w-6" aria-hidden />
-          <FileImage className="h-6 w-6" aria-hidden />
+        <div className="mb-4 flex gap-3">
+          {DROP_ICONS.map((Icon, i) => (
+            <motion.div
+              key={i}
+              animate={!reduce && dragActive
+                ? { y: -4, scale: 1.2, transition: { duration: 0.2, delay: i * 0.06, ease: "easeOut" } }
+                : { y: 0, scale: 1, transition: { duration: 0.2, ease: "easeOut" } }
+              }
+              className={`transition-colors duration-200 ${dragActive ? "text-hub-cyan" : "text-hub-text-muted"}`}
+            >
+              <Icon className="h-6 w-6" aria-hidden />
+            </motion.div>
+          ))}
         </div>
         <p className="font-[family-name:var(--font-outfit)] text-base font-semibold text-hub-text">
           Attach your WebReg schedule or syllabi

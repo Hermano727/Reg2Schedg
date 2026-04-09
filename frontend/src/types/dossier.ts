@@ -59,7 +59,7 @@ export interface ScheduleCommitment {
 export interface EvidenceItem {
   source: string;
   content: string;
-  url: string;
+  url?: string | null;
   relevance_score: number;
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   BookOpen,
+  ChevronRight,
   ExternalLink,
   Info,
   RotateCcw,
@@ -91,13 +92,13 @@ function AttributeChips({ logistics }: { logistics: CourseLogistics | undefined 
     <div className="space-y-1">
       {payments.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="w-16 shrink-0 text-[9px] font-semibold uppercase tracking-wider text-hub-text-muted">Payments</span>
+          <span className="w-16 shrink-0 text-[9px] font-medium text-hub-text-muted/60">Payments</span>
           {payments.map((c) => <Chip key={c.label} chip={c} />)}
         </div>
       )}
       {attendance.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="w-20 shrink-0 text-[9px] font-semibold uppercase tracking-wider text-hub-text-muted">Attendance</span>
+          <span className="w-20 shrink-0 text-[9px] font-medium text-hub-text-muted/60">Attendance</span>
           {attendance.map((c) => <Chip key={c.label} chip={c} />)}
         </div>
       )}
@@ -110,7 +111,7 @@ function SourceCard({ quote }: { quote: { id: string; source: string; text: stri
   return (
     <blockquote className="rounded-xl border border-white/[0.06] bg-hub-bg/30 p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-hub-text-muted">
+        <p className="text-[10px] font-medium text-hub-text-muted/70">
           {quote.source}
         </p>
       </div>
@@ -163,7 +164,7 @@ function EvidenceCard({ item }: { item: EvidenceItem }) {
   return (
     <blockquote className="rounded-xl border border-white/[0.06] bg-hub-bg/30 p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className={`text-[10px] font-semibold uppercase tracking-wide ${sourceColor(item.source)}`}>
+        <p className={`text-[10px] font-semibold ${sourceColor(item.source)}`}>
           {item.source}
         </p>
         {item.url && (
@@ -217,12 +218,12 @@ function GradeBreakdownStrip({ breakdown }: { breakdown: string | null | undefin
 
   return (
     <div className="rounded-lg border border-white/[0.06] bg-hub-bg/20 px-3 py-2">
-      <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-hub-text-muted">
+      <p className="mb-1.5 text-[9px] font-medium text-hub-text-muted/70">
         Grading
       </p>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {segments.map((seg, i) => (
-          <span key={i} className="text-[11px] text-hub-text-secondary">
+          <span key={i} className="text-xs text-hub-text-secondary">
             {seg}
           </span>
         ))}
@@ -238,10 +239,10 @@ function InlineQuote({ item }: { item: EvidenceItem }) {
 
   return (
     <div className="flex items-start gap-2 rounded-lg border border-white/[0.05] bg-hub-bg/20 px-2.5 py-2">
-      <span className={`mt-px text-[10px] font-bold ${sourceColor(item.source)}`}>
+      <span className={`mt-px text-xs font-bold ${sourceColor(item.source)}`}>
         &ldquo;
       </span>
-      <p className="flex-1 text-[11px] leading-relaxed text-hub-text-secondary">
+      <p className="flex-1 text-xs leading-relaxed text-hub-text-secondary">
         {sanitizeDashes(truncated)}
       </p>
       {item.url && (
@@ -391,15 +392,21 @@ export function ClassCard({
 
   const confColor = confidenceColor(dossier.confidencePercent);
   const confGlow = confidenceGlow(dossier.confidencePercent);
+  const reduce = useReducedMotion();
 
   return (
     <>
       <motion.article
         layout
+        variants={reduce ? undefined : {
+          hidden: { opacity: 0, y: 10 },
+          visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
+        }}
+        whileHover={reduce ? undefined : { y: -2, transition: { duration: 0.15, ease: "easeOut" } }}
         onMouseEnter={onHover}
         onMouseLeave={onHoverEnd}
         onClick={onSelect}
-        className={`rounded-xl border bg-hub-surface/90 p-4 shadow-sm transition-all duration-200 cursor-pointer
+        className={`rounded-xl border bg-hub-surface/90 p-4 shadow-sm transition-colors duration-200 cursor-pointer
           ${
             isSelected
               ? "border-hub-cyan/60 shadow-[0_0_0_1px_rgba(0,212,255,0.12),0_8px_32px_rgba(0,212,255,0.08)]"
@@ -410,10 +417,7 @@ export function ClassCard({
         <header className="border-b border-white/[0.06] pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-hub-text">
-                Course
-              </p>
-              <h3 className="mt-0.5 flex flex-wrap items-baseline gap-1.5 font-[family-name:var(--font-outfit)] text-base font-semibold tracking-tight text-hub-text">
+              <h3 className="flex flex-wrap items-baseline gap-1.5 font-[family-name:var(--font-outfit)] text-base font-semibold tracking-tight text-hub-text">
                 {dossier.courseCode}
                 {markerIndex != null ? (
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-hub-cyan/40 bg-hub-cyan/10 text-[10px] font-bold text-hub-cyan leading-none">
@@ -432,7 +436,7 @@ export function ClassCard({
                 <span className="flex h-6 w-6 items-center justify-center rounded-full border border-white/[0.1] bg-hub-bg/50 text-[10px] font-semibold text-hub-cyan">
                   {dossier.professorInitials}
                 </span>
-                <span className="text-xs text-hub-text-secondary">
+                <span className="text-sm text-hub-text-secondary">
                   {dossier.professorName}
                 </span>
               </div>
@@ -452,9 +456,10 @@ export function ClassCard({
                     e.stopPropagation();
                     onOpenDashboard?.();
                   }}
-                  className="flex items-center gap-1.5 rounded-lg border border-hub-cyan/30 bg-hub-cyan/10 px-3 py-1.5 text-xs font-semibold text-hub-cyan transition hover:bg-hub-cyan/20 hover:border-hub-cyan/50"
+                  className="flex items-center gap-1 rounded-lg border border-hub-cyan/30 bg-hub-cyan/10 px-3 py-1.5 text-xs font-semibold text-hub-cyan transition hover:bg-hub-cyan/20 hover:border-hub-cyan/50"
                 >
                   Course Details
+                  <ChevronRight className="h-3 w-3" aria-hidden />
                 </button>
               </div>
             </div>
@@ -476,7 +481,7 @@ export function ClassCard({
                       {rmp.rating.toFixed(1)}
                     </span>
                   </div>
-                  <span className="text-[9px] uppercase tracking-wide text-hub-text-muted">Rating</span>
+                  <span className="text-[10px] text-hub-text-muted/70">Rating</span>
                 </div>
               )}
               {hasRmp && rmp.difficulty != null && (
@@ -489,7 +494,7 @@ export function ClassCard({
                         {rmp.difficulty.toFixed(1)}
                       </span>
                     </div>
-                    <span className="text-[9px] uppercase tracking-wide text-hub-text-muted">Difficulty</span>
+                    <span className="text-[10px] text-hub-text-muted/70">Difficulty</span>
                   </div>
                 </>
               )}
@@ -503,7 +508,7 @@ export function ClassCard({
                         {Math.round(rmp.would_take_again_percent)}%
                       </span>
                     </div>
-                    <span className="text-[9px] uppercase tracking-wide text-hub-text-muted">Retake</span>
+                    <span className="text-[10px] text-hub-text-muted/70">Retake</span>
                   </div>
                 </>
               )}
@@ -514,7 +519,7 @@ export function ClassCard({
                     <span className="text-base font-bold text-hub-cyan tabular-nums">
                       {sunsetSummary.average_gpa}
                     </span>
-                    <span className="text-[9px] uppercase tracking-wide text-hub-text-muted">
+                    <span className="text-[10px] text-hub-text-muted/70">
                       {dossier.sunsetGradeDistribution?.is_cross_course_fallback ? "Other GPA*" : "Avg GPA"}
                     </span>
                   </div>
@@ -554,7 +559,7 @@ export function ClassCard({
 
           {/* TLDR / student sentiment */}
           {dossier.tldr && (
-            <p className="text-xs leading-relaxed text-hub-text-secondary line-clamp-2">
+            <p className="text-[13px] leading-relaxed text-hub-text-secondary line-clamp-2">
               {dossier.tldr}
             </p>
           )}

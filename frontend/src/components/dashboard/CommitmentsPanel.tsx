@@ -11,7 +11,7 @@ export function CommitmentsPanel({ commitments, onRemove }: Props) {
   if (commitments.length === 0) return null;
   return (
     <div className="rounded-lg border border-white/[0.06] bg-hub-bg/25 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-hub-text-muted">
+      <p className="text-[10px] font-medium text-hub-text-muted/70">
         Your blocks
       </p>
       <ul className="mt-2 space-y-1.5">

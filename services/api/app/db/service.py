@@ -21,14 +21,31 @@ def normalize_professor_name(professor_name: str | None) -> str:
     return " ".join((professor_name or "").upper().split())
 
 
-def search_campus_building_by_name(client: Client, raw_location: str) -> dict[str, Any] | None:
+def search_campus_building(client: Client, raw_location: str) -> dict[str, Any] | None:
     """
-    Search campus_buildings by display_name or aliases for locations that don't
-    match a known building code (e.g. 'Peterson Hall 110').
-    Tries each whitespace-delimited token from the raw location string.
+    Search campus_buildings table for a building matching the raw location string.
+
+    Resolution order:
+      1. Exact code match (e.g. 'CENTR', 'WLH')
+      2. display_name ILIKE match, tried token-by-token (e.g. 'Peterson Hall 110')
     """
     import re
-    tokens = re.sub(r"[^\w\s]", "", raw_location.upper()).split()
+    normalized = re.sub(r"[^\w\s]", "", raw_location.upper()).strip()
+    tokens = normalized.split()
+
+    # 1. Exact code match on each token (building codes are short uppercase strings)
+    for token in tokens:
+        resp = (
+            client.table("campus_buildings")
+            .select("code,display_name,lat,lng")
+            .eq("code", token)
+            .limit(1)
+            .execute()
+        )
+        if resp.data:
+            return resp.data[0]
+
+    # 2. display_name ILIKE match, token-by-token (skip short tokens)
     for token in tokens:
         if len(token) < 4:
             continue
@@ -41,7 +58,13 @@ def search_campus_building_by_name(client: Client, raw_location: str) -> dict[st
         )
         if resp.data:
             return resp.data[0]
+
     return None
+
+
+# Keep old name as alias for any callers not yet updated
+def search_campus_building_by_name(client: Client, raw_location: str) -> dict[str, Any] | None:
+    return search_campus_building(client, raw_location)
 
 
 def insert_saved_plan(client: Client, user_id: str, body: SavedPlanCreate) -> dict[str, Any]:

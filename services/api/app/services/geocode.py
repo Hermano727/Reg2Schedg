@@ -2,8 +2,8 @@
 UCSD geocoding service.
 
 Resolution order:
-  1. Static UCSD building table — exact code / alias match (no I/O, fastest)
-  2. Supabase `campus_buildings` — display-name / alias search (DB lookup)
+  1. Supabase `campus_buildings` — code / display-name search (single source of truth)
+  2. Static UCSD building table — offline fallback if Supabase is unreachable
   3. Google Maps Text Search (if GOOGLE_MAPS_API_KEY is set in env)
 
 Returns None for locations that cannot be resolved.
@@ -57,7 +57,7 @@ UCSD_BUILDINGS: dict[str, dict[str, Any]] = {
     "UREY":   {"display": "Urey Hall",                      "lat": 32.87514, "lng": -117.23784},
     "BONNER": {"display": "Bonner Hall",                    "lat": 32.87438, "lng": -117.23861},
     "SKAGGS": {"display": "Skaggs School of Pharmacy",      "lat": 32.87459, "lng": -117.23830},
-    "CSB":    {"display": "Cognitive Science Building",     "lat": 32.87850, "lng": -117.23437},
+    "CSB":    {"display": "Cognitive Science Building",     "lat": 32.880264, "lng": -117.239228},
     "BIOMED": {"display": "Biomedical Sciences Building",   "lat": 32.87385, "lng": -117.23745},
 
     # Social sciences / humanities
@@ -160,13 +160,13 @@ def _lookup_static(building_code: str) -> GeocodedLocation | None:
 
 def _lookup_supabase(raw_location: str) -> GeocodedLocation | None:
     """
-    Query the `campus_buildings` Supabase table when the static dict misses.
-    Searches by display_name (ILIKE) so full names like 'Peterson Hall 110' resolve correctly.
+    Query the `campus_buildings` Supabase table.
+    Tries exact code match first, then display_name ILIKE.
     """
     try:
         from app.db.client import get_supabase_client
-        from app.db.service import search_campus_building_by_name
-        row = search_campus_building_by_name(get_supabase_client(), raw_location)
+        from app.db.service import search_campus_building
+        row = search_campus_building(get_supabase_client(), raw_location)
         if row:
             logger.info(
                 "[geocode] supabase hit  raw=%r → code=%s display=%r (%.5f, %.5f)",
@@ -230,8 +230,8 @@ def geocode_location(raw_location: str) -> GeocodedLocation | None:
     Resolve a raw location string to geographic coordinates.
 
     Resolution order:
-      1. Static UCSD building table — exact code / alias match (no I/O)
-      2. Supabase `campus_buildings` — display-name search
+      1. Supabase `campus_buildings` — single source of truth; code + display-name search
+      2. Static UCSD building table — offline fallback if Supabase is unreachable
       3. Google Maps Text Search (if GOOGLE_MAPS_API_KEY env var is set)
 
     Returns None if the location cannot be resolved.
@@ -241,24 +241,24 @@ def geocode_location(raw_location: str) -> GeocodedLocation | None:
 
     normalized = normalize_location(raw_location)
 
-    # 1. Static table (fast, no I/O)
+    # 1. Supabase campus_buildings (primary source of truth)
+    result = _lookup_supabase(raw_location)
+    if result:
+        return result
+
+    # 2. Static table (offline fallback — no I/O)
     building_code = _extract_building_code(normalized)
     if building_code:
         result = _lookup_static(building_code)
         if result:
             logger.info(
-                "[geocode] static hit   raw=%r → code=%s (%.5f, %.5f)",
+                "[geocode] static hit   raw=%r → code=%s (%.5f, %.5f) [fallback]",
                 raw_location, building_code, result.lat, result.lng,
             )
             return result
         logger.info("[geocode] static miss  raw=%r — extracted code=%r not in table", raw_location, building_code)
     else:
         logger.info("[geocode] static miss  raw=%r — no building code extracted (normalized=%r)", raw_location, normalized)
-
-    # 2. Supabase campus_buildings (display-name / alias search)
-    result = _lookup_supabase(raw_location)
-    if result:
-        return result
 
     # 3. Google Maps Text Search
     result = _lookup_google(raw_location)

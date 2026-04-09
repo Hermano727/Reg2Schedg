@@ -98,11 +98,16 @@ export async function analyzeFit(results: CourseResearchResult[]): Promise<FitAn
 
 export async function researchScreenshot(
   file: File,
+  { forceRefresh = false }: { forceRefresh?: boolean } = {},
 ): Promise<BatchResearchResponse> {
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch("http://localhost:8000/api/research-screenshot", {
+  const url = forceRefresh
+    ? "http://localhost:8000/api/research-screenshot?force_refresh=true"
+    : "http://localhost:8000/api/research-screenshot";
+
+  const res = await fetch(url, {
     method: "POST",
     body: form,
   });

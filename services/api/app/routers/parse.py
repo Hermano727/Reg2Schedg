@@ -21,6 +21,7 @@ async def research_screenshot(
     file: UploadFile,
     model: str = "claude-sonnet-4.6",
     concurrency: int = 0,
+    force_refresh: bool = False,
 ) -> BatchResearchResponse:
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File must be an image")
@@ -34,4 +35,5 @@ async def research_screenshot(
         input_source="image",
         model=model,
         concurrency=concurrency,
+        force_refresh=force_refresh,
     )

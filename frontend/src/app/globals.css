@@ -39,6 +39,14 @@ body {
   background-color: var(--hub-bg);
   color: var(--hub-text);
   font-family: var(--font-sans);
+  /* Tuned for light-on-dark legibility: slightly more generous than the 1.5 default */
+  line-height: 1.55;
+  font-kerning: normal;
+}
+
+/* Prevent widows and orphans in flowing text */
+p {
+  text-wrap: pretty;
 }
 
 /* ── Custom thin scrollbar for hub columns ── */
@@ -301,4 +309,17 @@ body {
 .glass-panel .font-semibold.uppercase.tracking-wider,
 .glass-panel .font-semibold.uppercase.tracking-widest {
   color: var(--hub-text) !important;
+}
+
+/* ── Subtle grain noise overlay for depth ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 250px 250px;
+  opacity: 0.022;
+  mix-blend-mode: overlay;
 }

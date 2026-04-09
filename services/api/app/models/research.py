@@ -35,12 +35,12 @@ class EvidenceItem(BaseModel):
         ...,
         description="Verbatim quote extracted from the source — do NOT paraphrase",
     )
-    url: str = Field(
-        ...,
+    url: str | None = Field(
+        default=None,
         description="Direct permalink URL to the specific post, comment, or page section",
     )
     relevance_score: float = Field(
-        ...,
+        default=0.5,
         description="0.0 to 1.0 — how directly relevant this quote is to the course",
     )
 

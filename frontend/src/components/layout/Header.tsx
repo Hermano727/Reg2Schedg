@@ -17,9 +17,12 @@ export function Header({ user }: HeaderProps) {
         href="/"
         className="flex min-w-0 items-center gap-3 rounded-lg outline-none ring-hub-cyan/40 focus-visible:ring-2"
       >
-        <TritonMark size={36} />
+        {/* Icon container lifts the logo off the glass navbar surface */}
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-white/[0.12] bg-hub-surface shadow-[0_0_14px_rgba(0,212,255,0.10),inset_0_1px_0_rgba(255,255,255,0.07)]">
+          <TritonMark size={30} />
+        </div>
         <div className="min-w-0">
-          <p className="font-[family-name:var(--font-outfit)] text-sm font-semibold tracking-tight text-hub-text">
+          <p className="font-[family-name:var(--font-outfit)] text-base font-bold tracking-tight text-hub-text">
             Reg2Schedg
           </p>
         </div>

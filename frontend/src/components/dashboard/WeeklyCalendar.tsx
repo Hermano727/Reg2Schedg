@@ -358,7 +358,7 @@ export function WeeklyCalendar({
       {!hideScheduleHeading || headerActions ? (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
           {!hideScheduleHeading ? (
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-hub-text-muted">
+            <h2 className="text-xs font-semibold text-hub-text-muted">
               Weekly schedule
             </h2>
           ) : (

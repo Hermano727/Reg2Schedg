@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -95,6 +95,7 @@ const GRADE_GROUPS = [
 ];
 
 function GradeHistogram({ gradeCounts, sampleSize }: { gradeCounts: Record<string, number>; sampleSize: number }) {
+  const reduce = useReducedMotion();
   const segs = GRADE_ORDER
     .map((g) => ({ grade: g, count: gradeCounts[g] ?? 0, color: GRADE_COLORS[g] ?? "#64748b" }))
     .filter((s) => s.count > 0);
@@ -117,10 +118,18 @@ function GradeHistogram({ gradeCounts, sampleSize }: { gradeCounts: Record<strin
         const pct = Math.round((seg.count / sampleSize) * 100);
         return (
           <g key={seg.grade}>
-            <rect x={x} y={barY} width={BAR_W} height={barH}
-              fill={seg.color} fillOpacity={0.8} rx={3}>
+            <motion.rect
+              x={x}
+              width={BAR_W}
+              fill={seg.color}
+              fillOpacity={0.8}
+              rx={3}
+              initial={reduce ? undefined : { height: 0, y: BAR_H }}
+              animate={{ height: barH, y: barY }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.1 + i * 0.025 }}
+            >
               <title>{seg.grade}: {pct}% ({seg.count} students)</title>
-            </rect>
+            </motion.rect>
             <text x={x + BAR_W / 2} y={svgH - 2} textAnchor="middle"
               fontSize={8} fill="rgba(148,163,184,0.85)">{seg.grade}</text>
           </g>
@@ -140,7 +149,7 @@ function Section({ label, accent, children, className = "" }: {
 }) {
   return (
     <div className={`flex flex-col rounded-xl border border-white/[0.07] bg-[#0d1b2e] p-4 ${className}`}>
-      <p className={`mb-3 text-[9px] font-bold uppercase tracking-[0.15em] ${accent ?? "text-hub-text-muted"}`}>
+      <p className={`mb-3 text-[10px] font-semibold tracking-wide ${accent ?? "text-hub-text-muted"}`}>
         {label}
       </p>
       {children}
@@ -158,7 +167,7 @@ function RmpStat({ icon, value, label }: { icon: React.ReactNode; value: string;
         <p className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold tabular-nums text-hub-text leading-none">
           {value}
         </p>
-        <p className="text-[9px] uppercase tracking-wide text-hub-text-muted mt-0.5">{label}</p>
+        <p className="text-[9px] text-hub-text-muted/70 mt-0.5">{label}</p>
       </div>
     </div>
   );
@@ -173,7 +182,7 @@ function EvidenceEntry({ item }: { item: EvidenceItem }) {
   return (
     <div className={`rounded-lg border p-3 ${sourceBg(item.source)}`}>
       <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span className={`text-[9px] font-bold uppercase tracking-wider ${sourceColor(item.source)}`}>
+        <span className={`text-[9px] font-semibold ${sourceColor(item.source)}`}>
           {item.source}
         </span>
         {item.url && (
@@ -184,7 +193,7 @@ function EvidenceEntry({ item }: { item: EvidenceItem }) {
           </a>
         )}
       </div>
-      <p className="text-[11px] leading-relaxed text-hub-text-secondary italic">
+      <p className="text-xs leading-relaxed text-hub-text-secondary italic">
         &ldquo;{sanitizeDashes(truncated)}&rdquo;
       </p>
       <div className="mt-2 h-px w-full rounded-full bg-white/[0.04]">
@@ -296,6 +305,7 @@ export function DossierDashboardModal({ dossiers, openIndex, onClose, onNavigate
               index={openIndex!}
               total={total}
               onClose={onClose}
+              onNavigate={onNavigate}
             />
           </motion.div>
         </motion.div>
@@ -311,12 +321,15 @@ function DashboardContent({
   index,
   total,
   onClose,
+  onNavigate,
 }: {
   dossier: ClassDossier;
   index: number;
   total: number;
   onClose: () => void;
+  onNavigate: (i: number) => void;
 }) {
+  const reduce = useReducedMotion();
   const log = dossier.logistics;
   const rmp = log?.rate_my_professor;
   const sunsetSummary = getSunsetSummary(dossier.sunsetGradeDistribution);
@@ -378,16 +391,20 @@ function DashboardContent({
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          {/* Course dots */}
+          {/* Course dots — clickable navigation */}
           {total > 1 && (
             <div className="flex items-center gap-1.5">
               {Array.from({ length: total }).map((_, i) => (
-                <span
+                <button
                   key={i}
+                  type="button"
+                  onClick={() => onNavigate(i)}
+                  aria-label={`Go to course ${i + 1}`}
+                  aria-current={i === index ? "true" : undefined}
                   className={`rounded-full transition-all duration-200 ${
                     i === index
-                      ? "h-2 w-4 bg-hub-cyan"
-                      : "h-1.5 w-1.5 bg-white/20 hover:bg-white/30"
+                      ? "h-2 w-4 bg-hub-cyan cursor-default"
+                      : "h-1.5 w-1.5 bg-white/20 hover:bg-white/40 cursor-pointer"
                   }`}
                 />
               ))}
@@ -427,18 +444,18 @@ function DashboardContent({
 
             {/* No professor info — general overview */}
             {!professorInfoFound && (log?.general_course_overview || log?.general_professor_overview) && (
-              <Section label="General Overview" accent="text-amber-400/80">
+              <Section label="General overview" accent="text-amber-400/80">
                 {log.general_course_overview && (
-                  <p className="mb-3 text-[11px] leading-relaxed text-hub-text-secondary">
+                  <p className="mb-3 text-xs leading-relaxed text-hub-text-secondary">
                     {log.general_course_overview}
                   </p>
                 )}
                 {log.general_professor_overview && (
                   <>
-                    <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-hub-text-muted">
+                    <p className="mb-1 text-[10px] font-medium text-hub-text-muted/70">
                       About {dossier.professorName}
                     </p>
-                    <p className="text-[11px] leading-relaxed text-hub-text-secondary">
+                    <p className="text-xs leading-relaxed text-hub-text-secondary">
                       {log.general_professor_overview}
                     </p>
                   </>
@@ -448,7 +465,7 @@ function DashboardContent({
 
             {/* RMP stats */}
             {hasRmp ? (
-              <Section label="Rate My Professors" accent="text-hub-gold">
+              <Section label="Rate My Professor" accent="text-hub-gold">
                 <div className="space-y-2">
                   {rmp.rating != null && (
                     <RmpStat
@@ -475,20 +492,20 @@ function DashboardContent({
                 {rmp.url && (
                   <a href={rmp.url} target="_blank" rel="noopener noreferrer"
                     className="mt-3 flex items-center gap-1 text-[10px] text-hub-cyan hover:underline">
-                    View on RateMyProfessors <ExternalLink className="h-2.5 w-2.5" />
+                    RateMyProf <ExternalLink className="h-2.5 w-2.5" />
                   </a>
                 )}
               </Section>
             ) : (
-              <Section label="Rate My Professors" accent="text-hub-gold">
-                <p className="text-[11px] text-hub-text-muted">No RMP data found for this professor.</p>
+              <Section label="Rate My Professor" accent="text-hub-gold">
+                <p className="text-xs text-hub-text-muted">No RMP data found for this professor.</p>
               </Section>
             )}
 
             {/* Student sentiment */}
             {dossier.tldr && (
-              <Section label="Student Sentiment" accent="text-hub-cyan">
-                <p className="text-[12px] leading-relaxed text-hub-text-secondary italic">
+              <Section label="Student sentiment" accent="text-hub-cyan">
+                <p className="text-sm leading-relaxed text-hub-text-secondary italic">
                   &ldquo;{sanitizeDashes(dossier.tldr)}&rdquo;
                 </p>
               </Section>
@@ -515,8 +532,8 @@ function DashboardContent({
             {hasGrades ? (
               <Section
                 label={isCrossCourse
-                  ? `Grade Dist · ${dossier.sunsetGradeDistribution?.source_course_code ?? "Other course"}`
-                  : "Grade Distribution"}
+                  ? `Grade dist · ${dossier.sunsetGradeDistribution?.source_course_code ?? "Other course"}`
+                  : "Grade distribution"}
                 accent="text-hub-cyan"
                 className="flex-1"
               >
@@ -549,7 +566,7 @@ function DashboardContent({
 
                 {/* Grade group bars */}
                 <div className="space-y-2">
-                  {GRADE_GROUPS.map((group) => {
+                  {GRADE_GROUPS.map((group, i) => {
                     const total = group.grades.reduce((s, g) => s + (sunsetSummary?.grade_counts?.[g] ?? 0), 0);
                     if (total === 0 || !sampleSize) return null;
                     const pct = (total / sampleSize) * 100;
@@ -562,7 +579,13 @@ function DashboardContent({
                           </span>
                         </div>
                         <div className="h-1.5 overflow-hidden rounded-full bg-hub-bg/80">
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: group.color, opacity: 0.75 }} />
+                          <motion.div
+                            className="h-full rounded-full"
+                            initial={reduce ? false : { width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.15 + i * 0.07 }}
+                            style={{ backgroundColor: group.color, opacity: 0.75 }}
+                          />
                         </div>
                       </div>
                     );
@@ -586,12 +609,12 @@ function DashboardContent({
                 </div>
               </Section>
             ) : (
-              <Section label="Grade Distribution" accent="text-hub-cyan" className="flex-1">
+              <Section label="Grade distribution" accent="text-hub-cyan" className="flex-1">
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="mb-2 h-8 w-8 rounded-full border border-dashed border-white/[0.1] flex items-center justify-center">
                     <span className="text-lg text-hub-text-muted/30">∅</span>
                   </div>
-                  <p className="text-[11px] text-hub-text-muted">No grade distribution data.</p>
+                  <p className="text-xs text-hub-text-muted">No grade distribution data.</p>
                   {isCrossCourse === false && (
                     <p className="mt-1 text-[10px] text-hub-text-muted/60">
                       SunSET may not have data for this specific offering.
@@ -617,9 +640,9 @@ function DashboardContent({
                 </div>
               ) : log != null ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <p className="text-[11px] text-hub-text-muted">No direct quotes or sources found.</p>
+                  <p className="text-xs text-hub-text-muted">No direct quotes or sources found.</p>
                   {log.general_course_overview && (
-                    <p className="mt-3 text-[11px] leading-relaxed text-hub-text-secondary">
+                    <p className="mt-3 text-xs leading-relaxed text-hub-text-secondary">
                       {log.general_course_overview}
                     </p>
                   )}
@@ -648,17 +671,17 @@ function DashboardContent({
 
               {/* Grade breakdown */}
               <div className="rounded-xl border border-white/[0.07] bg-[#0d1b2e] px-4 py-3">
-                <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.15em] text-hub-text-muted">
+                <p className="mb-2 text-[10px] font-semibold text-hub-text-muted">
                   Grading
                 </p>
                 {log?.grade_breakdown ? (
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     {log.grade_breakdown.split(/[,;]/).map((s) => s.trim()).filter(Boolean).map((seg, i) => (
-                      <span key={i} className="text-[11px] text-hub-text-secondary">{seg}</span>
+                      <span key={i} className="text-xs text-hub-text-secondary">{seg}</span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-hub-text-muted/60">Grade breakdown not found</p>
+                  <p className="text-xs text-hub-text-muted/60">Grade breakdown not found</p>
                 )}
                 {/* Course page link */}
                 {log?.course_webpage_url && (
@@ -671,7 +694,7 @@ function DashboardContent({
 
               {/* Attribute pills */}
               <div className="rounded-xl border border-white/[0.07] bg-[#0d1b2e] px-4 py-3">
-                <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.15em] text-hub-text-muted">
+                <p className="mb-2 text-[10px] font-semibold text-hub-text-muted">
                   Course attributes
                 </p>
                 {logPills.length > 0 ? (
@@ -681,7 +704,7 @@ function DashboardContent({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[11px] text-hub-text-muted/60">Attribute data not found</p>
+                  <p className="text-xs text-hub-text-muted/60">Attribute data not found</p>
                 )}
               </div>
             </div>

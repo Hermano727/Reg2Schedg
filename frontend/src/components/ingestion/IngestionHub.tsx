@@ -17,6 +17,7 @@ type IngestionHubProps = {
   }) => void;
   classCount: number;
   quarterLabel: string;
+  isLocked?: boolean;
 };
 
 export function IngestionHub({
@@ -27,6 +28,7 @@ export function IngestionHub({
   onManualSubmit,
   classCount,
   quarterLabel,
+  isLocked,
 }: IngestionHubProps) {
   const busy = phase === "processing";
   const [helpOpen, setHelpOpen] = useState(false);
@@ -125,7 +127,30 @@ export function IngestionHub({
       </div>
 
       <motion.div layout>
-        <DropZone onFilesSelected={onFilesSelected} disabled={busy} />
+        {isLocked && !isDashboardExpanded ? (
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-white/[0.08] bg-hub-bg/40 px-6 py-10 text-center">
+            <div className="rounded-lg border border-hub-gold/30 bg-hub-gold/[0.07] px-4 py-3 text-sm text-hub-text-secondary max-w-sm">
+              <p className="font-semibold text-hub-text mb-1">UCSD students only</p>
+              <p>Reg2Schedg is currently only for UCSD students. Sign in with your @ucsd.edu account to upload your schedule.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <a
+                href="/login"
+                className="inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14]"
+              >
+                Sign in with UCSD account
+              </a>
+              <a
+                href="/signup"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-hub-text-secondary transition hover:border-white/[0.18] hover:text-hub-text"
+              >
+                Create account
+              </a>
+            </div>
+          </div>
+        ) : (
+          <DropZone onFilesSelected={onFilesSelected} disabled={busy} />
+        )}
       </motion.div>
 
       {helpOpen && (

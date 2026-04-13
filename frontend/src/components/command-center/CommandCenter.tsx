@@ -171,6 +171,7 @@ export function CommandCenter() {
 
   const {
     authed,
+    isUcsdUser,
     activePlanId,
     setActivePlanId,
     quarterLabel,
@@ -265,10 +266,11 @@ export function CommandCenter() {
 
   const handleFilesSelected = useCallback(
     (files: FileList | File[]) => {
+      if (!authed || !isUcsdUser) return;
       const imageFile = Array.from(files).find((f) => f.type.startsWith("image/"));
       void runIngestionFlow(imageFile);
     },
-    [runIngestionFlow],
+    [authed, isUcsdUser, runIngestionFlow],
   );
 
   const handleManualSubmit = useCallback(
@@ -363,6 +365,7 @@ export function CommandCenter() {
                       onManualSubmit={handleManualSubmit}
                       classCount={classCount}
                       quarterLabel={quarterLabel}
+                      isLocked={!authed || !isUcsdUser}
                     />
                   </div>
 

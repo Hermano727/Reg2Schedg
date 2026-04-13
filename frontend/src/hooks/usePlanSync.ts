@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isUcsdEmail } from "@/lib/auth/ucsd";
 import {
   buildPayloadFromClasses,
   buildPayloadV2,
@@ -28,6 +29,7 @@ type SidebarPlan = { id: string; label: string; subtitle?: string };
 
 type UsePlanSyncReturn = {
   authed: boolean;
+  isUcsdUser: boolean;
   activePlanId: string;
   setActivePlanId: (id: string) => void;
   quarterLabel: string;
@@ -91,6 +93,7 @@ export function usePlanSync({
   onPlanCreated,
 }: Params): UsePlanSyncReturn {
   const [authed, setAuthed] = useState(false);
+  const [isUcsdUser, setIsUcsdUser] = useState(false);
   const [remotePlans, setRemotePlans] = useState<SavedPlanRow[]>([]);
   const [remoteVault, setRemoteVault] = useState<VaultItemRow[]>([]);
   const [activePlanId, setActivePlanId] = useState(mockDossier.activeQuarterId);
@@ -116,12 +119,14 @@ export function usePlanSync({
       const user = session?.user;
       if (!user) {
         setAuthed(false);
+        setIsUcsdUser(false);
         setRemotePlans([]);
         setRemoteVault([]);
         setActivePlanId(mockDossier.activeQuarterId);
         return;
       }
       setAuthed(true);
+      setIsUcsdUser(isUcsdEmail(user.email));
       const [plansRes, vaultRes] = await Promise.all([
         supabase.from("saved_plans").select("*").order("updated_at", { ascending: false }),
         supabase.from("vault_items").select("*").order("updated_at", { ascending: false }),
@@ -139,6 +144,7 @@ export function usePlanSync({
       }
     } catch {
       setAuthed(false);
+      setIsUcsdUser(false);
       setRemotePlans([]);
       setRemoteVault([]);
       setActivePlanId(mockDossier.activeQuarterId);
@@ -408,6 +414,7 @@ export function usePlanSync({
 
   return {
     authed,
+    isUcsdUser,
     activePlanId,
     setActivePlanId,
     quarterLabel,

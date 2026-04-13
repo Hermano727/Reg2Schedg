@@ -16,7 +16,6 @@ const menuItemClass =
 
 export function UserAccountMenu({
   displayName = "Guest",
-  email = "Sign in when auth is wired",
   signedIn = false,
 }: UserAccountMenuProps) {
   const initials =
@@ -52,7 +51,6 @@ export function UserAccountMenu({
             <p className="truncate text-sm font-medium text-hub-text">
               {displayName}
             </p>
-            <p className="truncate text-xs text-hub-text-muted">{email}</p>
           </div>
 
           <div className="py-1">

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { GitBranch } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { createClient } from "@/lib/supabase/client";
+import { isUcsdEmail } from "@/lib/auth/ucsd";
 import { Button } from "@/components/ui/Button";
 
 export type AuthFormIntent = "login" | "signup";
@@ -37,7 +37,7 @@ export function AuthForm({ intent }: AuthFormProps) {
   const authError = searchParams.get("error");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState<"idle" | "email" | "google" | "github">(
+  const [busy, setBusy] = useState<"idle" | "email" | "google">(
     "idle",
   );
   const [message, setMessage] = useState<string | null>(null);
@@ -53,7 +53,7 @@ export function AuthForm({ intent }: AuthFormProps) {
   const loginWithNext = `/login?next=${encodeURIComponent(next)}`;
   const signupWithNext = `/signup?next=${encodeURIComponent(next)}`;
 
-  async function signInWithOAuth(provider: "google" | "github") {
+  async function signInWithOAuth(provider: "google") {
     setError(null);
     setMessage(null);
     setHintSignup(false);
@@ -87,6 +87,11 @@ export function AuthForm({ intent }: AuthFormProps) {
     const supabase = createClient();
 
     if (intent === "signup") {
+      if (!isUcsdEmail(email.trim())) {
+        setBusy("idle");
+        setError("Reg2Schedg is available to UCSD students only. Please use your @ucsd.edu email address.");
+        return;
+      }
       const { error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -126,21 +131,24 @@ export function AuthForm({ intent }: AuthFormProps) {
   const oauthIntro =
     intent === "login" ? (
       <>
-        <p className="text-sm font-medium text-hub-text">Sign in with Google or GitHub</p>
+        <p className="text-sm font-medium text-hub-text">Sign in with Google</p>
         <p className="mt-1 text-xs leading-relaxed text-hub-text-muted">
-          If you are new here, completing Google or GitHub sign-in{" "}
+          If you are new here, completing Google sign-in{" "}
           <span className="text-hub-text-secondary">creates your Reg2Schedg account</span>{" "}
-          automatically. That is separate from email and password below, which only work
+          automatically. A{" "}
+          <span className="text-hub-text-secondary">@ucsd.edu</span> address is required.
+          That is separate from email and password below, which only work
           after you have created a password on the Create account page.
         </p>
       </>
     ) : (
       <>
-        <p className="text-sm font-medium text-hub-text">Create account with Google or GitHub</p>
+        <p className="text-sm font-medium text-hub-text">Create account with Google</p>
         <p className="mt-1 text-xs leading-relaxed text-hub-text-muted">
-          Your first successful sign-in with Google or GitHub{" "}
-          <span className="text-hub-text-secondary">registers your account</span>. If you
-          already use Reg2Schedg with that provider, you will just be signed in.
+          Your first successful sign-in with Google{" "}
+          <span className="text-hub-text-secondary">registers your account</span>. Use your{" "}
+          <span className="text-hub-text-secondary">@ucsd.edu Google account</span> — other
+          addresses will be rejected.
         </p>
       </>
     );
@@ -152,12 +160,13 @@ export function AuthForm({ intent }: AuthFormProps) {
         <Link href={signupWithNext} className="text-hub-cyan hover:underline">
           Create account
         </Link>{" "}
-        or use Google/GitHub above.
+        or use Google above.
       </p>
     ) : (
       <p className="text-xs leading-relaxed text-hub-text-muted">
-        Choose a password for email sign-in. This does not connect automatically to Google
-        or GitHub; those stay separate unless you add linking in Supabase later.
+        <span className="text-hub-text-secondary">@ucsd.edu address required.</span>{" "}
+        Choose a password for email sign-in. This does not connect automatically to Google;
+        those stay separate unless you add linking in Supabase later.
       </p>
     );
 
@@ -178,7 +187,9 @@ export function AuthForm({ intent }: AuthFormProps) {
     <div className="glass-panel rounded-xl border border-white/[0.08] p-6">
       {authError ? (
         <p className="mb-4 text-sm text-amber-200/90" role="alert">
-          Sign-in was interrupted. Try again.
+          {authError === "ucsd_only"
+            ? "Reg2Schedg is available to UCSD students only. Sign in with your @ucsd.edu account."
+            : "Sign-in was interrupted. Try again."}
         </p>
       ) : null}
 
@@ -194,16 +205,6 @@ export function AuthForm({ intent }: AuthFormProps) {
         >
           <GoogleIcon className="h-4 w-4 shrink-0" />
           {busy === "google" ? "Redirecting…" : "Continue with Google"}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full justify-center gap-2 border border-white/[0.1]"
-          disabled={busy !== "idle"}
-          onClick={() => void signInWithOAuth("github")}
-        >
-          <GitBranch className="h-4 w-4 shrink-0 text-hub-text-muted" aria-hidden />
-          {busy === "github" ? "Redirecting…" : "Continue with GitHub"}
         </Button>
       </div>
 

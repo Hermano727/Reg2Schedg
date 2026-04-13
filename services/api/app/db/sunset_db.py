@@ -9,13 +9,10 @@ import re
 from supabase import Client
 
 from app.models.domain import SunsetGradeDistributionRow
+from app.utils.normalize import normalize_professor_name as _normalize_professor_name  # noqa: F401
 
 TERM_LABEL_PATTERN = re.compile(r"\b(winter|spring|summer|fall)\s+(?:qtr\s+)?(\d{4})\b", re.IGNORECASE)
 TERM_ORDER = {"winter": 1, "spring": 2, "summer": 3, "fall": 4}
-
-
-def _normalize_professor_name(name: str | None) -> str:
-    return " ".join((name or "").upper().split())
 
 
 def _split_professor_name(value: str | None) -> tuple[str, str]:
@@ -79,7 +76,7 @@ def get_sunset_grade_distribution(
     If no professor-matching row exists for that course, falls back to any course
     taught by the same professor (cross-course fallback).
     """
-    from app.db.service import normalize_course_code
+    from app.utils.normalize import normalize_course_code
 
     response = (
         client.table("sunset_grade_distributions")

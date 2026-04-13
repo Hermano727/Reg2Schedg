@@ -8,12 +8,14 @@ import {
   FileText,
   FolderArchive,
   GraduationCap,
+  MessageSquare,
   Sparkles,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { initialsFromName } from "@/lib/hub/initials";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
 import type { VaultItem } from "@/types/dossier";
+import type { PostSummary } from "@/types/community";
 
 export type ProfilePlan = {
   id: string;
@@ -41,17 +43,6 @@ const fadeUp = {
   }),
 };
 
-function vaultKindLabel(kind: VaultItem["kind"]) {
-  switch (kind) {
-    case "syllabus":
-      return "Syllabus";
-    case "webreg":
-      return "WebReg";
-    default:
-      return "Note";
-  }
-}
-
 type ProfileHubProps = {
   displayName: string;
   email: string;
@@ -60,6 +51,7 @@ type ProfileHubProps = {
   plans: ProfilePlan[];
   quarters: ProfileQuarter[];
   vaultItems: VaultItem[];
+  userPosts?: PostSummary[];
 };
 
 export function ProfileHub({
@@ -70,6 +62,7 @@ export function ProfileHub({
   plans,
   quarters,
   vaultItems,
+  userPosts = [],
 }: ProfileHubProps) {
   const initials =
     displayName
@@ -81,7 +74,7 @@ export function ProfileHub({
 
   return (
     <div className="relative mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-y-auto px-4 py-8 pb-16 lg:px-8">
-      {/* Chart grid: utilitarian “nav plot” without overwhelming the hub canvas */}
+      {/* Chart grid: utilitarian "nav plot" without overwhelming the hub canvas */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         aria-hidden
@@ -232,7 +225,7 @@ export function ProfileHub({
               </p>
               <p className="mt-2 max-w-sm text-xs leading-relaxed text-hub-text-muted">
                 When the degree planner ships, each proposed audit, diff against
-                the portal, and “complete later” items will be listed here.
+                the portal, and "complete later" items will be listed here.
               </p>
             </div>
           </div>
@@ -272,6 +265,7 @@ export function ProfileHub({
         </motion.section>
       </div>
 
+      {/* Resource vault */}
       <motion.section
         custom={3}
         variants={fadeUp}
@@ -327,6 +321,80 @@ export function ProfileHub({
                     </span>
                   </span>
                 </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </motion.section>
+
+      {/* My Posts */}
+      <motion.section
+        custom={4}
+        variants={fadeUp}
+        initial="hidden"
+        animate="show"
+        className="relative mt-10"
+      >
+        <div className="flex items-center gap-2 border-b border-hub-cyan/25 pb-3">
+          <MessageSquare className="h-4 w-4 text-hub-cyan" aria-hidden />
+          <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
+            My posts
+          </h2>
+          <span className="ml-auto font-[family-name:var(--font-jetbrains-mono)] text-xs text-hub-text-muted">
+            {userPosts.length}
+          </span>
+        </div>
+
+        <ul className="mt-4 space-y-2">
+          {userPosts.length === 0 ? (
+            <li className="rounded-xl border border-dashed border-white/[0.12] bg-hub-bg/30 px-4 py-8 text-center">
+              <p className="text-sm text-hub-text-muted">
+                No posts yet.{" "}
+                <Link href="/community" className="text-hub-cyan underline underline-offset-2 transition hover:text-hub-cyan/80">
+                  Start a discussion
+                </Link>{" "}
+                in the Community.
+              </p>
+            </li>
+          ) : (
+            userPosts.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/community/${p.id}`}
+                  className="flex flex-col rounded-lg border border-white/[0.06] bg-hub-bg/35 px-4 py-3 transition hover:border-hub-cyan/25 hover:bg-hub-surface/60"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {p.courseCode && (
+                      <span className="inline-flex items-center rounded-md bg-hub-cyan/10 px-1.5 py-0.5 text-[10px] font-medium text-hub-cyan">
+                        {p.courseCode}
+                      </span>
+                    )}
+                    {p.professorName && (
+                      <span className="text-[10px] text-hub-text-muted">{p.professorName}</span>
+                    )}
+                    <span className="min-w-0 truncate text-sm font-medium text-hub-text">
+                      {p.title}
+                    </span>
+                  </div>
+                  <span className="mt-1 flex items-center gap-3 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-hub-text-muted">
+                    <span>{p.replyCount} {p.replyCount === 1 ? "reply" : "replies"}</span>
+                    <span aria-hidden>·</span>
+                    <span>{p.upvoteCount} {p.upvoteCount === 1 ? "upvote" : "upvotes"}</span>
+                    <span aria-hidden>·</span>
+                    <span>
+                      {new Date(p.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                    {p.isAnonymous && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="text-hub-text-muted/60">posted anonymously</span>
+                      </>
+                    )}
+                  </span>
+                </Link>
               </li>
             ))
           )}

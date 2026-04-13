@@ -353,8 +353,10 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
 
       {/* Desktop: high-density layout */}
       <div className="hidden lg:block space-y-5">
-        <DifficultyScoreHud evaluation={evaluation} />
-        <ExamsPanel classes={classes} />
+        <div className="grid grid-cols-[3fr_2fr] gap-5 items-start">
+          <DifficultyScoreHud evaluation={evaluation} />
+          <ExamsPanel classes={classes} />
+        </div>
 
         <div className="grid grid-cols-2 gap-8 items-start">
           {/* Left: ClassCard list */}

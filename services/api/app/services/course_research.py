@@ -1,21 +1,30 @@
 """
 Course research orchestration: geocoding, cache lookup, Browser Use runs,
-and batch coordination. All Pydantic models live in app.models.research;
-Browser Use logic lives in app.services.browser_use; SunSET computation
-lives in app.services.sunset.
+tiered pipeline, known-schedule fast path, and batch coordination.
+
+All Pydantic models live in app.models.research;
+Browser Use logic lives in app.services.browser_use;
+SunSET computation lives in app.services.sunset;
+Normalization lives in app.utils.normalize.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any, Callable
 
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from app.db.client import get_supabase_client
-from app.db.service import get_course_research_cache, upsert_course_research_cache
+from app.db.service import (
+    get_course_research_cache,
+    get_known_schedule,
+    upsert_course_research_cache,
+    upsert_known_schedule,
+)
 from app.db.sunset_db import get_sunset_grade_distribution
 from app.models.course_parse import CourseEntry, SectionMeeting
 from app.models.research import (
@@ -24,6 +33,8 @@ from app.models.research import (
     CourseResearchResult,
     CourseResearchRunError,
     CourseLogistics,
+    CourseRunCost,
+    CourseRunOutcome,
 )
 from app.services.browser_use import (
     create_browser_use_client,
@@ -32,12 +43,20 @@ from app.services.browser_use import (
 )
 from app.services.geocode import geocode_location
 from app.services.sunset import build_sunset_grade_distribution
+from app.utils.normalize import (
+    normalize_course_code,
+    normalize_professor_name,
+    compute_schedule_signature,
+)
 
 load_dotenv()
 
 _log = logging.getLogger(__name__)
 
 _REMOTE_LOCATION_PREFIXES = ("RCLAS", "REMOTE", "ONLINE")
+
+# How many days before a cache row is considered stale.
+STALE_AFTER_DAYS = 30
 
 
 def _is_remote_location(location: str) -> bool:
@@ -82,8 +101,8 @@ def dedupe_courses(courses: list[CourseEntry]) -> list[CourseEntry]:
     deduped: dict[tuple[str, str], CourseEntry] = {}
     for course in courses:
         key = (
-            " ".join(course.course_code.upper().split()),
-            " ".join(course.professor_name.upper().split()),
+            normalize_course_code(course.course_code),
+            normalize_professor_name(course.professor_name),
         )
         deduped.setdefault(key, course)
     return list(deduped.values())
@@ -101,6 +120,65 @@ def summarize_costs(results: list[CourseResearchResult]) -> BatchCostSummary:
     return summary
 
 
+# ---------------------------------------------------------------------------
+# Tiered pipeline (Tier 0-3: free/cheap alternatives to Browser Use)
+# ---------------------------------------------------------------------------
+
+async def _research_via_tiered_pipeline(
+    course_code: str,
+    professor_name: str | None,
+) -> CourseRunOutcome:
+    """
+    Execute Tiers 0-3 concurrently (Reddit, RMP, UCSD scrape, Gemini synthesis).
+    All data-gathering tiers catch their own errors and return empty values — they
+    never propagate exceptions.  Only Tier 3 (Gemini) can raise.
+    """
+    from app.services.reddit_client import search_reddit_ucsd
+    from app.services.rmp_client import fetch_rmp_stats
+    from app.services.ucsd_scraper import fetch_ucsd_course_description, fetch_ucsd_syllabus_snippets
+    from app.services.logistics_synthesizer import synthesize_logistics
+    from app.models.research import ResearchRawData
+
+    reddit_posts, rmp_result, catalog_result, syllabus_result = await asyncio.gather(
+        search_reddit_ucsd(course_code),
+        fetch_rmp_stats(professor_name) if professor_name else asyncio.coroutine(lambda: (None, None))(),
+        fetch_ucsd_course_description(course_code),
+        fetch_ucsd_syllabus_snippets(course_code, professor_name),
+    )
+
+    rmp_stats, rmp_url = rmp_result if rmp_result else (None, None)
+    course_description, catalog_url = catalog_result if catalog_result else (None, None)
+    syllabus_snippets, syllabus_url = syllabus_result if syllabus_result else ([], None)
+
+    raw = ResearchRawData(
+        course_code=course_code,
+        professor_name=professor_name,
+        reddit_posts=reddit_posts,
+        rmp_stats=rmp_stats,
+        rmp_url=rmp_url,
+        ucsd_course_description=course_description,
+        ucsd_catalog_url=catalog_url,
+        ucsd_syllabus_snippets=syllabus_snippets,
+        ucsd_syllabus_url=syllabus_url,
+        tier_coverage={
+            "reddit": len(reddit_posts) > 0,
+            "rmp": rmp_stats is not None,
+            "ucsd_catalog": course_description is not None,
+            "ucsd_syllabus": len(syllabus_snippets) > 0,
+        },
+    )
+
+    logistics = await synthesize_logistics(raw)
+    return CourseRunOutcome(
+        logistics=logistics,
+        cost=CourseRunCost(data_source="tiered_pipeline"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Per-course research (cache hit fast path, then tiered or Browser Use)
+# ---------------------------------------------------------------------------
+
 async def research_course(
     client: Any,
     cache_client: Any,
@@ -109,6 +187,7 @@ async def research_course(
     semaphore: asyncio.Semaphore,
     index: int,
     total: int,
+    use_browser_use: bool = False,
     progress: Callable[[str], None] | None = None,
     force_refresh: bool = False,
 ) -> CourseResearchResult:
@@ -141,6 +220,7 @@ async def research_course(
         if progress:
             progress(f"[{index}/{total}] SunSET lookup failed for {label}: {exc}")
 
+    # --- Cache lookup ---
     cache_row = None
     try:
         cache_row = get_course_research_cache(
@@ -168,20 +248,28 @@ async def research_course(
                 cache_hit=True,
                 cached_at=cache_row.updated_at,
                 cache_error=cache_error,
+                cache_id=cache_row.id,  # ← canonical ID for v2 plan references
             )
         except ValidationError as exc:
             cache_error = f"Invalid cache row: {exc}"
             if progress:
                 progress(f"[{index}/{total}] Ignoring invalid cache row for {label}: {exc}")
 
+    # --- Research (tiered pipeline or Browser Use) ---
     try:
         async with semaphore:
-            outcome = await run_course_logistics(
-                client=client,
-                course_code=entry.course_code,
-                instructor=entry.professor_name or None,
-                model=model,
-            )
+            if use_browser_use and client is not None:
+                outcome = await run_course_logistics(
+                    client=client,
+                    course_code=entry.course_code,
+                    instructor=entry.professor_name or None,
+                    model=model,
+                )
+            else:
+                outcome = await _research_via_tiered_pipeline(
+                    course_code=entry.course_code,
+                    professor_name=entry.professor_name or None,
+                )
     except CourseResearchRunError as exc:
         if progress:
             progress(f"[{index}/{total}] Failed {label}: {exc}")
@@ -208,7 +296,9 @@ async def research_course(
             error=str(exc),
         )
 
+    # --- Cache write ---
     cached_at: str | None = None
+    saved_cache_id: str | None = None
     try:
         saved_row = upsert_course_research_cache(
             cache_client,
@@ -217,8 +307,10 @@ async def research_course(
             course_title=entry.course_title or None,
             logistics=outcome.logistics.model_dump(mode="json"),
             model=model,
+            data_source=outcome.cost.data_source,
         )
         cached_at = saved_row.updated_at
+        saved_cache_id = saved_row.id
     except Exception as exc:
         cache_error = f"Cache write failed: {exc}"
         if progress:
@@ -238,8 +330,13 @@ async def research_course(
         cached_at=cached_at,
         cache_error=cache_error,
         cost=outcome.cost,
+        cache_id=saved_cache_id,  # ← set after successful upsert
     )
 
+
+# ---------------------------------------------------------------------------
+# Batch orchestration with known-schedule fast path
+# ---------------------------------------------------------------------------
 
 async def research_courses(
     entries: list[CourseEntry],
@@ -257,28 +354,66 @@ async def research_courses(
     if not unique_entries:
         raise RuntimeError("No courses were found to research.")
 
-    effective_concurrency = len(unique_entries) if concurrency == 0 else min(concurrency, len(unique_entries))
-    client = create_browser_use_client(resolve_browser_use_api_key())
     cache_client = get_supabase_client()
+
+    # --- Known-schedule fast path ---
+    if not force_refresh:
+        signature = compute_schedule_signature(
+            [(e.course_code, e.professor_name or None) for e in unique_entries]
+        )
+        try:
+            known = get_known_schedule(cache_client, signature)
+            if known is not None:
+                _log.info("[fast-path] known_schedules hit for signature %s", signature[:16])
+                return BatchResearchResponse.model_validate(known["assembled_payload"])
+        except Exception as exc:
+            _log.warning("[fast-path] known_schedules lookup failed: %s", exc)
+    else:
+        signature = None
+
+    # --- Per-course research ---
+    use_browser_use = os.getenv("ENABLE_BROWSER_USE", "false").lower() == "true"
+    browser_client = None
+    if use_browser_use:
+        browser_client = create_browser_use_client(resolve_browser_use_api_key())
+
+    effective_concurrency = len(unique_entries) if concurrency == 0 else min(concurrency, len(unique_entries))
     semaphore = asyncio.Semaphore(effective_concurrency)
+
     tasks = [
         research_course(
-            client=client,
+            client=browser_client,
             cache_client=cache_client,
             entry=entry,
             model=model,
             semaphore=semaphore,
             index=index,
             total=len(unique_entries),
+            use_browser_use=use_browser_use,
             progress=progress,
             force_refresh=force_refresh,
         )
         for index, entry in enumerate(unique_entries, start=1)
     ]
     results = await asyncio.gather(*tasks)
-    return BatchResearchResponse(
+
+    response = BatchResearchResponse(
         input_source=input_source,
         course_count=len(results),
         results=list(results),
         cost_summary=summarize_costs(list(results)),
     )
+
+    # --- Write known_schedules for future fast path (only when all courses cached) ---
+    if signature is not None and all(r.cache_id is not None for r in results):
+        try:
+            upsert_known_schedule(
+                cache_client,
+                signature=signature,
+                assembled_payload=response.model_dump(mode="json"),
+            )
+            _log.info("[fast-path] wrote known_schedules signature %s", signature[:16])
+        except Exception as exc:
+            _log.warning("[fast-path] known_schedules write failed: %s", exc)
+
+    return response

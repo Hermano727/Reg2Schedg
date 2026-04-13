@@ -89,6 +89,7 @@ export function courseResearchResultToDossier(
     meetings: result.meetings,
     logistics: log ?? undefined,
     sunsetGradeDistribution: result.sunset_grade_distribution ?? undefined,
+    cacheId: result.cache_id ?? null,
   };
 }
 

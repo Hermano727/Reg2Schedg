@@ -5,6 +5,8 @@ import type { RefObject } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   buildPayloadFromClasses,
+  buildPayloadV2,
+  canSaveAsV2,
   parsePlanPayload,
   type SavedPlanPayloadV1,
 } from "@/lib/hub/plan-payload";
@@ -19,6 +21,8 @@ import type {
   VaultItem,
 } from "@/types/dossier";
 import type { DossierScheduleWorkspaceHandle } from "@/components/dashboard/DossierScheduleWorkspace";
+
+const API_BASE = "http://localhost:8000";
 
 type SidebarPlan = { id: string; label: string; subtitle?: string };
 
@@ -47,6 +51,38 @@ type Params = {
   onPlanCreated?: () => void;
 };
 
+// ---------------------------------------------------------------------------
+// Server expansion helper
+// ---------------------------------------------------------------------------
+
+async function fetchExpandedPlan(
+  planId: string,
+  accessToken: string,
+): Promise<{ classes: ClassDossier[]; evaluation: ScheduleEvaluation; commitments: ScheduleCommitment[] } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/plans/${planId}/expanded`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      classes: ClassDossier[];
+      evaluation: ScheduleEvaluation | null;
+      commitments: ScheduleCommitment[];
+    };
+    return {
+      classes: data.classes ?? [],
+      evaluation: data.evaluation ?? mockDossier.evaluation,
+      commitments: data.commitments ?? [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 export function usePlanSync({
   phase,
   classes,
@@ -58,6 +94,10 @@ export function usePlanSync({
   const [remotePlans, setRemotePlans] = useState<SavedPlanRow[]>([]);
   const [remoteVault, setRemoteVault] = useState<VaultItemRow[]>([]);
   const [activePlanId, setActivePlanId] = useState(mockDossier.activeQuarterId);
+  // Expanded v2 plan data (null = not yet loaded or not a v2 plan)
+  const [expandedClasses, setExpandedClasses] = useState<ClassDossier[] | null>(null);
+  const [expandedEvaluation, setExpandedEvaluation] = useState<ScheduleEvaluation | null>(null);
+  const [expandedCommitments, setExpandedCommitments] = useState<ScheduleCommitment[] | null>(null);
 
   const activePlanIdRef = useRef(activePlanId);
   const remotePlansRef = useRef(remotePlans);
@@ -71,8 +111,9 @@ export function usePlanSync({
     try {
       const supabase = createClient();
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         setAuthed(false);
         setRemotePlans([]);
@@ -107,6 +148,38 @@ export function usePlanSync({
   useEffect(() => {
     void loadHubData();
   }, [loadHubData]);
+
+  // When the active plan changes and it's a v2 plan, expand it server-side
+  useEffect(() => {
+    if (!authed || !activePlanId) {
+      setExpandedClasses(null);
+      setExpandedEvaluation(null);
+      setExpandedCommitments(null);
+      return;
+    }
+    const plan = remotePlans.find((p) => p.id === activePlanId);
+    if (!plan || (plan.payload_version ?? 1) < 2) {
+      setExpandedClasses(null);
+      setExpandedEvaluation(null);
+      setExpandedCommitments(null);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token || cancelled) return;
+      const expanded = await fetchExpandedPlan(activePlanId, session.access_token);
+      if (cancelled) return;
+      if (expanded) {
+        setExpandedClasses(expanded.classes);
+        setExpandedEvaluation(expanded.evaluation);
+        setExpandedCommitments(expanded.commitments);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authed, activePlanId, remotePlans]);
 
   const quarterLabel = useMemo(() => {
     if (!authed) {
@@ -157,6 +230,17 @@ export function usePlanSync({
     if (phase !== "dashboard" || !authed) {
       return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[] };
     }
+
+    // v2 plan — use server-expanded data if available
+    if (expandedClasses !== null) {
+      return {
+        viewClasses: expandedClasses,
+        viewEvaluation: expandedEvaluation ?? evaluation,
+        viewCommitments: expandedCommitments ?? [],
+      };
+    }
+
+    // v1 plan — read full dossiers from payload
     const plan = remotePlans.find((p) => p.id === activePlanId);
     if (plan) {
       const parsed = parsePlanPayload(plan.payload);
@@ -169,14 +253,16 @@ export function usePlanSync({
       }
     }
     return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[] };
-  }, [phase, authed, activePlanId, remotePlans, classes, evaluation]);
+  }, [phase, authed, activePlanId, remotePlans, classes, evaluation, expandedClasses, expandedEvaluation, expandedCommitments]);
+
+  // ---------------------------------------------------------------------------
+  // Persist helpers
+  // ---------------------------------------------------------------------------
 
   const persistCompletedSession = useCallback(async (payload: SavedPlanPayloadV1) => {
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       let ql = "Spring 2026";
@@ -225,61 +311,26 @@ export function usePlanSync({
       : mockDossier.activeQuarterId;
   };
 
-  const handleSaveOverwrite = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+  const _saveplan = useCallback(async (planId: string | null, isNew: boolean) => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      const pid = activePlanIdRef.current;
-      const activeQ = _buildActiveQ();
-      const editorClasses = workspaceRef.current?.getCurrentClasses() ?? viewClasses;
-      const editorCommitments = workspaceRef.current?.getCurrentCommitments() ?? [];
-      const payload = buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, viewEvaluation);
+    const activeQ = _buildActiveQ();
+    const editorClasses = workspaceRef.current?.getCurrentClasses() ?? viewClasses;
+    const editorCommitments = workspaceRef.current?.getCurrentCommitments() ?? [];
 
-      if (!pid) {
-        const titleSuffix = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
-        const qLabel = mockDossier.quarters.find((q) => q.id === activeQ)?.label ?? "";
-        const { data } = await supabase
-          .from("saved_plans")
-          .insert({
-            user_id: user.id,
-            title: `${qLabel || "Schedule"} · ${titleSuffix}`,
-            quarter_label: qLabel,
-            status: "draft",
-            payload_version: 1,
-            payload,
-          })
-          .select("id")
-          .single();
-        if (data?.id) setActivePlanId(data.id as string);
-      } else {
-        await supabase.from("saved_plans").update({ payload, payload_version: 1 }).eq("id", pid);
-      }
-      await loadHubData();
-    } catch {
-      /* ignore save errors */
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewClasses, viewEvaluation, loadHubData, workspaceRef]);
+    // Use v2 if every class has a cacheId, otherwise fall back to v1
+    const useV2 = canSaveAsV2(editorClasses);
+    const payload = useV2
+      ? buildPayloadV2(activeQ, editorClasses, editorCommitments, viewEvaluation)
+      : buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, viewEvaluation);
+    const payloadVersion = useV2 ? 2 : 1;
 
-  const handleSaveAsNew = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+    const titleSuffix = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const qLabel = mockDossier.quarters.find((q) => q.id === activeQ)?.label ?? "";
 
-      const activeQ = _buildActiveQ();
-      const editorClasses = workspaceRef.current?.getCurrentClasses() ?? viewClasses;
-      const editorCommitments = workspaceRef.current?.getCurrentCommitments() ?? [];
-      const payload = buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, viewEvaluation);
-
-      const titleSuffix = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
-      const qLabel = mockDossier.quarters.find((q) => q.id === activeQ)?.label ?? "";
+    if (isNew || !planId) {
       const { data } = await supabase
         .from("saved_plans")
         .insert({
@@ -287,26 +338,40 @@ export function usePlanSync({
           title: `${qLabel || "Schedule"} · ${titleSuffix}`,
           quarter_label: qLabel,
           status: "draft",
-          payload_version: 1,
+          payload_version: payloadVersion,
           payload,
         })
         .select("id")
         .single();
       if (data?.id) setActivePlanId(data.id as string);
-      await loadHubData();
+    } else {
+      await supabase.from("saved_plans").update({ payload, payload_version: payloadVersion }).eq("id", planId);
+    }
+    await loadHubData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewClasses, viewEvaluation, loadHubData, workspaceRef]);
+
+  const handleSaveOverwrite = useCallback(async () => {
+    try {
+      await _saveplan(activePlanIdRef.current, false);
     } catch {
       /* ignore save errors */
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewClasses, viewEvaluation, loadHubData, workspaceRef]);
+  }, [_saveplan]);
+
+  const handleSaveAsNew = useCallback(async () => {
+    try {
+      await _saveplan(null, true);
+    } catch {
+      /* ignore save errors */
+    }
+  }, [_saveplan]);
 
   const handleNewPlan = useCallback(async () => {
     if (!authedRef.current) return;
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data, error } = await supabase
         .from("saved_plans")

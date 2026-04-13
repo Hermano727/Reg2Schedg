@@ -5,42 +5,44 @@ import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle, AlertTriangle, Info } from "lucide-react";
 import type { ScheduleEvaluation } from "@/types/dossier";
 
-function fitnessScoreColor(score: number, max: number): string {
+function scoreColor(score: number, max: number): string {
   const pct = score / max;
   if (pct <= 0.4) return "#5eead4";
   if (pct <= 0.65) return "#e3b12f";
   return "#ff6b6b";
 }
 
-function trendLabelStyle(score: number, max: number): string {
+function trendBadgeClass(score: number, max: number): string {
   const pct = score / max;
   if (pct <= 0.4) return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200";
   if (pct <= 0.65) return "border-amber-400/20 bg-amber-400/10 text-amber-200";
   return "border-red-400/20 bg-red-400/10 text-red-300";
 }
 
-// Counts up from 0 → target with ease-out-quart
 function useCountUp(target: number, duration = 900) {
   const reduce = useReducedMotion();
-  const [value, setValue] = useState(0);
-
+  const [val, setVal] = useState(0);
   useEffect(() => {
-    if (reduce) { setValue(target); return; }
-    setValue(0);
-    const startTime = performance.now();
+    if (reduce) { setVal(target); return; }
+    setVal(0);
+    const t0 = performance.now();
     let raf: number;
     const tick = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4);
-      setValue(target * eased);
-      if (progress < 1) raf = requestAnimationFrame(tick);
+      const p = Math.min((now - t0) / duration, 1);
+      setVal(target * (1 - Math.pow(1 - p, 4)));
+      if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [target, duration, reduce]);
+  return reduce ? target : val;
+}
 
-  return reduce ? target : value;
+function splitBullets(text: string): string[] {
+  return text
+    .split(/\.\s+/)
+    .map((s) => s.trim().replace(/\.$/, ""))
+    .filter((s) => s.length > 8);
 }
 
 function HudInfoTooltip({ text }: { text: string }) {
@@ -51,7 +53,7 @@ function HudInfoTooltip({ text }: { text: string }) {
         type="button"
         onMouseEnter={() => setVisible(true)}
         onMouseLeave={() => setVisible(false)}
-        className="flex items-center text-slate-400/60 transition hover:text-slate-400"
+        className="flex items-center text-hub-text-muted transition hover:text-hub-text-secondary"
         aria-label="Score explanation"
       >
         <Info className="h-3.5 w-3.5" />
@@ -70,105 +72,109 @@ type Props = { evaluation: ScheduleEvaluation };
 export function DifficultyScoreHud({ evaluation }: Props) {
   const reduce = useReducedMotion();
   const displayScore = useCountUp(evaluation.fitnessScore);
-  const scoreColor = fitnessScoreColor(evaluation.fitnessScore, evaluation.fitnessMax);
+  const color = scoreColor(evaluation.fitnessScore, evaluation.fitnessMax);
+  const cats = evaluation.categories ?? [];
+  const bullets = evaluation.recommendation ? splitBullets(evaluation.recommendation) : [];
 
   return (
-    <section className="w-full rounded-xl border border-white/[0.08] bg-hub-surface/95 shadow-2xl">
+    <section className="w-full overflow-hidden rounded-xl border border-white/[0.08] bg-hub-surface/95 shadow-2xl">
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
         <div className="flex items-center gap-2">
-          <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold text-hub-text-muted">
+          <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold text-hub-text-secondary">
             Difficulty score
           </h2>
           <HudInfoTooltip text="Commute · density · employment — 1 = easy, 10 = very hard" />
         </div>
-        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${trendLabelStyle(evaluation.fitnessScore, evaluation.fitnessMax)}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold ${trendBadgeClass(evaluation.fitnessScore, evaluation.fitnessMax)}`}>
           {evaluation.trendLabel}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-6 px-4 py-4">
-        {/* Score readout with entrance animation */}
-        <div className="flex items-baseline gap-2">
+      {/* Body: score digit | category bars */}
+      <div className="flex items-stretch">
+        {/* Score */}
+        <div className="flex w-36 shrink-0 flex-col items-start justify-center gap-1 px-4 py-5">
           <motion.span
-            className="font-[family-name:var(--font-outfit)] text-5xl font-bold tabular-nums"
-            style={{ color: scoreColor }}
+            className="font-[family-name:var(--font-outfit)] text-5xl font-bold tabular-nums leading-none"
+            style={{ color }}
             initial={reduce ? false : { opacity: 0, scale: 0.75 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.05 }}
           >
             {displayScore.toFixed(1)}
           </motion.span>
-          <span className="text-sm text-slate-400">/ {evaluation.fitnessMax}</span>
+          <span className="text-xs text-hub-text-muted">out of {evaluation.fitnessMax}</span>
         </div>
 
-        {/* Category mini-bars with animated widths */}
-        {(evaluation.categories ?? []).length > 0 && (
-          <div className="flex flex-1 flex-wrap gap-x-6 gap-y-3">
-            {(evaluation.categories ?? []).map((cat, i) => (
-              <div key={cat.label} className="min-w-[100px] flex-1">
-                <div className="flex items-center justify-between gap-2 text-[10px]">
-                  <span className="flex items-center gap-1.5 font-medium text-slate-400">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
-                    {cat.label}
-                  </span>
-                  <span className="font-bold tabular-nums" style={{ color: cat.color }}>
-                    {cat.score.toFixed(1)}
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+        {/* Separator */}
+        <div className="w-px shrink-0 bg-white/[0.06]" />
+
+        {/* Category bars */}
+        {cats.length > 0 && (
+          <div className="flex flex-1 flex-col justify-center gap-3 px-5 py-5">
+            {cats.map((cat, i) => (
+              <div key={cat.label} className="flex items-center gap-3">
+                <span className="w-24 shrink-0 text-xs text-hub-text-secondary">{cat.label}</span>
+                <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                   <motion.div
-                    className="h-full rounded-full"
+                    className="absolute inset-y-0 left-0 rounded-full"
+                    style={{ backgroundColor: cat.color }}
                     initial={reduce ? false : { width: 0 }}
                     animate={{ width: `${(cat.score / cat.max) * 100}%` }}
-                    transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1], delay: 0.2 + i * 0.07 }}
-                    style={{ backgroundColor: cat.color, opacity: 0.8 }}
+                    transition={{ duration: 0.7, delay: 0.1 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
                   />
                 </div>
+                <span
+                  className="w-7 shrink-0 text-right font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tabular-nums"
+                  style={{ color: cat.color }}
+                >
+                  {cat.score.toFixed(1)}
+                </span>
               </div>
             ))}
           </div>
         )}
-
-        {/* Alert chips */}
-        {evaluation.alerts.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {evaluation.alerts.slice(0, 3).map((a) => (
-              <span
-                key={a.id}
-                title={a.detail}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-                  a.severity === "critical"
-                    ? "border-hub-danger/25 bg-hub-danger/10 text-hub-danger"
-                    : a.severity === "warning"
-                    ? "border-hub-gold/25 bg-hub-gold/10 text-hub-gold"
-                    : "border-hub-cyan/20 bg-hub-cyan/8 text-hub-cyan"
-                }`}
-              >
-                {a.severity === "critical" ? (
-                  <AlertCircle className="h-3 w-3" aria-hidden />
-                ) : a.severity === "warning" ? (
-                  <AlertTriangle className="h-3 w-3" aria-hidden />
-                ) : (
-                  <Info className="h-3 w-3" aria-hidden />
-                )}
-                {a.title}
-              </span>
-            ))}
-            {evaluation.alerts.length > 3 && (
-              <span className="inline-flex items-center rounded-full border border-white/[0.08] px-2.5 py-1 text-[10px] text-slate-400">
-                +{evaluation.alerts.length - 3} more
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
-      {evaluation.recommendation && (
-        <div className="border-t border-white/[0.05] px-4 py-2.5">
-          <p className="text-xs text-slate-400">
-            <span className="font-semibold text-hub-text-secondary">Advisor: </span>
-            {evaluation.recommendation}
+      {/* Alerts — all shown, wrapping */}
+      {evaluation.alerts.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t border-white/[0.05] px-4 py-3">
+          {evaluation.alerts.map((a) => (
+            <span
+              key={a.id}
+              title={a.detail}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                a.severity === "critical"
+                  ? "border-hub-danger/25 bg-hub-danger/10 text-hub-danger"
+                  : a.severity === "warning"
+                  ? "border-hub-gold/25 bg-hub-gold/10 text-hub-gold"
+                  : "border-hub-cyan/20 bg-hub-cyan/8 text-hub-cyan"
+              }`}
+            >
+              {a.severity === "critical" ? <AlertCircle className="h-3.5 w-3.5" aria-hidden />
+                : a.severity === "warning" ? <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                : <Info className="h-3.5 w-3.5" aria-hidden />}
+              {a.title}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Advisor bullets */}
+      {bullets.length > 0 && (
+        <div className="border-t border-white/[0.05] px-4 py-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-hub-text-secondary">
+            Advisor
           </p>
+          <ul className="space-y-1.5">
+            {bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs leading-relaxed text-hub-text-secondary">
+                <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-hub-cyan/70" aria-hidden />
+                {b}.
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>

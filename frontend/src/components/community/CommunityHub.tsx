@@ -17,13 +17,15 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
   const [filterCode, setFilterCode] = useState("");
-  const [filterInput, setFilterInput] = useState("");
+  const [filterCodeInput, setFilterCodeInput] = useState("");
+  const [filterProf, setFilterProf] = useState("");
+  const [filterProfInput, setFilterProfInput] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const pageSize = 20;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  function fetchPosts(opts: { courseCode?: string; page: number }) {
+  function fetchPosts(opts: { courseCode?: string; professorName?: string; page: number }) {
     startTransition(async () => {
       try {
         const data: PostListResponse = await listPosts(opts);
@@ -38,16 +40,22 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
 
   function applyFilter(e: React.FormEvent) {
     e.preventDefault();
-    const code = filterInput.trim();
+    const code = filterCodeInput.trim();
+    const prof = filterProfInput.trim();
     setFilterCode(code);
-    fetchPosts({ courseCode: code || undefined, page: 1 });
+    setFilterProf(prof);
+    fetchPosts({ courseCode: code || undefined, professorName: prof || undefined, page: 1 });
   }
 
   function clearFilter() {
-    setFilterInput("");
+    setFilterCodeInput("");
+    setFilterProfInput("");
     setFilterCode("");
+    setFilterProf("");
     fetchPosts({ page: 1 });
   }
+
+  const hasActiveFilter = filterCode || filterProf;
 
   function handlePostCreated(post: PostSummary) {
     setPosts((prev) => [post, ...prev]);
@@ -85,28 +93,45 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
         />
       </div>
 
-      {/* Filter */}
-      <form onSubmit={applyFilter} className="mb-6">
-        <label className="relative flex items-center">
+      {/* Filters */}
+      <form onSubmit={applyFilter} className="mb-6 flex gap-2">
+        <label className="relative flex flex-1 items-center">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-hub-text-muted" />
           <input
             type="text"
-            value={filterInput}
-            onChange={(e) => setFilterInput(e.target.value)}
-            placeholder="Filter by course code (e.g. CSE 110) — press Enter to apply"
-            className="h-9 w-full rounded-lg border border-white/[0.08] bg-hub-bg/80 pl-9 pr-8 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
+            value={filterCodeInput}
+            onChange={(e) => setFilterCodeInput(e.target.value)}
+            placeholder="Course code (e.g. CSE 110)"
+            className="h-9 w-full rounded-lg border border-white/[0.08] bg-hub-bg/80 pl-9 pr-3 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
           />
-          {filterInput && (
-            <button
-              type="button"
-              onClick={clearFilter}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-hub-text-muted transition hover:text-hub-text"
-              aria-label="Clear filter"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
         </label>
+        <label className="relative flex flex-1 items-center">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-hub-text-muted" />
+          <input
+            type="text"
+            value={filterProfInput}
+            onChange={(e) => setFilterProfInput(e.target.value)}
+            placeholder="Professor name"
+            className="h-9 w-full rounded-lg border border-white/[0.08] bg-hub-bg/80 pl-9 pr-3 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
+          />
+        </label>
+        <button
+          type="submit"
+          className="h-9 rounded-lg border border-hub-cyan/30 bg-hub-cyan/10 px-3 text-sm font-medium text-hub-cyan transition hover:bg-hub-cyan/20"
+        >
+          Filter
+        </button>
+        {hasActiveFilter && (
+          <button
+            type="button"
+            onClick={clearFilter}
+            className="inline-flex h-9 items-center gap-1 rounded-lg border border-white/[0.08] px-3 text-sm text-hub-text-muted transition hover:text-hub-text"
+            aria-label="Clear filters"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </button>
+        )}
       </form>
 
       {/* Post list */}
@@ -132,7 +157,11 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
             type="button"
             disabled={page <= 1 || isPending}
             onClick={() =>
-              fetchPosts({ courseCode: filterCode || undefined, page: page - 1 })
+              fetchPosts({
+                courseCode: filterCode || undefined,
+                professorName: filterProf || undefined,
+                page: page - 1,
+              })
             }
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/[0.08] px-3 text-sm text-hub-text-secondary transition hover:text-hub-text disabled:opacity-40"
           >
@@ -146,7 +175,11 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
             type="button"
             disabled={page >= totalPages || isPending}
             onClick={() =>
-              fetchPosts({ courseCode: filterCode || undefined, page: page + 1 })
+              fetchPosts({
+                courseCode: filterCode || undefined,
+                professorName: filterProf || undefined,
+                page: page + 1,
+              })
             }
             className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/[0.08] px-3 text-sm text-hub-text-secondary transition hover:text-hub-text disabled:opacity-40"
           >

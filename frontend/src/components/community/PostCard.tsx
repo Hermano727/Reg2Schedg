@@ -1,34 +1,43 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { MessageSquare, Tag } from "lucide-react";
+import { ChevronUp, MessageSquare, Tag } from "lucide-react";
+import { toggleUpvote } from "@/lib/api/community";
+import { timeAgo, getInitials } from "@/lib/community/utils";
 import type { PostSummary } from "@/types/community";
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-}
 
 type PostCardProps = {
   post: PostSummary;
 };
 
 export function PostCard({ post }: PostCardProps) {
+  const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount);
+  const [userHasUpvoted, setUserHasUpvoted] = useState(post.userHasUpvoted);
+  const [upvoting, setUpvoting] = useState(false);
+
+  async function handleUpvote(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (upvoting) return;
+    const wasUpvoted = userHasUpvoted;
+    // Optimistic update
+    setUserHasUpvoted(!wasUpvoted);
+    setUpvoteCount((c) => (wasUpvoted ? c - 1 : c + 1));
+    setUpvoting(true);
+    try {
+      const res = await toggleUpvote(post.id);
+      setUserHasUpvoted(res.upvoted);
+      setUpvoteCount(res.upvoteCount);
+    } catch {
+      // Roll back optimistic update on failure
+      setUserHasUpvoted(wasUpvoted);
+      setUpvoteCount((c) => (wasUpvoted ? c + 1 : c - 1));
+    } finally {
+      setUpvoting(false);
+    }
+  }
+
   return (
     <Link
       href={`/community/${post.id}`}
@@ -40,6 +49,11 @@ export function PostCard({ post }: PostCardProps) {
             <span className="inline-flex items-center gap-1 rounded-md bg-hub-cyan/10 px-2 py-0.5 text-xs font-medium text-hub-cyan">
               <Tag className="h-3 w-3" />
               {post.courseCode}
+            </span>
+          )}
+          {post.professorName && (
+            <span className="text-xs text-hub-text-muted">
+              {post.professorName}
             </span>
           )}
         </div>
@@ -60,11 +74,30 @@ export function PostCard({ post }: PostCardProps) {
         <span className="text-xs text-hub-text-muted">·</span>
         <span className="text-xs text-hub-text-muted">{timeAgo(post.createdAt)}</span>
 
-        {/* Reply count pill */}
-        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-hub-text-muted">
-          <MessageSquare className="h-3.5 w-3.5" />
-          {post.replyCount}
-        </span>
+        {/* Action pills */}
+        <div className="ml-auto flex items-center gap-1.5">
+          {/* Upvote */}
+          <button
+            type="button"
+            onClick={handleUpvote}
+            disabled={upvoting}
+            aria-label={userHasUpvoted ? "Remove upvote" : "Upvote"}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs transition disabled:opacity-60 ${
+              userHasUpvoted
+                ? "bg-hub-cyan/15 text-hub-cyan"
+                : "bg-white/[0.06] text-hub-text-muted hover:bg-hub-cyan/10 hover:text-hub-cyan"
+            }`}
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+            {upvoteCount}
+          </button>
+
+          {/* Reply count */}
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2 py-0.5 text-xs text-hub-text-muted">
+            <MessageSquare className="h-3.5 w-3.5" />
+            {post.replyCount}
+          </span>
+        </div>
       </div>
     </Link>
   );

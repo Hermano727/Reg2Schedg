@@ -18,6 +18,7 @@ from app.models.research import (
     CourseRunOutcome,
     CourseResearchRunError,
 )
+from app.utils.normalize import normalize_course_code, normalize_professor_name
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +56,8 @@ def create_browser_use_client(api_key: str) -> Any:
 # ---------------------------------------------------------------------------
 
 def _normalize_param(value: str | None, *, fallback: str) -> str:
-    cleaned = " ".join((value or "").split())
+    # Delegates to canonical normalizers; keeps fallback for unknown values.
+    cleaned = normalize_course_code(value) if value else ""
     return cleaned or fallback
 
 
@@ -242,6 +244,7 @@ def build_cost_metadata(result: Any) -> CourseRunCost:
         browser_cost_usd=_parse_cost(getattr(result, "browser_cost_usd", None)),
         proxy_cost_usd=_parse_cost(getattr(result, "proxy_cost_usd", None)),
         total_cost_usd=_parse_cost(getattr(result, "total_cost_usd", None)),
+        data_source="browser_use",
     )
 
 

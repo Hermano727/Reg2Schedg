@@ -205,9 +205,7 @@ export function CommandCenter() {
 
       if (imageFile?.type.startsWith("image/")) {
         try {
-          console.debug("runIngestionFlow: calling researchScreenshot with file:", imageFile?.name, imageFile?.type);
           const response = await researchScreenshot(imageFile);
-          console.debug("runIngestionFlow: researchScreenshot response:", response);
           const parsed = response.results.map(courseResearchResultToDossier);
           if (parsed.length > 0) nextClasses = parsed;
 
@@ -267,9 +265,7 @@ export function CommandCenter() {
 
   const handleFilesSelected = useCallback(
     (files: FileList | File[]) => {
-      console.debug("handleFilesSelected: files:", files);
       const imageFile = Array.from(files).find((f) => f.type.startsWith("image/"));
-      console.debug("handleFilesSelected: selected imageFile:", imageFile?.name, imageFile?.type);
       void runIngestionFlow(imageFile);
     },
     [runIngestionFlow],
@@ -287,6 +283,17 @@ export function CommandCenter() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1">
+        <RightSidebar
+          planSectionTitle={authed ? "Saved plans" : "My Quarters"}
+          plans={sidebarPlans}
+          activePlanId={activePlanId}
+          onSelectPlan={(id) => { setActivePlanId(id); setPhase("dashboard"); }}
+          newPlanLabel={authed ? "New saved plan" : "New quarter research"}
+          onNewPlan={authed ? handleNewPlan : undefined}
+          onDeletePlan={authed ? handleDeletePlan : undefined}
+          vaultItems={sidebarVault}
+          vaultSynced={authed}
+        />
         <main
           className={`relative min-w-0 flex-1 overflow-y-auto py-4 pb-10 ${
             phase === "dashboard" ? "px-4 lg:pl-3 lg:pr-8" : "px-4 lg:px-6"
@@ -449,17 +456,6 @@ export function CommandCenter() {
           </div>
         </main>
 
-        <RightSidebar
-          planSectionTitle={authed ? "Saved plans" : "My Quarters"}
-          plans={sidebarPlans}
-          activePlanId={activePlanId}
-          onSelectPlan={(id) => { setActivePlanId(id); setPhase("dashboard"); }}
-          newPlanLabel={authed ? "New saved plan" : "New quarter research"}
-          onNewPlan={authed ? handleNewPlan : undefined}
-          onDeletePlan={authed ? handleDeletePlan : undefined}
-          vaultItems={sidebarVault}
-          vaultSynced={authed}
-        />
       </div>
 
       <ProcessingModal open={phase === "processing"} />

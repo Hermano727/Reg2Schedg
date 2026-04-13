@@ -31,7 +31,7 @@ export function ExamsPanel({ classes }: { classes: ClassDossier[] }) {
   if (exams.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-hub-surface/90 px-4 py-3 shadow-sm">
+    <section className="h-full rounded-xl border border-white/[0.08] bg-hub-surface/90 px-3 py-3 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
         <GraduationCap className="h-4 w-4 text-hub-gold" aria-hidden />
         <h2 className="text-xs font-semibold text-hub-text-muted">
@@ -40,16 +40,19 @@ export function ExamsPanel({ classes }: { classes: ClassDossier[] }) {
       </div>
       <div className="divide-y divide-white/[0.05]">
         {exams.map((ex, i) => (
-          <div
-            key={i}
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2 text-xs text-hub-text-secondary"
-          >
-            <span className="font-semibold text-hub-text">{ex.courseCode}</span>
-            <span className="rounded bg-hub-gold/10 px-1.5 py-0.5 text-[10px] font-bold text-hub-gold">
-              {ex.sectionType === "FI" ? "Final" : ex.sectionType === "MI" ? "Midterm" : ex.sectionType}
+          <div key={i} className="flex flex-col gap-0.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-hub-text">{ex.courseCode}</span>
+              <span className="rounded bg-hub-gold/10 px-1.5 py-0.5 text-[10px] font-bold text-hub-gold">
+                {ex.sectionType === "FI" ? "Final" : ex.sectionType === "MI" ? "Midterm" : ex.sectionType}
+              </span>
+            </div>
+            <span className="text-[11px] text-hub-text-secondary">
+              {ex.days} · {ex.start_time}–{ex.end_time}
             </span>
-            <span>{ex.days} · {ex.start_time}–{ex.end_time}</span>
-            {ex.location && <span className="text-hub-text-muted">{ex.location}</span>}
+            {ex.location && (
+              <span className="text-[10px] text-hub-text-muted">{ex.location}</span>
+            )}
           </div>
         ))}
       </div>

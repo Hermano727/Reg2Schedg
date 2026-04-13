@@ -59,6 +59,7 @@ class CourseResearchCacheRow(CamelModel):
     logistics: dict[str, Any]
     model: str | None = None
     updated_at: str
+    data_source: str = "browser_use"  # Existing rows retain default; new rows set explicitly
 
 
 class SunsetGradeDistributionRow(CamelModel):

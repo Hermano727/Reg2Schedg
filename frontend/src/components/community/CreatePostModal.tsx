@@ -16,6 +16,8 @@ export function CreatePostModal({ trigger, onCreated }: CreatePostModalProps) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [courseCode, setCourseCode] = useState("");
+  const [professorName, setProfessorName] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +25,8 @@ export function CreatePostModal({ trigger, onCreated }: CreatePostModalProps) {
     setTitle("");
     setBody("");
     setCourseCode("");
+    setProfessorName("");
+    setIsAnonymous(false);
     setError(null);
   }
 
@@ -36,6 +40,8 @@ export function CreatePostModal({ trigger, onCreated }: CreatePostModalProps) {
         title: title.trim(),
         body: body.trim(),
         courseCode: courseCode.trim() || undefined,
+        professorName: professorName.trim() || undefined,
+        isAnonymous,
       });
       onCreated(post);
       setOpen(false);
@@ -70,17 +76,32 @@ export function CreatePostModal({ trigger, onCreated }: CreatePostModalProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-hub-text-secondary">
-                Course code <span className="text-hub-text-muted">(optional)</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. CSE 110"
-                value={courseCode}
-                onChange={(e) => setCourseCode(e.target.value)}
-                className="h-9 w-full rounded-lg border border-white/[0.08] bg-hub-bg/80 px-3 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
-              />
+            {/* Course code + Professor — side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-hub-text-secondary">
+                  Course code <span className="text-hub-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. CSE 110"
+                  value={courseCode}
+                  onChange={(e) => setCourseCode(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-white/[0.08] bg-hub-bg/80 px-3 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-hub-text-secondary">
+                  Professor <span className="text-hub-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Bryan Chin"
+                  value={professorName}
+                  onChange={(e) => setProfessorName(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-white/[0.08] bg-hub-bg/80 px-3 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
+                />
+              </div>
             </div>
 
             <div>
@@ -116,6 +137,26 @@ export function CreatePostModal({ trigger, onCreated }: CreatePostModalProps) {
                 className="w-full resize-none rounded-lg border border-white/[0.08] bg-hub-bg/80 px-3 py-2.5 text-sm text-hub-text outline-none ring-hub-cyan/40 placeholder:text-hub-text-muted focus:border-hub-cyan/40 focus:ring-2"
               />
             </div>
+
+            {/* Anonymous toggle */}
+            <label className="flex cursor-pointer items-center justify-between rounded-lg border border-white/[0.06] bg-hub-bg/40 px-3 py-2.5">
+              <span className="flex flex-col">
+                <span className="text-xs font-medium text-hub-text-secondary">Post anonymously</span>
+                <span className="text-[10px] text-hub-text-muted">Your name will be hidden from other students</span>
+              </span>
+              <span className="relative ml-4 shrink-0">
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                />
+                {/* Track */}
+                <span className="block h-5 w-9 rounded-full border border-white/[0.1] bg-white/[0.08] transition-colors peer-checked:border-hub-cyan/50 peer-checked:bg-hub-cyan/20" />
+                {/* Thumb */}
+                <span className="absolute left-0.5 top-0.5 block h-4 w-4 rounded-full bg-hub-text-muted shadow transition-all peer-checked:translate-x-4 peer-checked:bg-hub-cyan" />
+              </span>
+            </label>
 
             {error && (
               <p className="text-sm text-hub-danger">{error}</p>

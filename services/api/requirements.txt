@@ -11,3 +11,8 @@ python-multipart>=0.0.9
 browser-use-sdk
 google-auth-oauthlib>=1.2.0
 google-api-python-client>=2.140.0
+# Tiered research pipeline (Tiers 0-2: free alternatives to Browser Use)
+asyncpraw>=7.7.0          # Tier 0: Reddit API (pure Python, no native extensions)
+httpx>=0.27.0             # Tier 1: RMP GraphQL + Tier 2: UCSD HTTP scrape (likely already transitive)
+beautifulsoup4>=4.12.0    # Tier 2: UCSD catalog HTML parsing
+lxml>=5.0.0               # Fast BeautifulSoup4 parser backend

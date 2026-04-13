@@ -51,10 +51,14 @@ export default async function ThreadPage({ params }: Props) {
     title: rawPost.title as string,
     body: rawPost.body as string,
     courseCode: (rawPost.course_code as string | null) ?? null,
+    professorName: (rawPost.professor_name as string | null) ?? null,
+    isAnonymous: (rawPost.is_anonymous as boolean) ?? false,
     authorDisplayName: (rawPost.author_display_name as string) ?? "Anonymous",
     createdAt: rawPost.created_at as string,
     updatedAt: rawPost.updated_at as string,
     replyCount: (rawPost.reply_count as number) ?? 0,
+    upvoteCount: (rawPost.upvote_count as number) ?? 0,
+    userHasUpvoted: (rawPost.user_has_upvoted as boolean) ?? false,
     replies,
   };
 

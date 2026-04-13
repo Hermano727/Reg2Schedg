@@ -2,29 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Tag, MessageSquare } from "lucide-react";
-import { createReply } from "@/lib/api/community";
+import { ArrowLeft, ChevronUp, MessageSquare, Tag } from "lucide-react";
+import { createReply, toggleUpvote } from "@/lib/api/community";
+import { timeAgo, getInitials } from "@/lib/community/utils";
 import type { PostDetail, ReplyOut } from "@/types/community";
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-}
 
 type ThreadViewProps = {
   post: PostDetail;
@@ -35,6 +16,10 @@ export function ThreadView({ post }: ThreadViewProps) {
   const [replyBody, setReplyBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount);
+  const [userHasUpvoted, setUserHasUpvoted] = useState(post.userHasUpvoted);
+  const [upvoting, setUpvoting] = useState(false);
 
   async function handleReply(e: React.FormEvent) {
     e.preventDefault();
@@ -52,6 +37,24 @@ export function ThreadView({ post }: ThreadViewProps) {
     }
   }
 
+  async function handleUpvote() {
+    if (upvoting) return;
+    const wasUpvoted = userHasUpvoted;
+    setUserHasUpvoted(!wasUpvoted);
+    setUpvoteCount((c) => (wasUpvoted ? c - 1 : c + 1));
+    setUpvoting(true);
+    try {
+      const res = await toggleUpvote(post.id);
+      setUserHasUpvoted(res.upvoted);
+      setUpvoteCount(res.upvoteCount);
+    } catch {
+      setUserHasUpvoted(wasUpvoted);
+      setUpvoteCount((c) => (wasUpvoted ? c + 1 : c - 1));
+    } finally {
+      setUpvoting(false);
+    }
+  }
+
   return (
     <div className="w-full px-8 py-8">
       <Link
@@ -64,16 +67,25 @@ export function ThreadView({ post }: ThreadViewProps) {
 
       {/* Original post */}
       <div className="glass-panel mb-6 rounded-xl border border-white/[0.08] p-6">
-        {post.courseCode && (
-          <span className="mb-3 inline-flex items-center gap-1 rounded-md bg-hub-cyan/10 px-2 py-0.5 text-xs font-medium text-hub-cyan">
-            <Tag className="h-3 w-3" />
-            {post.courseCode}
-          </span>
-        )}
+        {/* Tags row */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {post.courseCode && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-hub-cyan/10 px-2 py-0.5 text-xs font-medium text-hub-cyan">
+              <Tag className="h-3 w-3" />
+              {post.courseCode}
+            </span>
+          )}
+          {post.professorName && (
+            <span className="text-xs text-hub-text-muted">{post.professorName}</span>
+          )}
+        </div>
+
         <h1 className="mb-4 text-2xl font-bold text-hub-text">{post.title}</h1>
         <p className="whitespace-pre-wrap text-sm text-hub-text-secondary">
           {post.body}
         </p>
+
+        {/* Author row + upvote */}
         <div className="mt-5 flex items-center gap-2.5">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-hub-cyan/20 text-xs font-semibold text-hub-cyan">
             {getInitials(post.authorDisplayName)}
@@ -81,6 +93,21 @@ export function ThreadView({ post }: ThreadViewProps) {
           <span className="text-xs text-hub-text-muted">{post.authorDisplayName}</span>
           <span className="text-xs text-hub-text-muted">·</span>
           <span className="text-xs text-hub-text-muted">{timeAgo(post.createdAt)}</span>
+
+          <button
+            type="button"
+            onClick={handleUpvote}
+            disabled={upvoting}
+            aria-label={userHasUpvoted ? "Remove upvote" : "Upvote this post"}
+            className={`ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition disabled:opacity-60 ${
+              userHasUpvoted
+                ? "bg-hub-cyan/15 text-hub-cyan"
+                : "bg-white/[0.06] text-hub-text-muted hover:bg-hub-cyan/10 hover:text-hub-cyan"
+            }`}
+          >
+            <ChevronUp className="h-4 w-4" />
+            {upvoteCount} {upvoteCount === 1 ? "upvote" : "upvotes"}
+          </button>
         </div>
       </div>
 

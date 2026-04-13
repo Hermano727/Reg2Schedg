@@ -106,6 +106,29 @@ class CourseLogistics(BaseModel):
     )
 
 
+class RedditPost(BaseModel):
+    title: str
+    body: str
+    url: str
+    score: int = 0
+    top_comments: list[str] = Field(default_factory=list)
+
+
+class ResearchRawData(BaseModel):
+    """Intermediate bag-of-text from Tiers 0-2, fed into Gemini synthesis (Tier 3)."""
+    course_code: str
+    professor_name: str | None
+    reddit_posts: list[RedditPost] = Field(default_factory=list)
+    rmp_stats: RateMyProfessorStats | None = None
+    rmp_url: str | None = None
+    ucsd_course_description: str | None = None
+    ucsd_catalog_url: str | None = None
+    ucsd_syllabus_snippets: list[str] = Field(default_factory=list)
+    ucsd_syllabus_url: str | None = None
+    tier_coverage: dict[str, bool] = Field(default_factory=dict)
+    # e.g. {"reddit": True, "rmp": True, "ucsd_catalog": False, "ucsd_syllabus": False}
+
+
 class CourseRunCost(BaseModel):
     session_id: str | None = None
     status: str | None = None
@@ -113,6 +136,7 @@ class CourseRunCost(BaseModel):
     browser_cost_usd: float | None = None
     proxy_cost_usd: float | None = None
     total_cost_usd: float | None = None
+    data_source: str = "tiered_pipeline"
 
 
 class SetSummary(BaseModel):
@@ -157,6 +181,9 @@ class CourseResearchResult(BaseModel):
     cache_error: str | None = None
     cost: CourseRunCost | None = None
     error: str | None = None
+    # Canonical ID from course_research_cache — lets the frontend reference
+    # research by ID instead of duplicating full logistics into saved_plans.
+    cache_id: str | None = None
 
 
 class BatchCostSummary(BaseModel):

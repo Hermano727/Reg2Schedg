@@ -12,6 +12,7 @@ from app.routers.calendar import router as calendar_router
 from app.routers.community import router as community_router
 from app.routers.fit_analysis import router as fit_analysis_router
 from app.routers.parse import router as parse_router
+from app.routers.plans import router as plans_router
 
 app = FastAPI(title="Reg2Schedg API", version="0.1.0")
 
@@ -26,6 +27,7 @@ app.include_router(parse_router, prefix="/api")
 app.include_router(calendar_router, prefix="/api")
 app.include_router(fit_analysis_router, prefix="/api")
 app.include_router(community_router, prefix="/api")
+app.include_router(plans_router)
 
 
 @app.get("/health")

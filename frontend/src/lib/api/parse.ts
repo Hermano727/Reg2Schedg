@@ -70,6 +70,8 @@ export interface CourseResearchResult {
   sunset_grade_distribution: SunsetGradeDistribution | null;
   cache_hit: boolean;
   error: string | null;
+  /** UUID of the course_research_cache row — used to save v2 plan references. */
+  cache_id: string | null;
 }
 
 export interface BatchResearchResponse {

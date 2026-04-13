@@ -119,6 +119,8 @@ export interface ClassDossier {
   meetings: SectionMeeting[];
   logistics?: CourseLogistics;
   sunsetGradeDistribution?: SunsetGradeDistribution | null;
+  /** UUID of the canonical course_research_cache row. Present after research; used to build v2 saved-plan references. */
+  cacheId?: string | null;
 }
 
 export interface ScheduleAlert {

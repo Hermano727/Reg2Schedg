@@ -166,23 +166,33 @@ export function ThreadView({ post }: ThreadViewProps) {
       </div>
 
       {/* Replies section header */}
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-hub-text-secondary">
-        <MessageSquare className="h-4 w-4" />
-        {replies.length} {replies.length === 1 ? "Reply" : "Replies"}
-      </h2>
+      <div className="mb-5 flex items-center gap-3">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-hub-text-muted/60">
+          {replies.length} {replies.length === 1 ? "comment" : "comments"}
+        </h2>
+        <div className="flex-1 h-px bg-white/[0.05]" />
+      </div>
 
-      {/* Reply tree */}
-      <div className="mb-6 flex flex-col gap-4">
+      {/* Bottom reply composer — sits at top of comment section like Reddit */}
+      <div className="mb-8">
+        <ReplyComposer
+          postId={post.id}
+          onSubmitted={setReplies}
+        />
+      </div>
+
+      {/* Reply tree — flat against the page, no cards */}
+      <div className="flex flex-col">
         {rootReplies.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <MessageSquare className="h-8 w-8 text-hub-text-muted/40" />
-            <p className="text-sm text-hub-text-muted">No replies yet. Be the first to respond!</p>
+          <div className="flex flex-col items-center gap-2 py-12 text-center">
+            <MessageSquare className="h-7 w-7 text-hub-text-muted/25" />
+            <p className="text-sm text-hub-text-muted/50">No replies yet. Be the first to respond!</p>
           </div>
         ) : (
-          rootReplies.map((reply) => (
+          rootReplies.map((reply, i) => (
             <div
               key={reply.id}
-              className="glass-panel rounded-xl border border-white/[0.08] p-4"
+              className={`py-4 ${i < rootReplies.length - 1 ? "border-b border-white/[0.05]" : ""}`}
             >
               <ReplyNode
                 reply={reply}
@@ -196,12 +206,6 @@ export function ThreadView({ post }: ThreadViewProps) {
           ))
         )}
       </div>
-
-      {/* Bottom reply composer */}
-      <ReplyComposer
-        postId={post.id}
-        onSubmitted={setReplies}
-      />
     </div>
   );
 }

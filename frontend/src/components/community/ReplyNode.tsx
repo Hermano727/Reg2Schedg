@@ -10,6 +10,16 @@ import type { ReplyOut } from "@/types/community";
 
 const MAX_VISUAL_DEPTH = 6;
 
+// Depth line colors shift from cyan → slate as nesting deepens
+const DEPTH_LINE_COLORS = [
+  "border-hub-cyan/25 hover:border-hub-cyan/50",
+  "border-hub-cyan/18 hover:border-hub-cyan/38",
+  "border-[rgba(100,160,200,0.15)] hover:border-[rgba(100,160,200,0.32)]",
+  "border-[rgba(80,120,170,0.13)] hover:border-[rgba(80,120,170,0.28)]",
+  "border-white/[0.08] hover:border-white/[0.18]",
+  "border-white/[0.05] hover:border-white/[0.12]",
+];
+
 type ReplyNodeProps = {
   reply: ReplyOut;
   postId: string;
@@ -36,6 +46,7 @@ export function ReplyNode({
 
   const score = upvoteCount - downvoteCount;
   const visualDepth = Math.min(depth, MAX_VISUAL_DEPTH);
+  const depthLineClass = DEPTH_LINE_COLORS[Math.max(0, visualDepth - 1)] ?? DEPTH_LINE_COLORS[5];
 
   async function handleUpvote() {
     if (voting) return;
@@ -86,79 +97,67 @@ export function ReplyNode({
   }
 
   return (
-    <div className={`flex gap-0 ${depth > 0 ? "mt-2" : ""}`}>
-      {/* Depth line */}
+    <div className={`flex ${depth > 0 ? "mt-3" : ""}`}>
+      {/* Depth line — clickable rail, shifts hue with depth */}
       {depth > 0 && (
-        <div
-          className="mr-3 shrink-0 cursor-pointer"
-          style={{ width: `${visualDepth * 16}px` }}
-        >
-          <div className="ml-auto h-full w-0.5 rounded-full bg-white/[0.08] hover:bg-hub-cyan/30 transition-colors" />
+        <div className="mr-3 shrink-0 flex justify-center" style={{ width: 12 }}>
+          <div className={`w-px h-full border-l transition-colors cursor-pointer ${depthLineClass}`} />
         </div>
       )}
 
       <div className="min-w-0 flex-1">
-        {/* Header */}
-        <div className="mb-1.5 flex items-center gap-2">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hub-cyan/10 text-[10px] font-semibold text-hub-cyan">
+        {/* Author row */}
+        <div className="mb-1 flex items-center gap-2">
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-[9px] font-semibold text-hub-text-secondary">
             {getInitials(reply.authorDisplayName)}
           </div>
-          <span className="text-xs font-medium text-hub-text-secondary">{reply.authorDisplayName}</span>
-          <span className="text-xs text-hub-text-muted">·</span>
-          <span className="text-xs text-hub-text-muted">{timeAgo(reply.createdAt)}</span>
+          <span className="text-[11px] font-semibold text-hub-text-secondary tracking-wide">
+            {reply.authorDisplayName}
+          </span>
+          <span className="text-[11px] text-hub-text-muted/60">{timeAgo(reply.createdAt)}</span>
         </div>
 
-        {/* Body */}
-        <MarkdownBody className="mb-2">{reply.body}</MarkdownBody>
+        {/* Body — full opacity, no wrapping surface */}
+        <div className="mb-1.5 pl-0">
+          <MarkdownBody>{reply.body}</MarkdownBody>
+        </div>
 
-        {/* Actions row */}
-        <div className="flex items-center gap-3">
-          {/* Votes */}
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={handleUpvote}
-              disabled={voting}
-              aria-label="Upvote"
-              className={`flex h-6 w-6 items-center justify-center rounded transition disabled:opacity-50 ${
-                userHasUpvoted
-                  ? "text-hub-cyan"
-                  : "text-hub-text-muted hover:text-hub-cyan"
-              }`}
-            >
-              <ChevronUp className="h-4 w-4" />
-            </button>
-            <span
-              className={`min-w-[1.5rem] text-center text-xs font-medium tabular-nums ${
-                score > 0
-                  ? "text-hub-cyan"
-                  : score < 0
-                  ? "text-hub-danger"
-                  : "text-hub-text-muted"
-              }`}
-            >
-              {score}
-            </span>
-            <button
-              type="button"
-              onClick={handleDownvote}
-              disabled={voting}
-              aria-label="Downvote"
-              className={`flex h-6 w-6 items-center justify-center rounded transition disabled:opacity-50 ${
-                userHasDownvoted
-                  ? "text-hub-danger"
-                  : "text-hub-text-muted hover:text-hub-danger"
-              }`}
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
+        {/* Action bar — whisper quiet */}
+        <div className="flex items-center gap-0.5 mb-0.5">
+          <button
+            type="button"
+            onClick={handleUpvote}
+            disabled={voting}
+            aria-label="Upvote"
+            className={`flex h-5 w-5 items-center justify-center rounded transition-colors disabled:opacity-40 ${
+              userHasUpvoted ? "text-hub-cyan" : "text-hub-text-muted/50 hover:text-hub-cyan"
+            }`}
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
+          </button>
+          <span
+            className={`w-6 text-center text-[11px] font-medium tabular-nums ${
+              score > 0 ? "text-hub-cyan" : score < 0 ? "text-hub-danger" : "text-hub-text-muted/60"
+            }`}
+          >
+            {score}
+          </span>
+          <button
+            type="button"
+            onClick={handleDownvote}
+            disabled={voting}
+            aria-label="Downvote"
+            className={`flex h-5 w-5 items-center justify-center rounded transition-colors disabled:opacity-40 ${
+              userHasDownvoted ? "text-hub-danger" : "text-hub-text-muted/50 hover:text-hub-danger"
+            }`}
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
 
-          {/* Reply link */}
           <button
             type="button"
             onClick={() => setShowReplyComposer((v) => !v)}
-            className="text-xs text-hub-text-muted transition hover:text-hub-cyan"
+            className="ml-1 text-[11px] font-medium text-hub-text-muted/50 transition-colors hover:text-hub-cyan px-1.5 py-0.5 rounded"
           >
             Reply
           </button>
@@ -166,7 +165,7 @@ export function ReplyNode({
 
         {/* Inline reply composer */}
         {showReplyComposer && (
-          <div className="mt-2">
+          <div className="mt-2 mb-1">
             <ReplyComposer
               postId={postId}
               parentReplyId={reply.id}
@@ -177,9 +176,9 @@ export function ReplyNode({
           </div>
         )}
 
-        {/* Child replies */}
+        {/* Child replies — no gap wrapper, just spacing via mt on each node */}
         {children.length > 0 && (
-          <div className="mt-2 flex flex-col gap-2">
+          <div className="mt-1">
             {children.map((child) => (
               <ReplyNode
                 key={child.id}

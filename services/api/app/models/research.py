@@ -201,6 +201,9 @@ class BatchResearchResponse(BaseModel):
     course_count: int
     results: list[CourseResearchResult]
     cost_summary: BatchCostSummary
+    # Present on known-schedule fast-path hits where fit analysis was previously
+    # cached. Frontend should use this directly and skip the /api/fit-analysis call.
+    fit_evaluation: dict[str, Any] | None = None
 
 
 class CourseRunOutcome(BaseModel):

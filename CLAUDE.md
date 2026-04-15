@@ -14,10 +14,12 @@ This file provides guidance to Claude Code when working in this repository.
 
 **What makes it distinct:**
 - One screenshot → full course dossier for every class
-- Real-time Browser Use scraping (RateMyProfessors, Reddit r/ucsd, course pages) rather than static data
+- Multi-tier research pipeline: Reddit (live scraping), RateMyProfessors (GraphQL), UCSD catalog (HTTP scraper), Gemini synthesis — no Browser Use dependency in the default path
+- Known-schedule fast path: signature-hashed cache means re-uploading the same schedule is near-instant
 - SunSET/CAPE grade distribution data from a pre-seeded Supabase table
 - AI "Intensity Score" predicting actual quarter difficulty
 - Interactive weekly calendar with drag-able class blocks and custom commitment blocks
+- Community center for student discussion (posts, replies, upvotes)
 
 ---
 
@@ -55,16 +57,17 @@ Next.js App Router (`frontend/src/app/`) with two route groups:
 - `(hub)/` — main application shell; protected routes
 - Auth pages: `login/`, `signup/`, `auth/callback/` (Supabase OAuth callback)
 
-**Component hierarchy (accurate as of latest refactor):**
+**Component hierarchy:**
 ```
 HubShell
 └── CommandCenter                    ← phase state machine: idle → processing → dashboard
     ├── IngestionHub                 ← file drop zone + manual research form
-    ├── ProcessingModal              ← shown during scraping/research phase
-    └── DossierScheduleWorkspace     ← main output: cards + calendar + map
+    ├── ProcessingModal              ← shown during research phase
+    └── DossierScheduleWorkspace     ← main output: 4-phase guided workspace
+        ├── Phase nav (Overview / Courses / Logistics / Review)
         ├── ClassCard[]              ← compact card per course (opens DossierDashboardModal)
         ├── DossierDashboardModal    ← full-screen bento-grid course intelligence panel
-        ├── WeeklyCalendar           ← drag-reschedulable weekly grid
+        ├── WeeklyCalendar           ← drag-reschedulable weekly grid (undo/redo via useScheduleEditor)
         ├── CampusPathMap            ← Leaflet map with geocoded building markers
         ├── DifficultyScoreHud       ← AI fitness score + alerts
         ├── ExamsPanel               ← FI/MI exam section list
@@ -75,6 +78,13 @@ HubShell
             └── EditBlockModal
 ```
 
+**Other layout components:**
+- `RightSidebar` — saved plans list + vault items (right side of workspace)
+- `CommandPalette` — Cmd+K navigation modal
+- `Header` — top nav with user account menu
+- `calendar-state-context` — tracks whether WeeklyCalendar is in viewport; drives "View Calendar" FAB
+- `calendar-sync-context` — Google Calendar sync handler
+
 **Key orchestrators:**
 - `CommandCenter` (`frontend/src/components/command-center/`) — owns ingestion flow, calls `usePlanSync` hook for all Supabase plan CRUD
 - `SaveMenu` — inline save dropdown (Overwrite / Save as new)
@@ -83,9 +93,10 @@ HubShell
 ```
 User uploads screenshot
   → POST /api/research-screenshot
-  → Gemini parses schedule image → CourseEntry[]
-  → Browser Use researches each course (RMP, Reddit, course page)
-  → Results cached in Supabase course_research_cache
+  → Gemini (gemini-2.5-flash) parses schedule image → CourseEntry[]
+  → compute_schedule_signature() checks known_schedules (fast path)
+  → If miss: tiered pipeline per course (Reddit → RMP → UCSD catalog → Gemini synthesis)
+  → Results cached in course_research_cache + known_schedules snapshot
   → POST /api/fit-analysis → ScheduleEvaluation (fitness score)
   → courseResearchResultToDossier() mapper → ClassDossier[]
   → DossierScheduleWorkspace renders cards + calendar
@@ -93,78 +104,188 @@ User uploads screenshot
 
 **Key types** — all in `frontend/src/types/dossier.ts`:
 - `ClassDossier` — core domain model for a course card
-- `CourseLogistics` — Browser Use research output (attendance, grade_breakdown, evidence[], professor_info_found, general_course_overview, general_professor_overview)
-- `SunsetGradeDistribution` — CAPE/SunSET grade data (includes `is_cross_course_fallback` + `source_course_code` for cross-course fallback)
+- `CourseLogistics` — research output (attendance, grade_breakdown, evidence[], professor_info_found, general_course_overview, general_professor_overview)
+- `SunsetGradeDistribution` — CAPE/SunSET grade data (includes `is_cross_course_fallback` + `source_course_code`)
 - `ScheduleEvaluation` — fitness score + alerts + recommendation
 - `EvidenceItem` — verbatim quote from a source with URL + relevance_score
 
 **Frontend hooks:**
-- `useScheduleEditor` (`frontend/src/hooks/`) — calendar state with undo/redo history
-- `usePlanSync` (`frontend/src/hooks/`) — all Supabase auth + plan loading/saving/deleting
+- `useScheduleEditor` (`frontend/src/hooks/`) — calendar state with undo/redo history; re-hydrates on `hydrateKey` change
+- `useScheduleFingerprint` — stable fingerprint of viewClasses meetings, used to detect when HYDRATE should fire
+- `usePlanSync` (`frontend/src/hooks/`) — all Supabase auth + plan loading/saving/deleting; handles v1 (full payload) and v2 (cache references) plan formats
 
-**Mock data:** `frontend/src/lib/mock/dossier.ts` — realistic mock for demo/development, includes evidence arrays and logistics.
+**Mock data:** `frontend/src/lib/mock/dossier.ts` — realistic mock for demo/development, includes evidence arrays and logistics. Shown in idle state and as fallback.
 
 ---
 
 ### Backend Services
 
-`services/api/` — FastAPI app. Module layout after refactor:
+`services/api/` — FastAPI app. Full module layout:
 
 ```
 app/
-├── main.py
+├── main.py               ← FastAPI app, CORS, router registration
+├── config.py             ← settings (reads .env)
 ├── models/
-│   ├── domain.py        ← DB row models (CamelModel base with camelCase aliasing)
-│   ├── research.py      ← ALL research Pydantic models (CourseLogistics, EvidenceItem,
-│   │                       SunsetGradeDistribution, CourseResearchResult, BatchResearchResponse…)
-│   └── course_parse.py  ← CourseEntry, SectionMeeting (Gemini parse output)
+│   ├── domain.py         ← DB row models (CamelModel base with camelCase aliasing)
+│   ├── research.py       ← ALL research Pydantic models (CourseLogistics, EvidenceItem,
+│   │                        SunsetGradeDistribution, CourseResearchResult, BatchResearchResponse,
+│   │                        ResearchRawData, RedditPost, RateMyProfessorStats…)
+│   ├── course_parse.py   ← CourseEntry, SectionMeeting (Gemini parse output)
+│   ├── plan.py           ← SavedPlanCreate
+│   └── community.py      ← community post/reply models
 ├── services/
-│   ├── course_research.py  ← Orchestrator: geocode + SunSET + cache + Browser Use per course
-│   ├── browser_use.py      ← Browser Use client setup, build_task() prompt, JSON parsing
-│   ├── sunset.py           ← build_sunset_grade_distribution() from DB row
-│   ├── fit_analysis.py     ← Schedule fitness scoring
-│   └── geocode.py          ← Building code → lat/lng resolution
+│   ├── course_research.py    ← Batch orchestrator: known-schedule fast path,
+│   │                            per-course cache lookup, tiered pipeline dispatch,
+│   │                            geocode enrichment, known_schedules snapshot write
+│   ├── screenshot_parser.py  ← parse_schedule_image() — Gemini multimodal parse
+│   ├── reddit_client.py      ← Tier 0: Reddit multi-query search + PullPush fallback
+│   │                            Tier 0.5: Gemini Flash relevance scoring
+│   ├── rmp_client.py         ← Tier 1: RateMyProfessors unofficial GraphQL client
+│   ├── ucsd_scraper.py       ← Tier 2: UCSD catalog + syllabus HTTP scraper (BeautifulSoup)
+│   ├── logistics_synthesizer.py ← Tier 3: Gemini synthesis → CourseLogistics
+│   ├── browser_use.py        ← Optional Browser Use client (disabled by default)
+│   ├── sunset.py             ← build_sunset_grade_distribution() from DB row
+│   ├── fit_analysis.py       ← Schedule fitness scoring (Gemini)
+│   └── geocode.py            ← Building code → lat/lng resolution (campus_buildings DB)
 ├── db/
-│   ├── client.py        ← Supabase client singleton
-│   ├── service.py       ← normalize_course_code, search_campus_building, cache CRUD, plan CRUD
+│   ├── client.py        ← Supabase client singleton + per-token client factory
+│   ├── service.py       ← cache CRUD, known_schedules CRUD, plan CRUD,
+│   │                       campus_buildings lookup, normalization helpers
 │   ├── sunset_db.py     ← get_sunset_grade_distribution() with cross-course professor fallback
-│   └── community.py     ← Community posts/replies CRUD
-└── routers/
-    ├── parse.py         ← /api/parse-screenshot, /api/research-screenshot
-    ├── fit.py           ← /api/fit-analysis
-    ├── calendar.py      ← /api/calendar/oauth
-    └── community.py     ← community endpoints
+│   └── community.py     ← community posts/replies/votes/notifications CRUD
+├── auth/
+│   ├── deps.py          ← FastAPI dependency: get_current_user_access (Bearer JWT)
+│   └── jwt.py           ← JWT validation against SUPABASE_JWT_SECRET
+├── routers/
+│   ├── parse.py         ← /api/parse-screenshot, /api/research-screenshot
+│   ├── fit_analysis.py  ← /api/fit-analysis
+│   ├── plans.py         ← /plans/{id}/expanded (v1 passthrough + v2 join expansion)
+│   ├── calendar.py      ← /api/calendar/oauth
+│   └── community.py     ← /api/community/* (posts, replies, votes, notifications)
+└── utils/
+    └── normalize.py     ← normalize_course_code, normalize_professor_name,
+                            normalize_professor_name_loose, compute_schedule_signature
 ```
 
-**Active endpoints:**
+---
+
+### Research Pipeline (Tiered)
+
+The default research path is a 4-tier pipeline that runs **without Browser Use**. Browser Use is an optional overlay controlled by the `ENABLE_BROWSER_USE=true` env var.
+
+```
+Tier 0   — Reddit (reddit_client.py)
+           Multi-query r/ucsd search via public JSON API:
+             1. "CSE 120"  (as-written)
+             2. "CSE120"   (no-space — students write this)
+             3. "Voelker 120"  (professor last name + course number, if known)
+             4. "Voelker"      (professor last name alone)
+           Queries run concurrently with 0.6s stagger to avoid 429s.
+           Falls back to PullPush (api.pullpush.io) if < 3 posts returned.
+
+Tier 0.5 — Gemini Flash relevance scoring (reddit_client.py)
+           After Tier 0 returns raw posts, Gemini Flash scores each post's
+           relevance to (course, professor) on a 0.0-1.0 scale.
+           Posts below 0.3 are dropped. Posts above 0.6 have a verbatim
+           evidence quote extracted as an EvidenceItem.
+           Falls back to unfiltered posts on any Gemini error.
+
+Tier 1   — RateMyProfessors (rmp_client.py)
+           Unofficial GraphQL endpoint (school ID U2Nob29sLTExMg== = UCSD).
+           Searches by professor last name, disambiguates by token overlap.
+           Returns RateMyProfessorStats + profile URL.
+
+Tier 2   — UCSD HTTP scraper (ucsd_scraper.py)
+           Fetches catalog.ucsd.edu HTML with BeautifulSoup.
+           fetch_ucsd_course_description() — extracts course description block.
+           fetch_ucsd_syllabus_snippets() — extracts attendance/grading keywords.
+
+Tier 3   — Gemini synthesis (logistics_synthesizer.py)
+           All Tier 0-2 data fed into gemini-2.5-flash with response_schema=CourseLogistics.
+           Pre-scored Reddit evidence from Tier 0.5 is surfaced first in the prompt.
+           Output: fully structured CourseLogistics (attendance, grade breakdown,
+           sentiment summary, evidence[], professor_info_found, etc.)
+```
+
+Tiers 0, 1, and 2 run **concurrently** via `asyncio.gather`. Tier 0.5 runs sequentially after Tier 0 (depends on its output). Tier 3 runs last.
+
+**Known-schedule fast path** (`course_research.py` + `known_schedules` DB table):
+- On every call to `research_courses()`, a SHA-256 signature is computed from the normalized `(course_code, professor_name)` pairs.
+- If a matching snapshot exists in `known_schedules` (TTL: 14 days) and all results have valid `cache_id` + no errors, the snapshot is returned immediately — no API calls.
+- Before returning, meetings are always re-freshened from the current Gemini parse (so old snapshots missing meetings don't break the calendar).
+- After a full research run where all courses were cached successfully, the assembled `BatchResearchResponse` is written to `known_schedules` for future fast-path hits.
+
+**Per-course cache** (`course_research_cache` DB table):
+- Keyed by `normalized_course_code + normalized_professor_name`.
+- Cache hit returns stored `CourseLogistics` without any API calls (meetings still re-geocoded fresh).
+- Three-stage professor name lookup: exact → middle-initial strip fallback → name-order swap fallback (handles "Krishnan, Viswanathan" ↔ "Viswanathan Krishnan").
+
+---
+
+### Active Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/api/parse-screenshot` | Multipart image → Gemini → structured courses JSON |
-| `POST` | `/api/research-screenshot` | Parse + Browser Use research + Supabase cache |
-| `POST` | `/api/fit-analysis` | Schedule fitness scoring |
-| `GET` | `/api/calendar/oauth` | Google Calendar OAuth flow |
-| `POST` | `/plans` | Create saved plan (requires Bearer JWT) |
+| `POST` | `/api/research-screenshot` | Parse + tiered pipeline research + Supabase cache |
+| `POST` | `/api/fit-analysis` | Schedule fitness scoring (Gemini) |
+| `GET`  | `/api/calendar/oauth` | Google Calendar OAuth flow |
+| `POST` | `/plans` | Create saved plan (Bearer JWT required) |
+| `GET`  | `/plans/{id}/expanded` | Expand saved plan: v1 passthrough, v2 joins course_research_cache |
+| `GET`  | `/api/community` | List community posts (filterable by course/professor/dept) |
+| `POST` | `/api/community` | Create community post |
+| `GET`  | `/api/community/{id}` | Get post + replies |
+| `POST` | `/api/community/{id}/replies` | Create reply |
+| `POST` | `/api/community/{id}/upvote` | Toggle upvote on post |
 
-**Environment:** `services/api/.env` needs `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_JWT_SECRET`, `GEMINI_API_KEY`. `BROWSER_USE_API_KEY` is required for live research (keys start with `bu_`).
+---
 
-**Important backend patterns:**
-- All DB row models use `CamelModel` base (camelCase alias + `populate_by_name=True`) — Supabase returns snake_case, JSON responses use camelCase
-- Browser Use prompt is in `browser_use.py → build_task()` — this is where research instructions live; update here to change what gets scraped
-- `course_research_cache` table keyed by normalized course code + professor — re-research clears stale cache
-- SunSET cross-course fallback: if professor has never taught the requested course, `get_sunset_grade_distribution()` falls back to any course taught by that professor, sets `is_cross_course_fallback=True` + `source_course_code`
+### Environment Variables
+
+`services/api/.env` — required:
+- `SUPABASE_URL`
+- `SUPABASE_KEY` (service-role key for server-side operations)
+- `SUPABASE_JWT_SECRET` (for Bearer token validation)
+- `GEMINI_API_KEY` (powers Tier 0.5, Tier 3, screenshot parsing, fit analysis)
+
+Optional:
+- `ENABLE_BROWSER_USE=true` — enables Browser Use overlay (disabled by default; `BROWSER_USE_API_KEY` also needed if enabled, key starts with `bu_`)
+
+---
+
+### Backend Patterns
+
+- All DB row models use `CamelModel` base (camelCase alias + `populate_by_name=True`) — Supabase returns snake_case, JSON responses use camelCase. **Research models (`research.py`) use plain `BaseModel` — snake_case throughout.**
+- Normalization is always done through `app/utils/normalize.py` — never inline — so cache keys are identical everywhere.
+- `course_research_cache` upsert uses `ON CONFLICT (normalized_course_code, normalized_professor_name)`.
+- `known_schedules` upsert uses `ON CONFLICT (signature)`.
+- SunSET cross-course fallback: if professor has never taught the requested course, `get_sunset_grade_distribution()` falls back to any course taught by that professor, sets `is_cross_course_fallback=True` + `source_course_code`.
 
 ---
 
 ### Database
 
-Schema in `supabase/migrations/0001_init.sql`. Key tables (RLS by `auth.uid()`):
-- `profiles` — user metadata (display_name, college, expected_grad_term)
-- `saved_plans` — quarter plans (title, quarter_label, status, payload JSON containing ClassDossier[] + ScheduleEvaluation + commitments)
-- `vault_items` — uploaded files linked to plans
-- `course_research_cache` — shared Browser Use research cache (normalized course code + professor key)
-- `sunset_grade_distributions` — pre-seeded CAPE/SunSET grade data (queried by normalized_course_code + normalized_professor_name)
-- `campus_buildings` — geocode table for building code → lat/lng resolution
+Schema in `supabase/migrations/`. Key tables (RLS by `auth.uid()` where applicable):
+
+| Table | Purpose |
+|-------|---------|
+| `profiles` | User metadata (display_name, college, expected_grad_term) |
+| `saved_plans` | Quarter plans — `payload_version` 1 (full dossiers) or 2 (class refs only) |
+| `saved_plan_classes` | v2 join rows: one row per course per plan, stores meetings + overrides |
+| `vault_items` | Uploaded files linked to plans |
+| `course_research_cache` | Shared tiered-pipeline results (normalized code+prof key, stores `logistics` JSONB) |
+| `known_schedules` | Signature-keyed snapshot of full `BatchResearchResponse` for zero-call fast path |
+| `sunset_grade_distributions` | Pre-seeded CAPE/SunSET grade data |
+| `campus_buildings` | Building code → lat/lng geocode table |
+| `community_posts` | Student discussion posts (course_code, professor_name, body, upvotes) |
+| `community_replies` | Replies to posts (upvotes, downvotes) |
+| `community_notifications` | Per-user notification rows for reply activity |
+
+**Saved plan versioning:**
+- **v1** — `payload` JSONB contains full `ClassDossier[]` (large, self-contained)
+- **v2** — `payload` contains `class_refs[]` (each a `course_cache_id` + `meetings` + `overrides`); full dossiers assembled server-side at `/plans/{id}/expanded` by joining `course_research_cache`
+- `persistCompletedSession` (auto-save after upload) always writes v1. Manual save via `SaveMenu` writes v2 if all classes have `cacheId`, otherwise v1.
 
 ---
 
@@ -179,8 +300,9 @@ Schema in `supabase/migrations/0001_init.sql`. Key tables (RLS by `auth.uid()`):
 | Maps | Leaflet + React Leaflet (loaded via `next/dynamic` with `ssr: false`) |
 | Auth/DB | Supabase (Auth + Postgres) |
 | Backend | FastAPI + Uvicorn (Python 3.11+) |
-| AI | Gemini API (screenshot parsing + synthesis) |
-| Browser Automation | Browser Use SDK v3 (`AsyncBrowserUse`) |
+| AI | Gemini API — gemini-2.5-flash (screenshot parsing, Tier 0.5 scoring, Tier 3 synthesis, fit analysis) |
+| HTTP scraping | httpx + BeautifulSoup4 (UCSD catalog, RateMyProfessors GraphQL) |
+| Browser Automation | Browser Use SDK v3 — optional overlay only, off by default |
 
 ---
 
@@ -189,16 +311,16 @@ Schema in `supabase/migrations/0001_init.sql`. Key tables (RLS by `auth.uid()`):
 Dark navy theme. All tokens defined as CSS variables in `frontend/src/app/globals.css`:
 
 ```
---hub-bg:           #0a192f  (page canvas)
---hub-surface:      #112240  (cards, panels)
+--hub-bg:               #0a192f  (page canvas)
+--hub-surface:          #112240  (cards, panels)
 --hub-surface-elevated: #162a45  (dropdowns, modals)
---hub-cyan:         #00d4ff  (primary accent — data, links, active states)
---hub-gold:         #e3b12f  (secondary accent — ratings, warnings)
---hub-text:         #e6f1ff  (primary text)
---hub-text-secondary: rgba(230,241,255,0.72)
---hub-text-muted:   rgba(230,241,255,0.48)
---hub-danger:       #ff6b6b
---hub-success:      #5eead4
+--hub-cyan:             #00d4ff  (primary accent — data, links, active states)
+--hub-gold:             #e3b12f  (secondary accent — ratings, warnings)
+--hub-text:             #e6f1ff  (primary text)
+--hub-text-secondary:   rgba(230,241,255,0.72)
+--hub-text-muted:       rgba(230,241,255,0.48)
+--hub-danger:           #ff6b6b
+--hub-success:          #5eead4
 ```
 
 **Fonts** (loaded via `next/font` in layout):
@@ -220,12 +342,20 @@ Dark navy theme. All tokens defined as CSS variables in `frontend/src/app/global
 
 ## Key Design Decisions & Gotchas
 
-**SunSET source URLs:** The `source_url` stored in `sunset_grade_distributions` may be a CSV export link, not a web page. The frontend (`DossierDashboardModal`) uses `normalizeSunsetUrl()` to detect and replace these with a proper UCSD search URL. The Browser Use prompt also instructs the agent never to use download/export URLs.
+**Research pipeline default:** Browser Use is **disabled by default** (`ENABLE_BROWSER_USE` not set). All research goes through the tiered pipeline (Reddit → RMP → UCSD catalog → Gemini). Browser Use is wired as an optional overlay for environments where it's enabled.
 
-**Professor not found fallback:** When Browser Use finds no professor-specific data (no Reddit posts, no syllabus, no RMP for this specific course), `professor_info_found` is set to `false` in `CourseLogistics`. The frontend shows an amber notice + renders `general_course_overview` and `general_professor_overview` instead.
+**Known-schedule fast path meetings bug (fixed):** Old `known_schedules` snapshots may have been stored before `meetings` was reliably included in `CourseResearchResult`. On fast-path hit, meetings are now always re-freshened from the current Gemini parse (`enrich_meetings_with_geocode(entry.meetings)`) before returning — so old snapshots can't produce an empty calendar.
+
+**SunSET source URLs:** The `source_url` stored in `sunset_grade_distributions` may be a CSV export link, not a web page. The frontend (`DossierDashboardModal`) uses `normalizeSunsetUrl()` to detect and replace these with a proper UCSD search URL.
+
+**Professor not found fallback:** When no professor-specific data is found (no Reddit posts, no RMP match, no syllabus), `professor_info_found` is set to `false` in `CourseLogistics`. The frontend shows an amber notice + renders `general_course_overview` and `general_professor_overview` instead.
 
 **Cross-course SunSET fallback:** If a professor has never taught a requested course (e.g., Bryan Chin has only taught CSE 30, not CSE 120), `get_sunset_grade_distribution()` returns a row from a different course they DID teach, with `is_cross_course_fallback=True`. The UI disclaims this prominently.
 
 **`DossierDashboardModal`** is a full-screen bento-grid dashboard (not a tabbed modal). It renders Professor/RMP, Grade Distribution, and Evidence columns simultaneously. Left/right arrows + keyboard `←/→` navigate between courses. It is rendered once in `DossierScheduleWorkspace` and receives the full `ClassDossier[]` array for navigation.
 
-**Plan payload:** `saved_plans.payload` is a JSON blob containing `{ version, activeQuarterId, classes: ClassDossier[], evaluation: ScheduleEvaluation, commitments: ScheduleCommitment[] }`. Parsed by `parsePlanPayload()` in `frontend/src/lib/hub/plan-payload.ts`.
+**`DossierScheduleWorkspace` phases (desktop):** The workspace uses a 4-tab phase nav — Overview (difficulty HUD + exams), Courses (hero-sized cards), Logistics (map + calendar split), Review (full bento). Mobile uses a simple dossier/schedule tab switcher.
+
+**Plan payload versioning:** `saved_plans.payload` is either v1 `{ version:1, classes: ClassDossier[], evaluation, commitments }` or v2 `{ version:2, class_refs: ClassRef[], evaluation, commitments }`. Parsed by `parsePlanPayload()` in `frontend/src/lib/hub/plan-payload.ts`. v2 classes are resolved server-side via `/plans/{id}/expanded`.
+
+**Professor name normalization order:** WebReg often gives "Last, First" format; Gemini sometimes normalizes to "First Last". Three-stage lookup in `get_course_research_cache()`: exact match → middle-initial strip → name-order swap. The same logic exists in `compute_schedule_signature()` so signatures are stable across both formats.

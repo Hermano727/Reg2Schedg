@@ -251,19 +251,47 @@ def upsert_course_research_cache(
 # Known schedules (zero-call fast path)
 # ---------------------------------------------------------------------------
 
+def get_image_parse_cache(
+    client: Client,
+    image_hash: str,
+) -> dict[str, Any] | None:
+    """Return the cached parse_result dict for an image hash, or None."""
+    resp = (
+        client.table("image_parse_cache")
+        .select("parse_result")
+        .eq("image_hash", image_hash)
+        .limit(1)
+        .execute()
+    )
+    return resp.data[0]["parse_result"] if resp.data else None
+
+
+def upsert_image_parse_cache(
+    client: Client,
+    image_hash: str,
+    parse_result: dict[str, Any],
+) -> None:
+    """Store a ParseScreenshotResponse dict keyed by image SHA-256 hash."""
+    client.table("image_parse_cache").upsert(
+        {"image_hash": image_hash, "parse_result": parse_result},
+        on_conflict="image_hash",
+    ).execute()
+
+
 def get_known_schedule(
     client: Client,
     signature: str,
 ) -> dict[str, Any] | None:
     """
-    Return the assembled_payload for a known schedule signature, or None.
+    Return the assembled_payload (and fit_evaluation if present) for a known
+    schedule signature, or None.
 
     The assembled_payload is a serialized BatchResearchResponse (dict).
     Returns None if the entry is older than KNOWN_SCHEDULE_TTL_DAYS.
     """
     resp = (
         client.table("known_schedules")
-        .select("assembled_payload,updated_at")
+        .select("assembled_payload,fit_evaluation,updated_at")
         .eq("signature", signature)
         .limit(1)
         .execute()
@@ -294,6 +322,7 @@ def upsert_known_schedule(
     signature: str,
     assembled_payload: dict[str, Any],
     plan_id: str | None = None,
+    fit_evaluation: dict[str, Any] | None = None,
 ) -> None:
     """Write or overwrite a known_schedules row."""
     row: dict[str, Any] = {
@@ -303,6 +332,8 @@ def upsert_known_schedule(
     }
     if plan_id is not None:
         row["plan_id"] = plan_id
+    if fit_evaluation is not None:
+        row["fit_evaluation"] = fit_evaluation
     client.table("known_schedules").upsert(row, on_conflict="signature").execute()
 
 

@@ -77,6 +77,8 @@ export interface CourseResearchResult {
 export interface BatchResearchResponse {
   course_count: number;
   results: CourseResearchResult[];
+  /** Present on known-schedule fast-path hits where fit analysis was previously cached. */
+  fit_evaluation?: FitAnalysisResult | null;
 }
 
 export interface FitAnalysisResult {

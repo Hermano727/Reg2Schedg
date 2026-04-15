@@ -217,8 +217,13 @@ export function CommandCenter() {
             timeoutsRef.current.push(id);
           });
 
+          // Use cached fit evaluation when the fast-path returned one —
+          // avoids a redundant Gemini call and keeps the score deterministic.
+          const cachedFit = response.fit_evaluation ?? null;
           const [fitResult] = await Promise.all([
-            analyzeFit(response.results).catch(() => null),
+            cachedFit
+              ? Promise.resolve(cachedFit)
+              : analyzeFit(response.results).catch(() => null),
             minWaitPromise,
           ]);
 

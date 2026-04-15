@@ -393,7 +393,28 @@ async def research_courses(
                     )
                     if all_valid:
                         _log.info("[fast-path] known_schedules hit for signature %s", signature[:16])
-                        return cached_response
+                        # Re-apply freshly-geocoded meetings from the current parse.
+                        # Old snapshots may have been stored before meetings were
+                        # included in CourseResearchResult, leaving meetings=[].
+                        # Even for up-to-date snapshots this is cheap: enrich_meetings_with_geocode
+                        # skips meetings that already have lat/lng, and ensures the
+                        # calendar always receives meeting data for the current upload.
+                        entry_by_code: dict[str, CourseEntry] = {
+                            normalize_course_code(e.course_code): e
+                            for e in unique_entries
+                        }
+                        refreshed: list[CourseResearchResult] = []
+                        for r in cached_response.results:
+                            entry = entry_by_code.get(normalize_course_code(r.course_code))
+                            if entry is not None:
+                                geocoded = enrich_meetings_with_geocode(list(entry.meetings))
+                                r = r.model_copy(update={"meetings": geocoded})
+                            refreshed.append(r)
+                        cached_fit = known.get("fit_evaluation")
+                        return cached_response.model_copy(update={
+                            "results": refreshed,
+                            "fit_evaluation": cached_fit,
+                        })
                     else:
                         stale = [
                             r.course_code for r in cached_response.results
@@ -447,10 +468,23 @@ async def research_courses(
     # --- Write known_schedules for future fast path (only when all courses cached) ---
     if signature is not None and all(r.cache_id is not None for r in results):
         try:
+            # Run fit analysis so the difficulty score is cached with the snapshot.
+            # This makes the score deterministic for the same set of courses and
+            # allows the frontend to skip the /api/fit-analysis Gemini call on hits.
+            fit_eval_dict: dict[str, Any] | None = None
+            try:
+                from app.services.fit_analysis import analyze_fit
+                fit_result = analyze_fit(list(results))
+                fit_eval_dict = fit_result.model_dump(mode="json")
+                _log.info("[fast-path] fit evaluation cached for signature %s", signature[:16])
+            except Exception as fit_exc:
+                _log.warning("[fast-path] fit evaluation failed, snapshot stored without it: %s", fit_exc)
+
             upsert_known_schedule(
                 cache_client,
                 signature=signature,
                 assembled_payload=response.model_dump(mode="json"),
+                fit_evaluation=fit_eval_dict,
             )
             _log.info("[fast-path] wrote known_schedules signature %s", signature[:16])
         except Exception as exc:

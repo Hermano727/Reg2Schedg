@@ -107,7 +107,11 @@ def _build_queries(course_code: str, professor_name: str | None) -> list[str]:
     add(course_code.replace(" ", ""))
 
     if professor_name and professor_name.strip():
-        last = professor_name.strip().split()[-1]  # "Voelker" from "Geoffrey Voelker"
+        # Normalized DB format is "LAST, FIRST MIDDLE" (e.g. "COTTRELL, GARRISON W").
+        # Extract the surname (part before comma) to avoid grabbing middle initials.
+        name = professor_name.strip()
+        surname_part = name.split(",")[0].strip() if "," in name else name
+        last = surname_part.split()[-1]  # last word of surname handles "SOOSAI RAJ" → "RAJ"
         numeric = _extract_numeric_part(course_code)  # "120" from "CSE 120"
 
         # "Voelker 120"
@@ -129,20 +133,26 @@ async def _search_reddit_json(
     *,
     limit: int,
     client: httpx.AsyncClient,
+    _stagger: float = 0.0,
 ) -> list[RedditPost]:
     """Hit reddit.com/r/ucsd/search.json — no auth, just User-Agent."""
+    if _stagger:
+        await asyncio.sleep(_stagger)
     try:
-        resp = await client.get(
-            _REDDIT_SEARCH_URL,
-            params={
-                "q": query,
-                "restrict_sr": "1",
-                "sort": "relevance",
-                "type": "link",
-                "limit": str(min(limit, 25)),  # Reddit caps at 25 without auth
-                "t": "all",
-            },
-        )
+        params = {
+            "q": query,
+            "restrict_sr": "1",
+            "sort": "relevance",
+            "type": "link",
+            "limit": str(min(limit, 25)),  # Reddit caps at 25 without auth
+            "t": "all",
+        }
+        resp = await client.get(_REDDIT_SEARCH_URL, params=params)
+        # Single retry on 429/403 — Reddit uses both as rate-limit signals.
+        # Back off 2s then try once more before giving up.
+        if resp.status_code in (429, 403):
+            await asyncio.sleep(2.0)
+            resp = await client.get(_REDDIT_SEARCH_URL, params=params)
         if resp.status_code != 200:
             _log.debug("[reddit:json] status %s for %r", resp.status_code, query)
             return []
@@ -160,15 +170,18 @@ async def _search_reddit_json(
             body = (p.get("selftext") or "")[:_MAX_BODY_CHARS]
             score = p.get("score", 0) or 0
 
-            # Fetch top comments for this post
-            top_comments = await _fetch_comments_reddit_json(permalink, client=client)
+            # Comment body fetches (.json on individual posts) are universally
+            # 403-blocked by Reddit for unauthenticated requests. Skipping them
+            # eliminates ~40 wasted sequential requests per course and the 12s
+            # timeout that results for popular courses with many search hits.
+            # Post titles + body snippets from search are sufficient for synthesis.
 
             posts.append(RedditPost(
                 title=title,
                 body=body,
                 url=url,
                 score=score,
-                top_comments=top_comments,
+                top_comments=[],
             ))
 
         return posts
@@ -288,9 +301,14 @@ async def _search_with_fallback(
         timeout=_TIMEOUT,
         follow_redirects=True,
     ) as client:
-        # Run all queries concurrently — each independently searches r/ucsd
+        # Stagger query starts by 0.6s to avoid Reddit rate-limiting bursts.
+        # All 4 queries still run concurrently — the stagger just spreads the
+        # first-request spike over ~1.8s instead of firing all at t=0.
         results = await asyncio.gather(
-            *[_search_reddit_json(q, limit=max_posts, client=client) for q in queries],
+            *[
+                _search_reddit_json(q, limit=max_posts, client=client, _stagger=i * 0.6)
+                for i, q in enumerate(queries)
+            ],
             return_exceptions=True,
         )
 

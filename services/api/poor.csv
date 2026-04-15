@@ -1,0 +1,343 @@
+course_code,professor_name,score,tier,missing,data_source,updated_at
+CSE 123,"Shalev, Aaron D",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+CSE 132A,"Deutsch, Alin Bernard",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+ECON 100B,"Levkoff, Steven B.",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+MATH 103B,"Wesley, William J",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+MGT 128R,Viswanathan Krishnan,3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+HILD 2C,"Hendrickson, Gerald M.",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+CSE 110,"Powell, Thomas Allan",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+MATH 170A,"Dumitriu, Ioana",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
+MGT 128R,"Krishnan, Viswanathan",3,FAIR,"thin_evidence(2),no_grade_breakdown",tiered_pipeline,2026-04-14
+CSE 120,"Chin, Bryan W.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",tiered_pipeline,2026-04-14
+COGS 1,"BARRERA, STEVEN JAMES",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 101,"LIU, QIPENG",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"SAHA, BARNA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 100,"CAO, YINGJUN",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 100,"MOSHIRI, NIEMA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 100,"SAHOO, DEBASHIS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 100R,"MOSHIRI, NIEMA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 100R,"SAHOO, DEBASHIS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"BACH, QUANG TRAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"BRAUN, OLIVER",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"BRIONES, JOR-EL THOMAS CAPARAS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"DASGUPTA, SANJOY",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"IMPAGLIAZZO, RUSSELL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"JONES, MILES E",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 101,"KANE, DANIEL MERTZ",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 103,"FREUND, YOAV",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 105,"GRIER, DANIEL T",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 105,"JONES, MILES E",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 105,"LOVETT, SHACHAR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 105,"MEYER, KYLE PHILLIP",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 105,"MICCIANCIO, DANIELE",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 105,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 106,"PATURI, RAMAMOHAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 107,"BELLARE, MIHIR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 107,"HENINGER, NADIA A",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 107,"SUHL, ADAM",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 109,"SHANG, JINGBO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 11,"AUGUST, ROBERT HENRY",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 11,"CAO, YINGJUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 130,"BORKOWSKI, MICHAEL HUMES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 11,"MIRANDA, GREGORY JOSEPH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 11,"OCHOA, BENJAMIN LAWRENCE",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 11,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 11,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 110,"COBLENZ, MICHAEL J",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 110,"GRISWOLD, WILLIAM G.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 110,"MIRANDA, GREGORY JOSEPH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 110,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 112,"POWELL, THOMAS ALLAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 12,"ALVARADO, CHRISTINE J.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 12,"CAO, YINGJUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 12,"GILLESPIE, GARY N",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 12,"KRAUSE-LEVY, SOPHIA LOUISA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 12,"MIRANDA, GREGORY JOSEPH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 120,"OUSTERHOUT, AMY",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 120,"PASQUALE, JOSEPH",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 120,"VOELKER, GEOFFREY M.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 120,"ZHANG, YIYING",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 120,"ZHOU, YUAN-YUAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 122,"PANNUTO, PATRICK WILLIAM",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 122,"SHALEV, AARON D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 123,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 124,"PORTER, GEORGE M",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 125,"VOELKER, GEOFFREY M.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 127,"FERNANDES, EARLENCE T",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 127,"HENINGER, NADIA A",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 127,"MUNYAKA, IMANI N. S.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 127,"SAVAGE, STEFAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 130,"JHALA, RANJIT",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 130,"KNOTH, TRISTAN JOSEPH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 130,"POLIKARPOVA, NADEZHDA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 131,"DING, YUFEI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 131,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 132A,"GUPTA, AMARNATH",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 132A,"VIANU, VICTOR DAN",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 132B,"DEUTSCH, ALIN BERNARD",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 140L,"CHIN, BRYAN W.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 134B,"POWELL, THOMAS ALLAN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 135,"POWELL, THOMAS ALLAN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 140,"CHIN, BRYAN W.",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 140,"ELDON, JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 140,"GUNGOR, ONAT",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 140,"ORAILOGLU, ALEX",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 140,"ROSING, TAJANA SIMUNIC",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 140L,"ELDON, JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 140L,"ORAILOGLU, ALEX",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 141,"ELDON, JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 141,"PANNUTO, PATRICK WILLIAM",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 141,"TULLSEN, DEAN MICHAEL",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 141,"ZHAO, JISHEN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 141L,"ELDON, JOHN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 141L,"PANNUTO, PATRICK WILLIAM",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 142,"PORTER, LEONARD EMERSON",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 142,"SWANSON, STEVEN JAMES",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 142,"TSENG, HUNG-WEI",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 142L,"SWANSON, STEVEN JAMES",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 142L,"TSENG, HUNG-WEI",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 143,"GUPTA, RAJESH K.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 147,"ROSING, TAJANA SIMUNIC",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 148,"TULLSEN, DEAN MICHAEL",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 150A,"BONJOUR, TREVOR",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 151A,"BERG-KIRKPATRICK, TAYLOR D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 151A,"DASGUPTA, SANJOY",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 151A,"IMOLA, JACOB JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 151A,"SHANG, JINGBO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 151A,"SOLARES, EDWIN A",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 151B,"COTTRELL, GARRISON W",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 151B,"YU, QI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 152A,"CHANDRAKER, MANMOHAN KRISHNA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 152A,"SU, HAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 152B,"CHANDRAKER, MANMOHAN KRISHNA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 153R,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 156,"NAKASHOLE, NDAPANDULA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 156,"QIN, LIANHUI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 158,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 158R,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"GILLESPIE, GARY N",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"GUNGOR, ONAT",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"MORRIS, JUSTIN LOREN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"MULLER, P KEITH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"OCHOA, BENJAMIN LAWRENCE",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"OSTERTAG, MICHAEL HENRY",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"SOLARES, EDWIN A",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 15L,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 160,"KASTNER, RYAN CHARLES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 165,"SCHULZE, JURGEN P.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 166,"OCHOA, BENJAMIN LAWRENCE",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 167,"CHERN, ALBERT REN-HAUR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 167,"LI, TZUMAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 167,"RAMAMOORTHI, RAVI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 193,"HUANG, RUANQIANQIAN (LISA)",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 169,"ROTENBERG, STEVEN PAUL",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 170,"VACCARO, KRISTEN MARIE",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 175,"KUMAR, RAKESH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 181,"PEVZNER, PAVEL ARKADJEVICH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 190,"GAO, SICUN",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 185,"GYMREK, MELISSA ANN",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"BANDEIRA, NUNO FILIPE CABRITA",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"COBLENZ, MICHAEL J",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"DEUTSCH, ALIN BERNARD",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"DUBNOV, SHLOMO",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 190,"GRIER, DANIEL T",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 194,"MUNYAKA, IMANI N. S.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"OUSTERHOUT, AMY",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"PRITHVIRAJ, AMMANABROLU",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"RIEK, LAUREL D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"SHALEV, AARON D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"VACCARO, KRISTEN MARIE",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 191,"HALICIOGLU, DANIEL T",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 191,"LERNER, IAN AMIHAY",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 191,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 193,"BONJOUR, TREVOR",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 193,"ELSHERIF, MAY ELHUSSEIN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 197,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"ALVARADO, CHRISTINE J.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"CAO, YINGJUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"CHIN, BRYAN W.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"COBLENZ, MICHAEL J",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"ELSHERIF, MAY ELHUSSEIN",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"JHALA, RANJIT",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"RAMAMOORTHI, RAVI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 198,"WEIBEL, NADIR",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 199,"COBLENZ, MICHAEL J",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 199,"GRISWOLD, WILLIAM G.",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 199,"KASTNER, RYAN CHARLES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 20,"BACH, QUANG TRAN",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 20,"BORKOWSKI, MICHAEL HUMES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 20,"BRIONES, JOR-EL THOMAS CAPARAS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 20,"JONES, MILES E",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 20,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 20,"TRAN, KHOA DANG",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 200,"GRIER, DANIEL T",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 200,"LOVETT, SHACHAR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 202,"IMPAGLIAZZO, RUSSELL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 202,"LIU, QIPENG",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 202,"PATURI, RAMAMOHAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 203B,"CHENG, CHUNG KUAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 205A,"VIANU, VICTOR DAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 21,"BRAUN, OLIVER",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 21,"BRIONES, JOR-EL THOMAS CAPARAS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 21,"IMPAGLIAZZO, RUSSELL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 21,"JONES, MILES E",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 210,"COBLENZ, MICHAEL J",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 210,"POWELL, THOMAS ALLAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 218,"GRISWOLD, WILLIAM G.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 218,"WEIBEL, NADIR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 220,"PASQUALE, JOSEPH",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 220,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 221,"OUSTERHOUT, AMY",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 221,"VOELKER, GEOFFREY M.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 222A,"PORTER, GEORGE M",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 222C,"SHALEV, AARON D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 223B,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 224,"PORTER, GEORGE M",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 224,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 227,"FERNANDES, EARLENCE T",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 227,"KUMAR, DEEPAK",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 227,"STEFAN, DEIAN",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 229A,"OUSTERHOUT, AMY",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 229A,"SAVAGE, STEFAN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 150B,"GAO, SICUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 153,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 229A,"ZHANG, YIYING",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 230,"JHALA, RANJIT",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 230,"POLIKARPOVA, NADEZHDA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 231,"JHALA, RANJIT",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 231,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 232,"DEUTSCH, ALIN BERNARD",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 232B,"DEUTSCH, ALIN BERNARD",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 233,"VIANU, VICTOR DAN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 234,"ZHANG, HAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 237C,"KASTNER, RYAN CHARLES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 237D,"KASTNER, RYAN CHARLES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 239B,"COBLENZ, MICHAEL J",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 239B,"LERNER, SORIN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 239B,"POLIKARPOVA, NADEZHDA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 240A,"CHIN, BRYAN W.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 240A,"ESMAEILZADEH, HADI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 270,"CHERN, ALBERT REN-HAUR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 240A,"TULLSEN, DEAN MICHAEL",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 240A,"ZHAO, JISHEN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 240B,"ZHAO, JISHEN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 241A,"KAHNG, ANDREW BYUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 244A,"ORAILOGLU, ALEX",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 249B,"KAHNG, ANDREW BYUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 25,"BONJOUR, TREVOR",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 250A,"BERG-KIRKPATRICK, TAYLOR D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 250A,"BONJOUR, TREVOR",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 251A,"BERG-KIRKPATRICK, TAYLOR D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 251B,"YU, QI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 251C,"DASGUPTA, SANJOY",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 251U,"DASGUPTA, SANJOY",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 252A,"OCHOA, BENJAMIN LAWRENCE",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 252D,"CHANDRAKER, MANMOHAN KRISHNA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 253,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 253R,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 256,"NAKASHOLE, NDAPANDULA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 257,"GAO, SICUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 258,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 258R,"MCAULEY, JULIAN JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 259,"GAO, SICUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 259,"SHANG, JINGBO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 260,"CHIN, BRYAN W.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 272,"LI, TZUMAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 275,"SU, HAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 276A,"CHRISTENSEN, HENRIK I",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 276E,"SWANSON, STEVEN JAMES",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 276F,"SU, HAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 29,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 29,"SHALEV, AARON D",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 29,"SOLARES, EDWIN A",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 29,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 29,"SOOSAI RAJ, ADALBERT GERALD",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"CHANDRAKER, MANMOHAN KRISHNA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"CHRISTENSEN, HENRIK I",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"ESMAEILZADEH, HADI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"LOVETT, SHACHAR",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"ORAILOGLU, ALEX",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"PORTER, LEONARD EMERSON",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"QIN, LIANHUI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 290,"TULLSEN, DEAN MICHAEL",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"BANDEIRA, NUNO FILIPE CABRITA",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"CHERN, ALBERT REN-HAUR",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"VOELKER, GEOFFREY M.",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"COBLENZ, MICHAEL J",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"KUMAR, DEEPAK",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"LI, TZUMAO",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"MCAULEY, JULIAN JOHN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 291,"ZHANG, YIYING",2,FAIR,"thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"MULLER, P KEITH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 291,"NIETHAMMER, MARC S",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"PASQUALE, JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 291,"PATURI, RAMAMOHAN",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 599,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"POLIKARPOVA, NADEZHDA",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"QIN, LIANHUI",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"STEFAN, DEIAN",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"SU, HAO",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8B,"ELSHERIF, MAY ELHUSSEIN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291,"ZHOU, YUAN-YUAN",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291A,"PRITHVIRAJ, AMMANABROLU",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291A,"ZHANG, YIYING",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291I,"VACCARO, KRISTEN MARIE",1,POOR,"no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291P,"D'ANTONI, LORIS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291P,"DING, YUFEI",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 291Y,"FERNANDES, EARLENCE T",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 292,"SWANSON, STEVEN JAMES",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 293,"BELKIN, MIKHAIL",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 293,"CHRISTENSEN, HENRIK I",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 293,"ESMAEILZADEH, HADI",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 293,"VOELKER, GEOFFREY M.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 294,"ORAILOGLU, ALEX",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 294,"PORTER, GEORGE M",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 294,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 294,"VOELKER, GEOFFREY M.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 298,"BELKIN, MIKHAIL",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 298,"KASTNER, RYAN CHARLES",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 298,"PORTER, LEONARD EMERSON",3,FAIR,"thin_evidence(2),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 299,"KAHNG, ANDREW BYUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 299,"OUSTERHOUT, AMY",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 299,"SNOEREN, ALEX C.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 30,"CAO, YINGJUN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-14
+CSE 30,"CHIN, BRYAN W.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 30,"ELDON, JOHN",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 30,"MULLER, P KEITH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 30,"PORTER, LEONARD EMERSON",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 30,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 500,"GRISWOLD, WILLIAM G.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 500,"VOELKER, GEOFFREY M.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 599,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 599,"PORTER, LEONARD EMERSON",2,FAIR,"thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 6R,"MOSHIRI, NIEMA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 6R,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 87,"COTTRELL, GARRISON W",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 87,"HOWDEN, WILLIAM E.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 87,"MOSHIRI, NIEMA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 89,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8A,"ALVARADO, CHRISTINE J.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8A,"CAO, YINGJUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8A,"ELSHERIF, MAY ELHUSSEIN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8A,"LERNER, SORIN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8A,"PORTER, LEONARD EMERSON",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8A,"SOOSAI RAJ, ADALBERT GERAL",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8B,"CAO, YINGJUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8B,"MIRANDA, GREGORY JOSEPH",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 8B,"OCHOA, BENJAMIN LAWRENCE",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 90,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 91,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 95,"ALVARADO, CHRISTINE J.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 95,"CAO, YINGJUN",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 95,"GILLESPIE, GARY N",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 95,"MINNES KEMP, MOR MIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 95,"POLITZ, JOSEPH GIBBS",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 99H,"MAZUMDAR, ARYA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 99H,"MUNYAKA, IMANI N. S.",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 99H,"SU, HAO",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-14
+CSE 190,"Politz, Joseph Gibbs",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",tiered_pipeline,2026-04-14

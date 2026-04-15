@@ -60,9 +60,9 @@ async def fetch_ucsd_course_description(
     if not dept or not number:
         return None, None
 
-    # UCSD catalog uses lowercase dept slug with spaces replaced by nothing
-    dept_slug = dept.replace(" ", "").lower()
-    url = f"{_CATALOG_BASE}/{dept_slug}/"
+    # UCSD catalog uses uppercase dept slug with .html extension
+    dept_slug = dept.replace(" ", "").upper()
+    url = f"{_CATALOG_BASE}/{dept_slug}.html"
 
     try:
         async with httpx.AsyncClient(timeout=timeout_seconds, follow_redirects=True) as client:

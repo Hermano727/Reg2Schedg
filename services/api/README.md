@@ -206,6 +206,29 @@ Cache high-traffic departments before launch
 python -m app.scripts.precache_courses --prefix CSE,MATH,COGS,ECE,BIOL,PSYC,MGT --delay 2.0
 ```
 
+Enrich / update professors that were not populated professor
+```
+python -m app.scripts.browser_use_enrich \
+    --course "CSE 123" --professor "SHALEV, AARON D"    
+  --dry-run
+```
+
+Or, re-run the tiered pipeline without Browser Use via precache:
+```
+  python -m app.scripts.precache_courses --prefix CSE --force --limit 0 --delay 2.0
+```
+
+See what professor / class entries are currently poor
+```
+  python -m app.scripts.audit_cache --csv poor.csv
+```
+
+Enrich poor entries with Browser Use
+```
+  python -m app.scripts.browser_use_enrich --threshold 2 --limit 20 --dry-run
+  python -m app.scripts.browser_use_enrich --threshold 2 --limit 20 --yes
+```
+
 ## Troubleshooting
 
 | Issue | What to try |

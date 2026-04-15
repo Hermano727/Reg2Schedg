@@ -182,6 +182,7 @@ async def main(
     prefixes: list[str] | None,
     dry_run: bool,
     limit: int | None,
+    offset: int,
     delay_seconds: float,
     force: bool,
 ) -> None:
@@ -205,6 +206,10 @@ async def main(
     if prefixes:
         pending = filter_by_prefix(pending, prefixes)
         _log.info("After --prefix %s: %d pairs", ",".join(prefixes), len(pending))
+
+    if offset:
+        pending = pending[offset:]
+        _log.info("After --offset %d: %d pairs remaining", offset, len(pending))
 
     if limit:
         pending = pending[:limit]
@@ -284,6 +289,12 @@ Rate limiting guide:
         help="Print what would be cached without making any API calls",
     )
     parser.add_argument(
+        "--offset",
+        type=int,
+        default=0,
+        help="Skip the first N pairs (use to resume a --force run from a specific entry)",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,
@@ -307,6 +318,7 @@ Rate limiting guide:
     asyncio.run(main(
         prefixes=prefixes,
         dry_run=args.dry_run,
+        offset=args.offset,
         limit=args.limit,
         delay_seconds=args.delay,
         force=args.force,

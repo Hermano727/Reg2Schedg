@@ -105,7 +105,11 @@ export async function createReply(
       body: JSON.stringify(payload),
     },
   );
-  if (!res.ok) throw new Error(`createReply failed: ${res.status}`);
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const msg = detail?.detail ?? `createReply failed: ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
   return res.json() as Promise<PostDetail>;
 }
 

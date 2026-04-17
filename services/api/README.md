@@ -208,9 +208,7 @@ python -m app.scripts.precache_courses --prefix CSE,MATH,COGS,ECE,BIOL,PSYC,MGT 
 
 Enrich / update professors that were not populated professor
 ```
-python -m app.scripts.browser_use_enrich \
-    --course "CSE 123" --professor "SHALEV, AARON D"    
-  --dry-run
+python -m app.scripts.browser_use_enrich --course "CSE 123" --professor "SHALEV, AARON D" --dry-run
 ```
 
 Or, re-run the tiered pipeline without Browser Use via precache:

@@ -82,13 +82,17 @@ def _expand_from_class_refs(
         except Exception:
             logistics_dict = row.logistics  # fallback: raw dict
 
+        overrides = ref.get("overrides") or {}
         assembled.append({
             "course_code": row.course_code,
-            "professor_name": row.professor_name or None,
-            "course_title": row.course_title,
+            # Prefer the saved ref value over cache — user may have renamed the professor.
+            "professor_name": ref.get("professor_name") or row.professor_name or None,
+            # Prefer overrides.course_title if the user renamed the course.
+            "course_title": overrides.get("course_title") or row.course_title,
             "meetings": ref.get("meetings", []),
-            "overrides": ref.get("overrides", {}),
-            "logistics": logistics_dict,
+            "overrides": overrides,
+            # Prefer overrides.logistics if the user patched logistics fields.
+            "logistics": overrides.get("logistics") or logistics_dict,
             "cache_id": cache_id,
             "cached_at": row.updated_at,
             "stale": _is_stale(row.updated_at),
@@ -132,6 +136,7 @@ def get_expanded_plan(
     raw_payload = plan.get("payload") or {}
     evaluation = raw_payload.get("evaluation") or None
     commitments = raw_payload.get("commitments") or []
+    course_labels = raw_payload.get("courseLabels") or {}
 
     # ── v1 plan: payload already contains full dossiers ──────────────────────
     if payload_version == 1:
@@ -142,6 +147,7 @@ def get_expanded_plan(
             "classes": classes,
             "evaluation": evaluation,
             "commitments": commitments,
+            "course_labels": course_labels,
             "stale_count": 0,
         }
 
@@ -185,5 +191,6 @@ def get_expanded_plan(
         "classes": assembled,
         "evaluation": evaluation,
         "commitments": commitments,
+        "course_labels": course_labels,
         "stale_count": stale_count,
     }

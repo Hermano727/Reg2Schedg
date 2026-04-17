@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronRight, Trash2 } from "lucide-react";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
 import { ScheduleBriefingModal } from "@/components/modals/ScheduleBriefingModal";
 import { DossierScheduleWorkspace, type DossierScheduleWorkspaceHandle } from "@/components/dashboard/DossierScheduleWorkspace";
+import { HubToast, type ToastPayload } from "@/components/ui/HubToast";
 import { usePlanSync } from "@/hooks/usePlanSync";
 import { mockDossier } from "@/lib/mock/dossier";
 import { analyzeFit, researchScreenshot } from "@/lib/api/parse";
@@ -235,7 +237,6 @@ export function CommandCenter() {
   const [evaluation, setEvaluation] = useState<ScheduleEvaluation>(mockDossier.evaluation);
 
   // Save flow state
-  const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -267,8 +268,21 @@ export function CommandCenter() {
     setEvaluation(mockDossier.evaluation);
   }, [clearRun]);
 
+  const router = useRouter();
+
   // Plan-switch guard: ID of the plan the user wants to switch to (pending confirmation)
   const [pendingSwitchId, setPendingSwitchId] = useState<string | null>(null);
+
+  // planSwitchKey: only incremented on explicit plan switches, not on saves.
+  // Drives the phase/tab reset in DossierScheduleWorkspace so saving a new plan
+  // doesn't yank the user back to the Overview tab.
+  const [planSwitchKey, setPlanSwitchKey] = useState(0);
+
+  // Toast notification for save feedback
+  const [toast, setToast] = useState<ToastPayload | null>(null);
+
+  // Last-plan delete warning: ID of plan pending deletion confirmation
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const {
     authed,
@@ -282,8 +296,10 @@ export function CommandCenter() {
     viewClasses,
     viewEvaluation,
     viewCommitments,
+    viewCourseLabels,
     isPlanLoading,
     handleSave,
+    handleAutoSave,
     handleNewPlan,
     handleDeletePlan,
     handleRenamePlan,
@@ -293,12 +309,26 @@ export function CommandCenter() {
     evaluation,
     workspaceRef,
     onPlanCreated: resetDemo,
+    onActivePlanDeleted: resetDemo,
+    onPlanFromUrl: () => setPhase("dashboard"),
   });
 
   const switchToPlan = useCallback((id: string) => {
     setActivePlanId(id);
     setPhase("dashboard");
+    setPlanSwitchKey((k) => k + 1);
   }, [setActivePlanId]);
+
+  // Sync the active plan ID into the URL so refreshing the page restores the same plan.
+  useEffect(() => {
+    if (!authed) return;
+    if (activePlanId && phase === "dashboard") {
+      router.replace(`/?planId=${activePlanId}`);
+    } else if (!activePlanId && phase === "idle") {
+      router.replace("/");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePlanId, phase, authed]);
 
   const handleSelectPlan = useCallback((id: string) => {
     if (id === activePlanId) return;
@@ -398,15 +428,25 @@ export function CommandCenter() {
       setPhase("dashboard");
       setIngestionCollapsed(true);
 
-      // If the upload produced real data, arm the one-time Review phase save prompt
-      // and clear any previous save state so this is treated as a fresh session.
-      if (nextClasses !== mockDossier.classes) {
-        setShowSavePrompt(true);
+      // Auto-save the researched schedule immediately so the user's work is persisted
+      // without requiring an explicit "Save plan" click.
+      if (authed && nextClasses !== mockDossier.classes) {
         setLastSavedAt(null);
         setSaveError(null);
+        try {
+          const newPlanId = await handleAutoSave(
+            nextClasses,
+            nextEvaluation,
+            briefingDataRef.current?.scheduleTitle ?? undefined,
+          );
+          if (newPlanId) setLastSavedAt(new Date());
+        } catch {
+          // Auto-save failure is non-blocking — user can still save manually
+        }
       }
     },
-    [clearRun],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clearRun, authed, handleAutoSave],
   );
 
   const handleManualSave = useCallback(async () => {
@@ -414,14 +454,26 @@ export function CommandCenter() {
     setSaveError(null);
     try {
       await handleSave(briefingData?.scheduleTitle);
+      // Reset dirty state so isDirty goes false and the orange dot disappears.
+      workspaceRef.current?.commit();
       setLastSavedAt(new Date());
-      setShowSavePrompt(false);
+      setToast({ message: "Plan saved", variant: "success" });
     } catch {
       setSaveError("Couldn't save your schedule. Please try again.");
+      setToast({ message: "Couldn't save — please try again", variant: "error" });
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, briefingData]);
+  }, [handleSave, briefingData, workspaceRef]);
+
+  // Guard against deleting the last plan: show a warning modal first.
+  const handleDeleteWithWarning = useCallback((id: string) => {
+    if (sidebarPlans.length === 1) {
+      setPendingDeleteId(id);
+    } else {
+      void handleDeletePlan(id);
+    }
+  }, [sidebarPlans.length, handleDeletePlan]);
 
   const handleSaveAndSwitch = useCallback(async () => {
     if (!pendingSwitchId) return;
@@ -431,10 +483,11 @@ export function CommandCenter() {
     setSaveError(null);
     try {
       await handleSave(briefingData?.scheduleTitle);
+      workspaceRef.current?.commit();
       setLastSavedAt(new Date());
-      setShowSavePrompt(false);
+      setToast({ message: "Plan saved", variant: "success" });
     } catch {
-      // Save failed — still switch, since the user chose "save & switch"
+      setToast({ message: "Save failed — switching anyway", variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -485,7 +538,7 @@ export function CommandCenter() {
           onSelectPlan={handleSelectPlan}
           newPlanLabel={authed ? "New saved plan" : "New quarter research"}
           onNewPlan={authed ? handleNewPlan : undefined}
-          onDeletePlan={authed ? handleDeletePlan : undefined}
+          onDeletePlan={authed ? handleDeleteWithWarning : undefined}
           onRenamePlan={authed ? handleRenamePlan : undefined}
           vaultItems={sidebarVault}
           vaultSynced={authed}
@@ -644,16 +697,16 @@ export function CommandCenter() {
                       viewClasses={viewClasses}
                       evaluation={viewEvaluation}
                       hydrateKey={`${activePlanId}:${authed}`}
+                      planSwitchKey={planSwitchKey}
                       scheduleItems={dossiersToScheduleItems(viewClasses)}
                       transitionInsights={[]}
                       initialCommitments={viewCommitments}
+                      initialCourseLabels={viewCourseLabels}
                       ref={workspaceRef}
                       onSave={authed ? handleManualSave : undefined}
                       isSaving={isSaving}
                       lastSavedAt={lastSavedAt}
                       saveError={saveError}
-                      showSavePrompt={showSavePrompt}
-                      onSavePromptDismiss={() => setShowSavePrompt(false)}
                       transitProfile={briefingData?.transitProfile}
                     />
                   )}
@@ -733,6 +786,62 @@ export function CommandCenter() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Last-plan delete warning modal ── */}
+      <AnimatePresence>
+        {pendingDeleteId && (
+          <motion.div
+            key="delete-guard"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setPendingDeleteId(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-sm rounded-2xl border border-white/[0.10] bg-hub-surface-elevated p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2.5">
+                <Trash2 className="h-4 w-4 text-hub-danger" />
+                <p className="font-[family-name:var(--font-outfit)] text-base font-semibold text-hub-text">
+                  Delete your only saved plan?
+                </p>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-hub-text-muted">
+                This plan will be removed from your account. You can always research a new schedule and save it again.
+              </p>
+              <div className="mt-5 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = pendingDeleteId;
+                    setPendingDeleteId(null);
+                    void handleDeletePlan(id);
+                  }}
+                  className="w-full rounded-xl bg-hub-danger/90 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-hub-danger"
+                >
+                  Delete anyway
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingDeleteId(null)}
+                  className="w-full px-4 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <HubToast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

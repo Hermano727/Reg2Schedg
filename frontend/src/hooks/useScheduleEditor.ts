@@ -27,6 +27,7 @@ function cloneSnap(s: ScheduleSnapshot): ScheduleSnapshot {
 type Action =
   | { type: "HYDRATE"; payload: { classes: ClassDossier[]; commitments?: ScheduleCommitment[]; courseLabels?: Record<string, string> } }
   | { type: "APPLY"; payload: ScheduleSnapshot }
+  | { type: "COMMIT" }
   | { type: "UNDO" }
   | { type: "REDO" }
   | { type: "RESET" }
@@ -54,6 +55,17 @@ function reducer(state: EditorState, action: Action): EditorState {
         baseline,
         past: [],
         future: [],
+      };
+    }
+    case "COMMIT": {
+      // After a successful save: promote current state to baseline so isDirty resets to false.
+      return {
+        ...state,
+        baseline: {
+          classes: structuredClone(state.classes),
+          commitments: structuredClone(state.commitments),
+          courseLabels: structuredClone(state.courseLabels ?? {}),
+        },
       };
     }
     case "APPLY": {
@@ -162,17 +174,20 @@ export function useScheduleEditor(
   viewClasses: ClassDossier[],
   hydrateKey: string,
   viewCommitments: ScheduleCommitment[] = [],
+  viewCourseLabels: Record<string, string> = {},
 ) {
   const [state, dispatch] = useReducer(reducer, viewClasses, initialEditor);
   const viewClassesRef = useRef(viewClasses);
   viewClassesRef.current = viewClasses;
   const viewCommitmentsRef = useRef<ScheduleCommitment[]>(viewCommitments);
   viewCommitmentsRef.current = viewCommitments;
+  const viewCourseLabelsRef = useRef<Record<string, string>>(viewCourseLabels);
+  viewCourseLabelsRef.current = viewCourseLabels;
 
   useEffect(() => {
     dispatch({
       type: "HYDRATE",
-      payload: { classes: viewClassesRef.current, commitments: viewCommitmentsRef.current },
+      payload: { classes: viewClassesRef.current, commitments: viewCommitmentsRef.current, courseLabels: viewCourseLabelsRef.current },
     });
   }, [hydrateKey]);
 
@@ -196,16 +211,20 @@ export function useScheduleEditor(
     dispatch({ type: "EDIT_COMMITMENT", payload: c });
   }, []);
 
+  const commit = useCallback(() => dispatch({ type: "COMMIT" }), []);
+
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
 
   const isDirty = useMemo(() => {
     if (state.commitments.length !== state.baseline.commitments.length)
       return true;
+    if (JSON.stringify(state.courseLabels) !== JSON.stringify(state.baseline.courseLabels))
+      return true;
     return (
       JSON.stringify(state.classes) !== JSON.stringify(state.baseline.classes)
     );
-  }, [state.classes, state.commitments, state.baseline]);
+  }, [state.classes, state.commitments, state.courseLabels, state.baseline]);
 
   return {
     classes: state.classes,
@@ -213,6 +232,7 @@ export function useScheduleEditor(
     courseLabels: state.courseLabels ?? {},
     baseline: state.baseline,
     apply,
+    commit,
     undo,
     redo,
     resetToBaseline,

@@ -64,12 +64,14 @@ type UsePlanSyncReturn = {
   viewClasses: ClassDossier[];
   viewEvaluation: ScheduleEvaluation;
   viewCommitments: ScheduleCommitment[];
+  viewCourseLabels: Record<string, string>;
   /** True while a v2 plan is being fetched from the server. Use to show a loading state instead of stale data. */
   isPlanLoading: boolean;
   persistCompletedSession: (payload: SavedPlanPayloadV1) => Promise<void>;
   handleSave: (titleOverride?: string) => Promise<void>;
   handleSaveOverwrite: () => Promise<void>;
   handleSaveAsNew: () => Promise<void>;
+  handleAutoSave: (explicitClasses: ClassDossier[], explicitEvaluation: ScheduleEvaluation, titleOverride?: string) => Promise<string | null>;
   handleNewPlan: () => Promise<void>;
   handleDeletePlan: (id: string) => Promise<void>;
   handleRenamePlan: (id: string, newTitle: string) => Promise<void>;
@@ -82,6 +84,10 @@ type Params = {
   evaluation: ScheduleEvaluation;
   workspaceRef: RefObject<DossierScheduleWorkspaceHandle | null>;
   onPlanCreated?: () => void;
+  /** Called when the currently active plan is deleted. CommandCenter uses this to reset to idle. */
+  onActivePlanDeleted?: () => void;
+  /** Called when a ?planId URL param is detected on mount and the plan is loaded. */
+  onPlanFromUrl?: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -91,7 +97,7 @@ type Params = {
 async function fetchExpandedPlan(
   planId: string,
   accessToken: string,
-): Promise<{ classes: ClassDossier[]; evaluation: ScheduleEvaluation; commitments: ScheduleCommitment[] } | null> {
+): Promise<{ classes: ClassDossier[]; evaluation: ScheduleEvaluation; commitments: ScheduleCommitment[]; courseLabels: Record<string, string> } | null> {
   try {
     const res = await fetch(`${API_BASE}/plans/${planId}/expanded`, {
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -101,6 +107,7 @@ async function fetchExpandedPlan(
       classes: CourseResearchResult[];
       evaluation: ScheduleEvaluation | null;
       commitments: ScheduleCommitment[];
+      course_labels?: Record<string, string>;
     };
     // The expanded endpoint returns snake_case CourseResearchResult-shaped objects.
     // Run them through the same mapper used by the research flow so that
@@ -109,6 +116,7 @@ async function fetchExpandedPlan(
       classes: (data.classes ?? []).map(courseResearchResultToDossier),
       evaluation: data.evaluation ?? mockDossier.evaluation,
       commitments: data.commitments ?? [],
+      courseLabels: data.course_labels ?? {},
     };
   } catch {
     return null;
@@ -125,6 +133,8 @@ export function usePlanSync({
   evaluation,
   workspaceRef,
   onPlanCreated,
+  onActivePlanDeleted,
+  onPlanFromUrl,
 }: Params): UsePlanSyncReturn {
   const [authed, setAuthed] = useState(false);
   const [isUcsdUser, setIsUcsdUser] = useState(false);
@@ -135,15 +145,20 @@ export function usePlanSync({
   const [expandedClasses, setExpandedClasses] = useState<ClassDossier[] | null>(null);
   const [expandedEvaluation, setExpandedEvaluation] = useState<ScheduleEvaluation | null>(null);
   const [expandedCommitments, setExpandedCommitments] = useState<ScheduleCommitment[] | null>(null);
+  const [expandedCourseLabels, setExpandedCourseLabels] = useState<Record<string, string> | null>(null);
   const [isPlanLoading, setIsPlanLoading] = useState(false);
 
   const activePlanIdRef = useRef(activePlanId);
   const remotePlansRef = useRef(remotePlans);
   const authedRef = useRef(authed);
+  const onActivePlanDeletedRef = useRef(onActivePlanDeleted);
+  const onPlanFromUrlRef = useRef(onPlanFromUrl);
 
   activePlanIdRef.current = activePlanId;
   remotePlansRef.current = remotePlans;
   authedRef.current = authed;
+  onActivePlanDeletedRef.current = onActivePlanDeleted;
+  onPlanFromUrlRef.current = onPlanFromUrl;
 
   const loadHubData = useCallback(async () => {
     try {
@@ -163,19 +178,33 @@ export function usePlanSync({
       setAuthed(true);
       setIsUcsdUser(isUcsdEmail(user.email));
       const [plansRes, vaultRes] = await Promise.all([
-        supabase.from("saved_plans").select("*").order("updated_at", { ascending: false }),
+        // Filter soft-deleted plans so they never appear in the sidebar or get selected
+        supabase.from("saved_plans").select("*").eq("is_deleted", false).order("updated_at", { ascending: false }),
         supabase.from("vault_items").select("*").order("updated_at", { ascending: false }),
       ]);
       const plans = (plansRes.data as SavedPlanRow[] | null) ?? [];
       const vault = (vaultRes.data as VaultItemRow[] | null) ?? [];
       setRemotePlans(plans);
       setRemoteVault(vault);
-      if (plans.length > 0) {
-        setActivePlanId((prev) =>
-          plans.some((p) => p.id === prev) ? prev : plans[0].id,
-        );
+
+      // Check for a ?planId URL param (e.g. from profile page links or browser refresh).
+      // If present and valid, activate that plan. Otherwise: keep the current activePlanId
+      // if it's still valid, or clear it — never auto-select the first plan.
+      const urlPlanId = typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("planId")
+        : null;
+
+      if (urlPlanId && plans.some((p) => p.id === urlPlanId)) {
+        if (activePlanIdRef.current !== urlPlanId) {
+          setActivePlanId(urlPlanId);
+          onPlanFromUrlRef.current?.();
+        }
       } else {
-        setActivePlanId("");
+        const cur = activePlanIdRef.current;
+        if (cur && !plans.some((p) => p.id === cur)) {
+          setActivePlanId(""); // current plan was deleted or is a stale mock ID
+        }
+        // Otherwise keep cur as-is (valid plan still selected, or already empty)
       }
     } catch {
       setAuthed(false);
@@ -202,6 +231,7 @@ export function usePlanSync({
     setExpandedClasses(null);
     setExpandedEvaluation(null);
     setExpandedCommitments(null);
+    setExpandedCourseLabels(null);
 
     if (!authed || !activePlanId) {
       setIsPlanLoading(false);
@@ -229,6 +259,7 @@ export function usePlanSync({
         setExpandedClasses(expanded.classes);
         setExpandedEvaluation(expanded.evaluation);
         setExpandedCommitments(expanded.commitments);
+        setExpandedCourseLabels(expanded.courseLabels);
       }
       setIsPlanLoading(false);
     })();
@@ -310,11 +341,11 @@ export function usePlanSync({
       .map(vaultRowToVaultItem);
   }, [authed, remoteVault, activePlanId]);
 
-  const { viewClasses, viewEvaluation, viewCommitments } = useMemo(() => {
-    const empty = { viewClasses: [] as ClassDossier[], viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[] };
+  const { viewClasses, viewEvaluation, viewCommitments, viewCourseLabels } = useMemo(() => {
+    const empty = { viewClasses: [] as ClassDossier[], viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[], viewCourseLabels: {} as Record<string, string> };
 
     if (phase !== "dashboard" || !authed) {
-      return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[] };
+      return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[], viewCourseLabels: {} as Record<string, string> };
     }
 
     // While a plan is loading, return nothing so stale data from a previous plan never shows.
@@ -326,6 +357,7 @@ export function usePlanSync({
         viewClasses: normalizeDossierIds(expandedClasses),
         viewEvaluation: expandedEvaluation ?? evaluation,
         viewCommitments: expandedCommitments ?? [],
+        viewCourseLabels: expandedCourseLabels ?? {},
       };
     }
 
@@ -338,11 +370,12 @@ export function usePlanSync({
           viewClasses: normalizeDossierIds(parsed.classes),
           viewEvaluation: parsed.evaluation,
           viewCommitments: parsed.commitments ?? [],
+          viewCourseLabels: parsed.courseLabels ?? {},
         };
       }
     }
-    return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[] };
-  }, [phase, authed, activePlanId, remotePlans, classes, evaluation, expandedClasses, expandedEvaluation, expandedCommitments, isPlanLoading]);
+    return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[], viewCourseLabels: {} as Record<string, string> };
+  }, [phase, authed, activePlanId, remotePlans, classes, evaluation, expandedClasses, expandedEvaluation, expandedCommitments, expandedCourseLabels, isPlanLoading]);
 
   // ---------------------------------------------------------------------------
   // Persist helpers
@@ -400,20 +433,32 @@ export function usePlanSync({
       : mockDossier.activeQuarterId;
   };
 
-  const _saveplan = useCallback(async (planId: string | null, isNew: boolean, titleOverride?: string) => {
+  const _saveplan = useCallback(async (
+    planId: string | null,
+    isNew: boolean,
+    titleOverride?: string,
+    explicitClasses?: ClassDossier[],
+    explicitEvaluation?: ScheduleEvaluation,
+  ): Promise<string | null> => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return null;
 
     const activeQ = _buildActiveQ();
-    const editorClasses = workspaceRef.current?.getCurrentClasses() ?? viewClasses;
-    const editorCommitments = workspaceRef.current?.getCurrentCommitments() ?? [];
+    // When explicit classes are passed (auto-save at research time), use them directly.
+    // The workspace may not be mounted yet in that case.
+    const editorClasses = explicitClasses ?? workspaceRef.current?.getCurrentClasses() ?? viewClasses;
+    const editorCommitments = explicitClasses ? [] : (workspaceRef.current?.getCurrentCommitments() ?? []);
+    const editorEvaluation = explicitEvaluation ?? viewEvaluation;
+    const editorCourseLabels = explicitClasses ? {} : (workspaceRef.current?.getCurrentCourseLabels() ?? {});
+    // explicitClasses = auto-save right after research: no user edits exist yet.
+    const hasDossierEdits = explicitClasses ? false : (workspaceRef.current?.hasDossierEdits ?? false);
 
     // Use v2 if every class has a cacheId, otherwise fall back to v1
     const useV2 = canSaveAsV2(editorClasses);
     const payload = useV2
-      ? buildPayloadV2(activeQ, editorClasses, editorCommitments, viewEvaluation)
-      : buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, viewEvaluation);
+      ? buildPayloadV2(activeQ, editorClasses, editorCommitments, editorEvaluation, editorCourseLabels, hasDossierEdits)
+      : buildPayloadFromClasses(activeQ, editorClasses, editorCommitments, editorEvaluation, editorCourseLabels);
     const payloadVersion = useV2 ? 2 : 1;
 
     const titleSuffix = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -434,10 +479,13 @@ export function usePlanSync({
         .select("id")
         .single();
       if (data?.id) setActivePlanId(data.id as string);
+      await loadHubData();
+      return (data?.id as string) ?? null;
     } else {
       await supabase.from("saved_plans").update({ payload, payload_version: payloadVersion }).eq("id", planId);
+      await loadHubData();
+      return planId;
     }
-    await loadHubData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewClasses, viewEvaluation, loadHubData, workspaceRef]);
 
@@ -493,13 +541,26 @@ export function usePlanSync({
     await _saveplan(isRealPlan ? pid : null, !isRealPlan, titleOverride);
   }, [_saveplan]);
 
+  // Auto-save right after the research pipeline finishes, before the user interacts with the workspace.
+  // Uses explicit classes/evaluation instead of reading from the editor (workspace not mounted yet).
+  const handleAutoSave = useCallback(async (
+    explicitClasses: ClassDossier[],
+    explicitEvaluation: ScheduleEvaluation,
+    titleOverride?: string,
+  ): Promise<string | null> => {
+    return _saveplan(null, true, titleOverride, explicitClasses, explicitEvaluation);
+  }, [_saveplan]);
+
   const handleDeletePlan = useCallback(async (id: string) => {
     if (!authedRef.current) return;
     try {
       const supabase = createClient();
-      await supabase.from("saved_plans").delete().eq("id", id);
+      // Soft-delete: mark as deleted instead of hard-removing the row from the DB.
+      await supabase.from("saved_plans").update({ is_deleted: true }).eq("id", id);
+      const wasActive = activePlanIdRef.current === id;
+      if (wasActive) setActivePlanId("");
       await loadHubData();
-      if (activePlanIdRef.current === id) setActivePlanId("");
+      if (wasActive) onActivePlanDeletedRef.current?.();
     } catch {
       /* ignore delete errors */
     }
@@ -527,11 +588,13 @@ export function usePlanSync({
     viewClasses,
     viewEvaluation,
     viewCommitments,
+    viewCourseLabels,
     isPlanLoading,
     persistCompletedSession,
     handleSave,
     handleSaveOverwrite,
     handleSaveAsNew,
+    handleAutoSave,
     handleNewPlan,
     handleDeletePlan,
     handleRenamePlan,

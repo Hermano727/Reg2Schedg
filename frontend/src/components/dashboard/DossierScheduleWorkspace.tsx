@@ -170,17 +170,24 @@ const PHASES: { id: WorkspacePhase; label: string; icon: typeof BarChart2; descr
 export type DossierScheduleWorkspaceHandle = {
   getCurrentClasses: () => ClassDossier[];
   getCurrentCommitments: () => ScheduleCommitment[];
+  getCurrentCourseLabels: () => Record<string, string>;
+  /** Promote current editor state to baseline so isDirty resets to false after a successful save. */
+  commit: () => void;
   isDirty: boolean;
+  hasDossierEdits: boolean;
 };
 
 type Props = {
   viewClasses: ClassDossier[];
   evaluation: ScheduleEvaluation;
   hydrateKey: string;
+  /** Incremented only on explicit plan switches (not saves). Drives the phase/tab reset. */
+  planSwitchKey?: number;
   scheduleItems?: ScheduleItem[];
   transitionInsights?: TransitionInsight[];
   calendarHeaderActions?: ReactNode;
   initialCommitments?: ScheduleCommitment[];
+  initialCourseLabels?: Record<string, string>;
   // Save flow
   onSave?: () => Promise<void>;
   isSaving?: boolean;
@@ -201,10 +208,12 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
     viewClasses,
     evaluation,
     hydrateKey,
+    planSwitchKey,
     scheduleItems = [],
     transitionInsights = [],
     calendarHeaderActions,
     initialCommitments = [],
+    initialCourseLabels = {},
     onSave,
     isSaving = false,
     lastSavedAt,
@@ -221,16 +230,29 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
   // For v2 plans the workspace is unmounted during loading, so fresh-mount initialisation
   // from useReducer's initialiser function handles the "data just arrived" case correctly.
   const {
-    classes, commitments, courseLabels, apply, undo, redo, resetToBaseline,
+    classes, commitments, courseLabels, apply, commit, undo, redo, resetToBaseline,
     addCommitment, removeCommitment, editCommitment,
     canUndo, canRedo, isDirty,
-  } = useScheduleEditor(viewClasses, hydrateKey, initialCommitments);
+  } = useScheduleEditor(viewClasses, hydrateKey, initialCommitments, initialCourseLabels);
+
+  const [hasDossierEdits, setHasDossierEdits] = useState(false);
+
+  // Reset dossier-edit flag when the plan changes (new hydrateKey = new plan loaded)
+  useEffect(() => {
+    setHasDossierEdits(false);
+  }, [hydrateKey]);
 
   useImperativeHandle(ref, () => ({
     getCurrentClasses: () => classes,
     getCurrentCommitments: () => commitments,
+    getCurrentCourseLabels: () => courseLabels,
+    commit: () => {
+      commit();
+      setHasDossierEdits(false);
+    },
     isDirty,
-  }), [classes, commitments, isDirty]);
+    hasDossierEdits,
+  }), [classes, commitments, courseLabels, commit, isDirty, hasDossierEdits]);
 
   /** Apply a user-supplied correction to a dossier field. Held in editor state until plan is saved. */
   const onUpdateDossier = useCallback((dossierId: string, patch: DossierEditPatch) => {
@@ -245,18 +267,21 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
           : {}),
       };
     });
+    setHasDossierEdits(true);
     apply({ classes: updatedClasses, commitments, courseLabels });
   }, [apply, classes, commitments, courseLabels]);
 
   const [mainTab, setMainTab] = useState<MainTab>("dossier");
   const [currentPhase, setCurrentPhase] = useState<WorkspacePhase>("overview");
 
-  // Reset UI state whenever the active plan changes so switching plans
-  // always lands on Overview rather than whatever phase the previous plan was on.
+  // Reset UI state only on intentional plan switches (planSwitchKey), NOT on saves.
+  // Saving a new plan changes hydrateKey (new activePlanId) but must not yank the user
+  // off the current tab — only an explicit plan swap should land back on Overview.
   useEffect(() => {
     setCurrentPhase("overview");
     setMainTab("dossier");
-  }, [hydrateKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planSwitchKey]);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -652,14 +677,22 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                   </motion.span>
                 ) : null}
               </AnimatePresence>
-              <button
-                type="button"
-                onClick={() => void onSave()}
-                disabled={isSaving}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-hub-cyan/35 bg-hub-cyan/10 px-3 py-1.5 text-xs font-semibold text-hub-cyan transition hover:bg-hub-cyan/18 disabled:opacity-50"
-              >
-                {isSaving ? "Saving…" : "Save plan"}
-              </button>
+              <div className="relative">
+                {(isDirty || hasDossierEdits) && !isSaving && (
+                  <span
+                    title="Unsaved changes"
+                    className="absolute -right-1 -top-1 z-10 h-2 w-2 rounded-full bg-orange-400 shadow-[0_0_6px_rgba(251,146,60,0.7)]"
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => void onSave()}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-hub-cyan/35 bg-hub-cyan/10 px-3 py-1.5 text-xs font-semibold text-hub-cyan transition hover:bg-hub-cyan/18 disabled:opacity-50"
+                >
+                  {isSaving ? "Saving…" : "Save plan"}
+                </button>
+              </div>
             </div>
           )}
         </nav>

@@ -1,8 +1,10 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   BookOpen,
+  ChevronDown,
   ChevronRight,
   ExternalLink,
   Info,
@@ -31,6 +33,8 @@ type ClassCardProps = {
   onOpenDashboard?: () => void;
   /** Called when user manually corrects a field. Changes are held in the workspace state until plan is saved. */
   onUpdate?: (patch: DossierEditPatch) => void;
+  /** When true, expanded view exposes inline editable fields. */
+  isEditable?: boolean;
 };
 
 // ── Confidence bar color based on percentage ──────────────────────────────────
@@ -193,35 +197,57 @@ function EvidenceCard({ item }: { item: EvidenceItem }) {
 }
 
 
-// ── Grade breakdown strip ──────────────────────────────────────────────────────
-function GradeBreakdownStrip({ breakdown }: { breakdown: string | null | undefined }) {
+// ── Grade breakdown table ──────────────────────────────────────────────────────
+type GradeRow = { component: string; weight: string };
+
+function parseGradeBreakdown(breakdown: string): GradeRow[] {
+  return breakdown
+    .split(/[,;]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((seg) => {
+      // Match "Homework 20%" or "20% Homework" patterns
+      const pctFirst = seg.match(/^(\d+(?:\.\d+)?%)\s+(.+)$/);
+      if (pctFirst) return { weight: pctFirst[1], component: pctFirst[2] };
+      const pctLast = seg.match(/^(.+?)\s+(\d+(?:\.\d+)?%)$/);
+      if (pctLast) return { component: pctLast[1], weight: pctLast[2] };
+      return { component: seg, weight: "" };
+    });
+}
+
+function GradeBreakdownTable({ breakdown }: { breakdown: string | null | undefined }) {
   if (!breakdown) {
     return (
       <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-white/[0.06] px-3 py-2">
         <Info className="h-3 w-3 shrink-0 text-hub-text-muted/50" />
-        <span className="text-[10px] text-hub-text-muted">Course logistics not found</span>
+        <span className="text-[10px] text-hub-text-muted">Grading breakdown not found</span>
       </div>
     );
   }
 
-  // Parse "Homework 20%, Midterm 30%, Final 50%" into segments
-  const segments = breakdown
-    .split(/[,;]/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const rows = parseGradeBreakdown(breakdown);
 
   return (
     <div className="rounded-lg border border-white/[0.06] bg-hub-bg/20 px-3 py-2">
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
-        Grading
-      </p>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {segments.map((seg, i) => (
-          <span key={i} className="text-sm text-white/80">
-            {seg}
-          </span>
-        ))}
-      </div>
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/50">Grading</p>
+      <table className="w-full border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-white/[0.06]">
+            <th className="pb-1 text-left text-[10px] font-medium uppercase tracking-wide text-white/30">Component</th>
+            <th className="pb-1 text-right text-[10px] font-medium uppercase tracking-wide text-white/30">Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i} className="border-b border-white/[0.04] last:border-0">
+              <td className="py-1 pr-4 text-hub-text-secondary">{row.component}</td>
+              <td className="py-1 text-right font-[family-name:var(--font-jetbrains-mono)] text-hub-cyan tabular-nums">
+                {row.weight || "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -360,7 +386,9 @@ export function ClassCard({
   onHoverEnd,
   onOpenDashboard,
   onUpdate,
+  isEditable = false,
 }: ClassCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const rmp = dossier.logistics?.rate_my_professor;
   const sunsetSummary = getSunsetSummary(dossier.sunsetGradeDistribution);
@@ -540,10 +568,7 @@ export function ClassCard({
             <GradeHistogram gradeCounts={sunsetSummary?.grade_counts ?? {}} sampleSize={sunsetSampleSize} />
           )}
 
-          {/* Grade breakdown / course logistics strip */}
-          {dossier.logistics != null && (
-            <GradeBreakdownStrip breakdown={dossier.logistics.grade_breakdown} />
-          )}
+          {/* Grade breakdown is shown in expanded view below */}
 
           {/* No professor info notice */}
           {!professorInfoFound && (
@@ -594,6 +619,91 @@ export function ClassCard({
           )}
 
           {dossier.conflict ? <ConflictBadge conflict={dossier.conflict} /> : null}
+
+          {/* ── Expand / collapse toggle ── */}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setIsExpanded((v) => !v); }}
+            className="flex w-full items-center justify-center gap-1 rounded-md py-1 text-[10px] font-medium text-white/30 transition hover:text-white/60"
+          >
+            {isExpanded ? "Less" : "More details"}
+            <motion.span animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown className="h-3 w-3" />
+            </motion.span>
+          </button>
+
+          {/* ── Expanded panel ── */}
+          <AnimatePresence initial={false}>
+            {isExpanded && (
+              <motion.div
+                key="expanded"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-3 pt-1" onClick={(e) => e.stopPropagation()}>
+                  {/* Grade breakdown table */}
+                  {dossier.logistics != null && (
+                    isEditable ? (
+                      <div className="rounded-lg border border-white/[0.06] bg-hub-bg/20 px-3 py-2">
+                        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/50">Grading</p>
+                        <input
+                          className="w-full rounded border border-white/[0.1] bg-hub-bg/40 px-2 py-1 text-sm text-hub-text-secondary outline-none focus:border-hub-cyan/50"
+                          value={dossier.logistics.grade_breakdown ?? ""}
+                          placeholder="e.g. Homework 30%, Midterm 30%, Final 40%"
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => onUpdate?.({ logistics: { grade_breakdown: e.target.value || null } })}
+                        />
+                      </div>
+                    ) : (
+                      <GradeBreakdownTable breakdown={dossier.logistics.grade_breakdown} />
+                    )
+                  )}
+
+                  {/* Second evidence quote */}
+                  {allEvidence[1] && <InlineQuote item={allEvidence[1]} />}
+
+                  {/* Building/location info */}
+                  {dossier.meetings.filter((m) => m.location && m.geocode_status === "resolved").slice(0, 2).map((m, i) => (
+                    <div key={i} className="flex items-center gap-1.5 text-[11px] text-hub-text-muted">
+                      <span className="h-1.5 w-1.5 rounded-full bg-hub-cyan/50" />
+                      {m.location}
+                      {m.days && <span className="text-white/30">· {m.days}</span>}
+                    </div>
+                  ))}
+
+                  {/* Editable attribute toggles */}
+                  {isEditable && dossier.logistics && (
+                    <div className="flex flex-wrap gap-3">
+                      {(["attendance_required", "textbook_required", "podcasts_available"] as const).map((field) => {
+                        const val = dossier.logistics![field];
+                        const labels: Record<string, [string, string]> = {
+                          attendance_required: ["Attendance mandatory", "Attendance optional"],
+                          textbook_required: ["Textbook required", "No textbook"],
+                          podcasts_available: ["Podcasts available", "No podcasts"],
+                        };
+                        const [trueLabel, falseLabel] = labels[field];
+                        const next = val === true ? false : val === false ? null : true;
+                        return (
+                          <button
+                            key={field}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onUpdate?.({ logistics: { [field]: next } }); }}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition
+                              ${val === true ? "border-amber-500/30 bg-amber-900/20 text-amber-300" : val === false ? "border-white/[0.08] bg-white/[0.03] text-white/40" : "border-dashed border-white/[0.1] text-white/30"}`}
+                          >
+                            {val === true ? trueLabel : val === false ? falseLabel : "Unknown"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.article>
 

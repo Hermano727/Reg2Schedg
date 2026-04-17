@@ -243,7 +243,7 @@ export function ProfileHub({
               plans.map((p) => (
                 <li key={p.id}>
                   <Link
-                    href="/"
+                    href={`/?planId=${p.id}`}
                     className="flex flex-col rounded-lg border border-white/[0.06] bg-hub-bg/35 px-4 py-3 transition hover:border-white/[0.14]"
                   >
                     <span className="text-sm font-medium text-hub-text">

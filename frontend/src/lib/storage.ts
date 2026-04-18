@@ -4,7 +4,7 @@ const BUCKET = "user-content";
 
 export async function uploadFile(
   storagePath: string,
-  file: File,
+  file: File | Blob,
   opts?: { maxBytes?: number; accept?: string[] },
 ): Promise<string> {
   if (opts?.maxBytes && file.size > opts.maxBytes) {

@@ -19,6 +19,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
 import { uploadFile } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
+import { AvatarCropModal } from "./AvatarCropModal";
 import { VaultUploadModal } from "./VaultUploadModal";
 import type { VaultItem } from "@/types/dossier";
 import type { PostSummary } from "@/types/community";
@@ -77,6 +78,7 @@ export function ProfileHub({
   const router = useRouter();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(avatarUrl);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
 
@@ -88,28 +90,29 @@ export function ProfileHub({
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?";
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setCropFile(file);
+    // Reset so same file can be re-selected later
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setCropFile(null);
     setAvatarUploading(true);
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${userId}/avatar/profile.${ext}`;
-      const storagePath = await uploadFile(path, file, {
-        maxBytes: 5 * 1_000_000,
-        accept: ["image"],
-      });
+      const path = `${userId}/avatar/profile.jpg`;
+      const storagePath = await uploadFile(path, blob, { maxBytes: 5 * 1_000_000 });
       const supabase = createClient();
       await supabase.from("profiles").update({ avatar_url: storagePath }).eq("id", userId);
-      // Optimistic preview
-      setLocalAvatarUrl(URL.createObjectURL(file));
+      // Optimistic preview from the cropped blob
+      setLocalAvatarUrl(URL.createObjectURL(blob));
       router.refresh();
     } catch (err) {
       console.error("Avatar upload failed:", err);
     } finally {
       setAvatarUploading(false);
-      // Reset so same file can be re-selected
-      if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
 
@@ -178,6 +181,13 @@ export function ProfileHub({
               onChange={handleAvatarChange}
               className="hidden"
             />
+            {cropFile && (
+              <AvatarCropModal
+                file={cropFile}
+                onConfirm={handleCropConfirm}
+                onCancel={() => setCropFile(null)}
+              />
+            )}
             <div className="min-w-0">
               <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-medium uppercase tracking-[0.2em] text-hub-cyan">
                 Your profile
@@ -275,7 +285,7 @@ export function ProfileHub({
           <div className="flex items-center gap-2 border-b border-hub-cyan/25 pb-3">
             <ClipboardList className="h-4 w-4 text-hub-cyan" aria-hidden />
             <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
-              Saved audit logs
+              COMING SOON: Saved audit logs
             </h2>
             <span className="ml-auto rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-medium uppercase tracking-wider text-hub-text-muted">
               Soon

@@ -157,6 +157,7 @@ export function Header({ user }: HeaderProps) {
             displayName={user?.displayName}
             email={user?.email}
             signedIn={!!user}
+            avatarUrl={user?.avatarUrl}
           />
         </div>
       </header>

@@ -2,13 +2,14 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
-import { ChevronDown, LogOut, Settings, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 import { clientSignOut } from "@/lib/auth/client-sign-out";
 
 type UserAccountMenuProps = {
   displayName?: string;
   email?: string;
   signedIn?: boolean;
+  avatarUrl?: string | null;
 };
 
 const menuItemClass =
@@ -17,6 +18,7 @@ const menuItemClass =
 export function UserAccountMenu({
   displayName = "Guest",
   signedIn = false,
+  avatarUrl,
 }: UserAccountMenuProps) {
   const initials =
     displayName
@@ -31,13 +33,21 @@ export function UserAccountMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
-          className="flex h-9 items-center gap-1 rounded-full border border-white/[0.12] bg-hub-surface-elevated pl-1 pr-1.5 text-[11px] font-semibold text-hub-text outline-none ring-hub-cyan/40 transition hover:border-white/[0.18] focus-visible:ring-2"
+          className="flex h-8 w-8 items-center justify-center rounded-full outline-none ring-hub-cyan/40 transition focus-visible:ring-2"
           aria-label="Open account menu"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-hub-cyan/10 text-[10px] text-hub-cyan ring-1 ring-hub-cyan/25">
-            {initials}
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 text-hub-text-muted" aria-hidden />
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="h-8 w-8 rounded-full object-cover ring-1 ring-hub-cyan/25"
+            />
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-hub-cyan/10 text-[10px] font-semibold text-hub-cyan ring-1 ring-hub-cyan/25">
+              {initials}
+            </span>
+          )}
         </button>
       </DropdownMenu.Trigger>
 

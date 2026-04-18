@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, LayoutGrid, Maximize2, Map as MapIcon, BarChart2, Layers, Minimize2, X } from "lucide-react";
+import { CalendarDays, LayoutGrid, Maximize2, Map as MapIcon, BarChart2, Layers, Minimize2, Users, X } from "lucide-react";
 import { isExamSection } from "@/lib/mappers/dossiersToScheduleItems";
 import { ClassCard } from "@/components/dashboard/ClassCard";
 import { DossierDashboardModal } from "@/components/dashboard/DossierDashboardModal";
@@ -23,6 +23,7 @@ import { ExamsPanel } from "@/components/dashboard/ExamsPanel";
 import { ScheduleToolbar } from "@/components/dashboard/ScheduleToolbar";
 import { CommitmentsPanel } from "@/components/dashboard/CommitmentsPanel";
 import { AddCommitmentModal } from "@/components/dashboard/modals/AddCommitmentModal";
+import { ScheduledPostsOverlay } from "@/components/dashboard/ScheduledPostsOverlay";
 import { EditBlockModal } from "@/components/dashboard/modals/EditBlockModal";
 import { COMMITMENT_PRESETS } from "@/components/dashboard/commitmentPresets";
 import { WeeklyCalendar, type CourseBlock, type CommitmentBlock, COL_TO_DAY, parseDaysToCols, removeDayFromString, minutesToTimeStr, minutesToTimeInput } from "@/components/dashboard/WeeklyCalendar";
@@ -284,6 +285,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
   }, [planSwitchKey]);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [communityOverlayOpen, setCommunityOverlayOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [hoveredClassId, setHoveredClassId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -655,6 +657,17 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
             );
           })}
 
+          {/* Tagged Posts — community overlay launcher */}
+          <div className="ml-2 h-4 w-px shrink-0 bg-white/[0.12]" />
+          <button
+            type="button"
+            onClick={() => setCommunityOverlayOpen(true)}
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-hub-cyan/20 bg-hub-cyan/[0.06] px-3.5 py-2 text-sm font-medium text-hub-cyan/80 transition hover:border-hub-cyan/40 hover:bg-hub-cyan/[0.12] hover:text-hub-cyan"
+          >
+            <Users className="h-4 w-4 shrink-0" aria-hidden />
+            Tagged Posts
+          </button>
+
           {/* Save plan — far right of phase nav */}
           {onSave && (
             <div className="ml-auto flex items-center gap-3 pl-4">
@@ -705,7 +718,12 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="grid grid-cols-[3fr_2fr] gap-12 items-start"
           >
-            <DifficultyScoreHud evaluation={evaluation} isHero />
+            <DifficultyScoreHud
+              evaluation={evaluation}
+              isHero
+              onGoToCourses={() => setCurrentPhase("dossiers")}
+              onOpenCalendar={openCalendar}
+            />
             <ExamsPanel classes={classes} />
           </motion.div>
         )}
@@ -868,7 +886,11 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
             <div className="grid grid-cols-3 gap-8 items-start">
             {/* Left 2/3: HUD + Cards */}
             <div className="col-span-2 space-y-8">
-              <DifficultyScoreHud evaluation={evaluation} />
+              <DifficultyScoreHud
+                evaluation={evaluation}
+                onGoToCourses={() => setCurrentPhase("dossiers")}
+                onOpenCalendar={openCalendar}
+              />
               <motion.div
                 className={`grid gap-6 ${classes.length <= 2 ? "grid-cols-2" : "grid-cols-2 xl:grid-cols-3"}`}
                 initial="hidden" animate="visible"
@@ -1001,10 +1023,14 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
         {!calendarVisible && !fullscreenOpen && currentPhase !== "logistics" && currentPhase !== "review" && (
           <motion.button
             key="view-cal-fab" type="button"
-            initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, y: 16, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.92 }}
+            transition={{ type: "spring", duration: 0.4, bounce: 0.28 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.93 }}
             onClick={openCalendar}
-            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-hub-cyan/40 bg-hub-surface/90 px-4 py-2.5 text-xs font-semibold text-hub-cyan shadow-lg backdrop-blur-sm transition hover:bg-hub-cyan/10"
+            className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full border border-hub-cyan/40 bg-hub-surface/90 px-4 py-2.5 text-xs font-semibold text-hub-cyan shadow-lg backdrop-blur-sm"
           >
             <CalendarDays className="h-4 w-4 shrink-0" aria-hidden />
             View Calendar
@@ -1107,6 +1133,16 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
         onNavigate={setDashboardOpenIndex}
         onUpdate={onUpdateDossier}
       />
+
+      {/* ── Tagged Posts overlay ── */}
+      <AnimatePresence>
+        {communityOverlayOpen && (
+          <ScheduledPostsOverlay
+            classes={classes}
+            onClose={() => setCommunityOverlayOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 });

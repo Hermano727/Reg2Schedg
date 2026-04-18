@@ -5,13 +5,10 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertCircle,
   AlertTriangle,
-  BookOpen,
+  CalendarDays,
   CheckCircle2,
-  Clock,
   Info,
-  Mic,
-  TrendingUp,
-  Zap,
+  LayoutGrid,
 } from "lucide-react";
 import {
   PolarAngleAxis,
@@ -122,17 +119,6 @@ function splitBullets(text: string): string[] {
     .filter((s) => s.length > 8);
 }
 
-// ---------------------------------------------------------------------------
-// Quick-action row icons
-// ---------------------------------------------------------------------------
-
-const QUICK_ACTIONS = [
-  { icon: <BookOpen className="h-3.5 w-3.5" />, label: "View Courses" },
-  { icon: <Clock className="h-3.5 w-3.5" />, label: "Calendar" },
-  { icon: <TrendingUp className="h-3.5 w-3.5" />, label: "Grade Data" },
-  { icon: <Mic className="h-3.5 w-3.5" />, label: "Recordings" },
-  { icon: <Zap className="h-3.5 w-3.5" />, label: "Study Tips" },
-];
 
 // ---------------------------------------------------------------------------
 // Tooltip (overflow-safe — rendered above the card via z-50)
@@ -169,23 +155,23 @@ function HudInfoTooltip({ text }: { text: string }) {
 
 type RadarDatum = { subject: string; value: number; fullMark: number };
 
-function ScoreRadar({ data, color }: { data: RadarDatum[]; color: string }) {
+function ScoreRadar({ data, color, height = 260 }: { data: RadarDatum[]; color: string; height?: number }) {
   return (
-    <ResponsiveContainer width="100%" height={180}>
-      <RadarChart cx="50%" cy="50%" outerRadius="72%" data={data}>
+    <ResponsiveContainer width="100%" height={height}>
+      <RadarChart cx="50%" cy="50%" outerRadius="85%" data={data}>
         <PolarGrid stroke="rgba(255,255,255,0.07)" />
         <PolarAngleAxis
           dataKey="subject"
-          tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 600 }}
+          tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: 700 }}
         />
         <Radar
           name="Score"
           dataKey="value"
           stroke={color}
           fill={color}
-          fillOpacity={0.18}
-          strokeWidth={1.5}
-          dot={{ r: 3, fill: color, strokeWidth: 0 }}
+          fillOpacity={0.22}
+          strokeWidth={2}
+          dot={{ r: 4, fill: color, strokeWidth: 0 }}
         />
       </RadarChart>
     </ResponsiveContainer>
@@ -196,9 +182,14 @@ function ScoreRadar({ data, color }: { data: RadarDatum[]; color: string }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-type Props = { evaluation: ScheduleEvaluation; isHero?: boolean };
+type Props = {
+  evaluation: ScheduleEvaluation;
+  isHero?: boolean;
+  onGoToCourses?: () => void;
+  onOpenCalendar?: () => void;
+};
 
-export function DifficultyScoreHud({ evaluation, isHero = false }: Props) {
+export function DifficultyScoreHud({ evaluation, isHero = false, onGoToCourses, onOpenCalendar }: Props) {
   const reduce = useReducedMotion();
   const displayScore = useCountUp(evaluation.fitnessScore);
   const color = scoreColor(evaluation.fitnessScore, evaluation.fitnessMax);
@@ -218,6 +209,11 @@ export function DifficultyScoreHud({ evaluation, isHero = false }: Props) {
     year: "numeric",
   });
 
+  const quickActions = [
+    { icon: <LayoutGrid className="h-3.5 w-3.5" />, label: "View Courses", onClick: onGoToCourses },
+    { icon: <CalendarDays className="h-3.5 w-3.5" />, label: "Calendar", onClick: onOpenCalendar },
+  ];
+
   return (
     <section
       className="w-full rounded-2xl border border-white/[0.10] shadow-2xl"
@@ -233,7 +229,7 @@ export function DifficultyScoreHud({ evaluation, isHero = false }: Props) {
           <h2 className="font-[family-name:var(--font-outfit)] text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">
             Quarter Dossier
           </h2>
-          <HudInfoTooltip text="Commute · density · employment — 1 = easy, 10 = very hard" />
+          <HudInfoTooltip text="Graded based on difficulty of classes, schedule timing, and workload" />
         </div>
         <div className="flex items-center gap-3">
           <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-white/30">
@@ -301,8 +297,8 @@ export function DifficultyScoreHud({ evaluation, isHero = false }: Props) {
 
         {/* Radar chart */}
         {radarData.length > 0 ? (
-          <div className={`flex flex-1 items-center justify-center ${isHero ? "px-6 py-6" : "px-4 py-4"}`}>
-            <ScoreRadar data={radarData} color={color} />
+          <div className={`flex flex-1 items-center justify-center ${isHero ? "px-8 py-8" : "px-4 py-4"}`}>
+            <ScoreRadar data={radarData} color={color} height={isHero ? 340 : 260} />
           </div>
         ) : (
           // Fallback category sparklines when no radar data
@@ -383,11 +379,12 @@ export function DifficultyScoreHud({ evaluation, isHero = false }: Props) {
 
       {/* ── Quick actions ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-5 py-3">
-        {QUICK_ACTIONS.map((a) => (
+        {quickActions.map((a) => (
           <button
             key={a.label}
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/50 transition hover:border-[#00d4ff]/30 hover:bg-[#00d4ff]/[0.07] hover:text-[#00d4ff]"
+            onClick={a.onClick}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-white/50 transition hover:border-[#00d4ff]/30 hover:bg-[#00d4ff]/[0.07] hover:text-[#00d4ff] active:scale-[0.94] active:duration-75"
           >
             {a.icon}
             {a.label}

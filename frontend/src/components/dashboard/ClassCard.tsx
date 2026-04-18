@@ -429,7 +429,8 @@ export function ClassCard({
           hidden: { opacity: 0, y: 10 },
           visible: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } },
         }}
-        whileHover={reduce ? undefined : { y: -2, transition: { duration: 0.15, ease: "easeOut" } }}
+        whileHover={reduce ? undefined : { y: -3, boxShadow: "0 8px 32px rgba(0,212,255,0.07)", transition: { duration: 0.15, ease: "easeOut" } }}
+        whileTap={reduce ? undefined : { scale: 0.985, transition: { duration: 0.08 } }}
         onMouseEnter={onHover}
         onMouseLeave={onHoverEnd}
         onClick={onSelect}

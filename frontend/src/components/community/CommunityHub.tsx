@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { motion } from "framer-motion";
 import {
   PlusCircle,
   Search,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { listPosts, getDepartments } from "@/lib/api/community";
 import type { PostListResponse, PostSummary, SortBy } from "@/types/community";
+import { CommunityNavRail } from "@/components/layout/CommunityNavRail";
 import { CreatePostModal } from "./CreatePostModal";
 import { PostCard } from "./PostCard";
 
@@ -120,7 +122,9 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
   }
 
   return (
-    <div className="w-full px-8 py-8">
+    <div className="flex w-full">
+      <CommunityNavRail />
+    <div className="min-w-0 flex-1 px-8 py-8">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -334,8 +338,11 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
       </div>
 
       {/* Post list */}
-      <div
-        className={`flex flex-col gap-3 transition-opacity ${isPending ? "opacity-50" : "opacity-100"}`}
+      <motion.div
+        className={`flex flex-col gap-3 transition-opacity ${isPending ? "opacity-40" : "opacity-100"}`}
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
       >
         {posts.length === 0 ? (
           <div className="glass-panel rounded-xl border border-white/[0.08] p-10 text-center">
@@ -345,9 +352,19 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
             </p>
           </div>
         ) : (
-          posts.map((post) => <PostCard key={post.id} post={post} />)
+          posts.map((post) => (
+            <motion.div
+              key={post.id}
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } },
+              }}
+            >
+              <PostCard post={post} />
+            </motion.div>
+          ))
         )}
-      </div>
+      </motion.div>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -391,6 +408,7 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
           </button>
         </div>
       )}
+    </div>
     </div>
   );
 }

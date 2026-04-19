@@ -49,6 +49,8 @@ export default async function ThreadPage({ params }: Props) {
     body: row.body as string,
     parentReplyId: (row.parent_reply_id as string | null) ?? null,
     isAnonymous: (row.is_anonymous as boolean) ?? false,
+    isDeleted: (row.is_deleted as boolean) ?? false,
+    editedAt: (row.edited_at as string | null) ?? null,
     authorDisplayName: (row.author_display_name as string) ?? "Anonymous",
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,

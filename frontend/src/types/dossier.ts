@@ -26,10 +26,16 @@ export interface QuarterRef {
 export interface VaultItem {
   id: string;
   name: string;
-  kind: "syllabus" | "webreg" | "note" | "pdf" | "image" | "doc";
+  kind: "syllabus" | "webreg" | "note" | "pdf" | "image" | "doc" | "community";
   mimeType?: string | null;
   sizeBytes?: number | null;
   updatedAt: string;
+  signedUrl?: string;
+  // Community attachment saves
+  communityPostId?: string | null;
+  communityReplyId?: string | null;
+  communityPostTitle?: string | null;
+  communityReplyPreview?: string | null;
 }
 
 export interface StatusChipData {

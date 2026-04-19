@@ -7,6 +7,7 @@ import {
   FileText,
   FolderOpen,
   Home,
+  MessageSquare,
   Plus,
   Settings,
   Trash,
@@ -256,7 +257,7 @@ export function LeftSidebar({
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
             <p className="mb-3 text-[11px] leading-relaxed text-hub-text-muted">
               {vaultSynced
-                ? "Your uploaded files for this plan."
+                ? "Saved files and community attachments."
                 : "Please log in to view your saved files."}
             </p>
             <ul className="space-y-2">
@@ -271,25 +272,74 @@ export function LeftSidebar({
               ) : (
                 vaultItems.map((item) => (
                   <li key={item.id}>
-                    <button
-                      type="button"
-                      className="flex w-full items-start gap-2 rounded-lg border border-white/[0.06] bg-hub-bg/40 p-3 text-left transition hover:border-white/[0.12]"
-                    >
-                      <FileText
-                        className="mt-0.5 h-4 w-4 shrink-0 text-hub-text-muted"
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-xs font-medium text-hub-text">
-                          {item.name}
+                    {item.kind === "community" && item.communityPostId ? (
+                      // Community attachment save — links back to the post+comment
+                      <a
+                        href={`/community/${item.communityPostId}${item.communityReplyId ? `#reply-${item.communityReplyId}` : ""}`}
+                        className="flex w-full flex-col gap-1.5 rounded-lg border border-hub-cyan/15 bg-hub-bg/40 p-3 transition hover:border-hub-cyan/35 hover:bg-hub-cyan/5"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <MessageSquare className="h-3 w-3 shrink-0 text-hub-cyan/60" aria-hidden />
+                          <span className="truncate text-[10px] font-medium text-hub-cyan/80">
+                            {item.communityPostTitle ?? "Community post"}
+                          </span>
+                        </div>
+                        {item.communityReplyPreview && (
+                          <p className="line-clamp-2 text-[11px] italic text-hub-text-secondary/70">
+                            &ldquo;{item.communityReplyPreview}&rdquo;
+                          </p>
+                        )}
+                        {item.signedUrl && item.mimeType?.startsWith("image/") && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.signedUrl}
+                            alt={item.name}
+                            className="mt-0.5 h-20 w-full rounded object-cover"
+                          />
+                        )}
+                        <span className="text-[10px] text-hub-text-muted">
+                          {item.name} · <span className="text-hub-cyan/60">Go to comment →</span>
                         </span>
-                        <span className="mt-0.5 flex items-center gap-2 text-[10px] text-hub-text-muted">
-                          <span>{vaultKindLabel(item.kind)}</span>
-                          <span aria-hidden>·</span>
-                          <span>Updated {item.updatedAt}</span>
+                      </a>
+                    ) : item.signedUrl ? (
+                      <a
+                        href={item.signedUrl}
+                        download={item.name}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex w-full items-start gap-2 rounded-lg border border-white/[0.06] bg-hub-bg/40 p-3 text-left transition hover:border-hub-cyan/30 hover:bg-hub-cyan/5"
+                      >
+                        <FileText
+                          className="mt-0.5 h-4 w-4 shrink-0 text-hub-text-muted"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-medium text-hub-text">
+                            {item.name}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-2 text-[10px] text-hub-text-muted">
+                            <span>{vaultKindLabel(item.kind)}</span>
+                            <span aria-hidden>·</span>
+                            <span className="text-hub-cyan/70">Download</span>
+                          </span>
                         </span>
-                      </span>
-                    </button>
+                      </a>
+                    ) : (
+                      <div className="flex w-full items-start gap-2 rounded-lg border border-white/[0.06] bg-hub-bg/40 p-3 text-left">
+                        <FileText
+                          className="mt-0.5 h-4 w-4 shrink-0 text-hub-text-muted"
+                          aria-hidden
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-medium text-hub-text">
+                            {item.name}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-2 text-[10px] text-hub-text-muted">
+                            <span>{vaultKindLabel(item.kind)}</span>
+                          </span>
+                        </span>
+                      </div>
+                    )}
                   </li>
                 ))
               )}

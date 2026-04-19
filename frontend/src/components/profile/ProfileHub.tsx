@@ -13,7 +13,6 @@ import {
   GraduationCap,
   MessageSquare,
   Plus,
-  Sparkles,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
@@ -117,7 +116,7 @@ export function ProfileHub({
   }
 
   return (
-    <div className="relative mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-y-auto px-4 py-8 pb-16 lg:px-8">
+    <div className="relative mx-auto min-h-0 w-full max-w-5xl flex-1 px-4 py-8 pb-16 lg:px-8">
       {/* Chart grid: utilitarian "nav plot" without overwhelming the hub canvas */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
@@ -311,7 +310,6 @@ export function ProfileHub({
           </div>
 
           <div className="mt-8 flex items-center gap-2 border-b border-white/[0.08] pb-3">
-            <Sparkles className="h-4 w-4 text-hub-text-muted" aria-hidden />
             <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
               Saved plans
             </h2>
@@ -386,38 +384,84 @@ export function ProfileHub({
         <ul className="mt-5 grid gap-3 sm:grid-cols-2">
           {vaultItems.length === 0 ? (
             <li className="sm:col-span-2 rounded-xl border border-dashed border-white/[0.12] bg-hub-surface/40 px-4 py-12 text-center">
-              <FileText
-                className="mx-auto h-8 w-8 text-hub-text-muted"
-                aria-hidden
-              />
+              <FileText className="mx-auto h-8 w-8 text-hub-text-muted" aria-hidden />
               <p className="mt-3 text-sm text-hub-text-muted">
                 Vault is empty. Add files from the command center after ingest.
               </p>
             </li>
           ) : (
-            vaultItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-hub-surface/50 p-4 text-left transition hover:border-hub-cyan/25 hover:bg-hub-surface-elevated/60"
-                >
-                  <FileText
-                    className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-hub-text">
-                      {item.name}
+            vaultItems.map((item) =>
+              item.kind === "community" && item.communityPostId ? (
+                // Community attachment save — rich card with post + comment context
+                <li key={item.id}>
+                  <Link
+                    href={`/community/${item.communityPostId}${item.communityReplyId ? `#reply-${item.communityReplyId}` : ""}`}
+                    className="flex w-full flex-col gap-2 rounded-xl border border-hub-cyan/20 bg-hub-surface/50 p-4 transition hover:border-hub-cyan/40 hover:bg-hub-surface-elevated/60"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-3.5 w-3.5 shrink-0 text-hub-cyan/70" aria-hidden />
+                      <span className="truncate text-xs font-medium text-hub-cyan">
+                        {item.communityPostTitle ?? "Community post"}
+                      </span>
+                    </div>
+                    {item.communityReplyPreview && (
+                      <p className="line-clamp-2 text-sm italic text-hub-text-secondary/70">
+                        &ldquo;{item.communityReplyPreview}&rdquo;
+                      </p>
+                    )}
+                    {item.signedUrl && item.mimeType?.startsWith("image/") && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.signedUrl}
+                        alt={item.name}
+                        className="h-32 w-full rounded-lg object-cover"
+                      />
+                    )}
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
+                      {item.name} · <span className="text-hub-cyan/60">Go to comment →</span>
                     </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
-                      <span>{vaultKindLabel(item.kind)}</span>
-                      <span aria-hidden>·</span>
-                      <span>Updated {item.updatedAt}</span>
+                  </Link>
+                </li>
+              ) : item.signedUrl ? (
+                // Regular file with signed URL — downloadable
+                <li key={item.id}>
+                  <a
+                    href={item.signedUrl}
+                    download={item.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-hub-surface/50 p-4 text-left transition hover:border-hub-cyan/25 hover:bg-hub-surface-elevated/60"
+                  >
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-hub-text">{item.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
+                        <span>{vaultKindLabel(item.kind)}</span>
+                        <span aria-hidden>·</span>
+                        <span>Updated {item.updatedAt}</span>
+                        <span aria-hidden>·</span>
+                        <span className="text-hub-cyan/60">Download</span>
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))
+                  </a>
+                </li>
+              ) : (
+                // Non-downloadable plain file
+                <li key={item.id}>
+                  <div className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-hub-surface/50 p-4 text-left">
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-hub-text">{item.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
+                        <span>{vaultKindLabel(item.kind)}</span>
+                        <span aria-hidden>·</span>
+                        <span>Updated {item.updatedAt}</span>
+                      </span>
+                    </span>
+                  </div>
+                </li>
+              )
+            )
           )}
         </ul>
       </motion.section>

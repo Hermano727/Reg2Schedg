@@ -5,12 +5,12 @@
   --hub-bg: #0a192f;
   --hub-surface: #112240;
   --hub-surface-elevated: #162a45;
-  --hub-border: rgba(255, 255, 255, 0.08);
+  --hub-border: rgba(255, 255, 255, 0.010);
   --hub-cyan: #00d4ff;
   --hub-gold: #e3b12f;
   --hub-text: #e6f1ff;
-  --hub-text-secondary: rgba(230, 241, 255, 0.88);
-  --hub-text-muted: rgba(230, 241, 255, 0.48);
+  --hub-text-secondary: rgba(230, 241, 255, 0.92);
+  --hub-text-muted: rgba(230, 241, 255, 0.95);
   --hub-danger: #ff6b6b;
   --hub-success: #5eead4;
 }

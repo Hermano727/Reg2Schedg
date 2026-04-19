@@ -47,7 +47,7 @@ export default async function ProfilePage() {
       .order("updated_at", { ascending: false }),
     supabase
       .from("vault_items")
-      .select("id, name, kind, mime_type, size_bytes, updated_at")
+      .select("id, name, kind, mime_type, size_bytes, updated_at, storage_path, community_post_id, community_reply_id, community_post_title, community_reply_preview")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false }),
     supabase
@@ -82,15 +82,37 @@ export default async function ProfilePage() {
       mime_type: string | null;
       size_bytes: number | null;
       updated_at: string;
+      storage_path: string;
+      community_post_id: string | null;
+      community_reply_id: string | null;
+      community_post_title: string | null;
+      community_reply_preview: string | null;
     }[] | null) ?? [];
-  const vaultItems: VaultItem[] = vaultFromDb.map((row) => ({
-    id: row.id,
-    name: row.name,
-    kind: row.kind,
-    mimeType: row.mime_type ?? null,
-    sizeBytes: row.size_bytes ?? null,
-    updatedAt: formatUpdatedAt(row.updated_at),
-  }));
+
+  const vaultItems: VaultItem[] = await Promise.all(
+    vaultFromDb.map(async (row) => {
+      let signedUrl: string | undefined;
+      if (row.storage_path) {
+        const { data } = await supabase.storage
+          .from("user-content")
+          .createSignedUrl(row.storage_path, 3600);
+        signedUrl = data?.signedUrl ?? undefined;
+      }
+      return {
+        id: row.id,
+        name: row.name,
+        kind: row.kind,
+        mimeType: row.mime_type ?? null,
+        sizeBytes: row.size_bytes ?? null,
+        updatedAt: formatUpdatedAt(row.updated_at),
+        signedUrl,
+        communityPostId: row.community_post_id ?? null,
+        communityReplyId: row.community_reply_id ?? null,
+        communityPostTitle: row.community_post_title ?? null,
+        communityReplyPreview: row.community_reply_preview ?? null,
+      };
+    }),
+  );
 
   const userPosts: PostSummary[] = (rawUserPosts ?? []).map((row) => ({
     id: row.id as string,

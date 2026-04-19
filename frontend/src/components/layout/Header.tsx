@@ -86,7 +86,7 @@ export function Header({ user }: HeaderProps) {
         <div className="ml-auto flex items-center gap-1.5">
           <Link
             href="/community"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 text-xs font-medium text-white/70 transition hover:border-white/[0.14] hover:text-white/90 active:scale-[0.98]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/[0.22] bg-white/[0.11] px-3 text-xs font-medium text-white/70 transition hover:border-white/[0.14] hover:text-white/90 active:scale-[0.98]"
           >
             <Users className="h-3.5 w-3.5" />
             Community

@@ -7,6 +7,8 @@ from app.db.client import get_supabase_for_access_token
 from app.db.community import (
     create_community_post,
     create_community_reply,
+    delete_community_reply,
+    update_community_reply,
     get_community_post_with_replies,
     get_departments,
     get_notifications,
@@ -21,6 +23,7 @@ from app.db.community import (
 from app.models.community import (
     CreatePostRequest,
     CreateReplyRequest,
+    UpdateReplyRequest,
     NotificationOut,
     PostDetail,
     PostListResponse,
@@ -74,6 +77,7 @@ def create_post(
             professor_name=body.professor_name,
             is_anonymous=body.is_anonymous,
             general_tags=body.general_tags,
+            attachment_paths=body.attachment_paths,
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -178,12 +182,61 @@ def create_reply(
             body=body.body,
             parent_reply_id=body.parent_reply_id,
             is_anonymous=body.is_anonymous,
+            attachment_paths=body.attachment_paths,
         )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    post = get_community_post_with_replies(client, post_id)
+    if post is None:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
+@router.delete(
+    "/{post_id}/replies/{reply_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_reply(
+    post_id: str,
+    reply_id: str,
+    auth: tuple[str, str] = Depends(get_current_user_access),
+) -> None:
+    user_id, access_token = auth
+    client = get_supabase_for_access_token(access_token)
+    try:
+        delete_community_reply(client, reply_id, user_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch(
+    "/{post_id}/replies/{reply_id}",
+    response_model=PostDetail,
+    status_code=status.HTTP_200_OK,
+)
+def edit_reply(
+    post_id: str,
+    reply_id: str,
+    body: UpdateReplyRequest,
+    auth: tuple[str, str] = Depends(get_current_user_access),
+) -> PostDetail:
+    user_id, access_token = auth
+    client = get_supabase_for_access_token(access_token)
+    try:
+        update_community_reply(client, reply_id, user_id, body.body)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     post = get_community_post_with_replies(client, post_id)
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found")

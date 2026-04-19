@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { listPosts, getDepartments } from "@/lib/api/community";
 import type { PostListResponse, PostSummary, SortBy } from "@/types/community";
-import { CommunityNavRail } from "@/components/layout/CommunityNavRail";
 import { CreatePostModal } from "./CreatePostModal";
 import { PostCard } from "./PostCard";
 
@@ -123,9 +122,7 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
   }
 
   return (
-    <div className="flex w-full">
-      <CommunityNavRail />
-    <div className="min-w-0 flex-1 px-8 py-8">
+    <div className="w-full px-8 py-8">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -410,7 +407,6 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
           </button>
         </div>
       )}
-    </div>
     </div>
   );
 }

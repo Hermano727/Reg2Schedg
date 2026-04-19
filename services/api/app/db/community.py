@@ -4,13 +4,91 @@ Community posts and replies: Supabase CRUD operations.
 
 from supabase import Client
 
+from app.db.client import get_supabase_client
 from app.models.community import (
     NotificationOut,
+    PostAttachment,
     PostDetail,
     PostListResponse,
     PostSummary,
     ReplyOut,
 )
+
+ATTACHMENT_SIGNED_URL_TTL = 3600  # seconds
+
+
+def _sign_attachments(rows: list[dict]) -> list[PostAttachment]:
+    """Convert community_attachments rows into PostAttachment with signed URLs."""
+    if not rows:
+        return []
+    service = get_supabase_client()
+    result = []
+    for row in rows:
+        signed_url: str | None = None
+        try:
+            sign_resp = service.storage.from_("user-content").create_signed_url(
+                row["storage_path"], ATTACHMENT_SIGNED_URL_TTL
+            )
+            signed_url = sign_resp.get("signedURL") or sign_resp.get("signed_url")
+        except Exception:
+            pass
+        result.append(
+            PostAttachment(
+                id=row["id"],
+                storage_path=row["storage_path"],
+                name=row["name"],
+                mime_type=row["mime_type"],
+                size_bytes=row["size_bytes"],
+                signed_url=signed_url,
+            )
+        )
+    return result
+
+
+def _insert_attachments(
+    client: Client,
+    user_id: str,
+    attachment_paths: list[str],
+    post_id: str | None = None,
+    reply_id: str | None = None,
+) -> None:
+    if not attachment_paths:
+        return
+    rows = []
+    for path in attachment_paths:
+        filename = path.split("/")[-1]
+        # Strip leading timestamp_ prefix if present for display name
+        name = "_".join(filename.split("_")[1:]) if "_" in filename else filename
+        row: dict = {
+            "user_id": user_id,
+            "storage_path": path,
+            "name": name,
+            "mime_type": _guess_mime(filename),
+            "size_bytes": 0,
+        }
+        if post_id:
+            row["post_id"] = post_id
+        if reply_id:
+            row["reply_id"] = reply_id
+        rows.append(row)
+    client.table("community_attachments").insert(rows).execute()
+
+
+def _guess_mime(filename: str) -> str:
+    lower = filename.lower()
+    if lower.endswith(".jpg") or lower.endswith(".jpeg"):
+        return "image/jpeg"
+    if lower.endswith(".png"):
+        return "image/png"
+    if lower.endswith(".gif"):
+        return "image/gif"
+    if lower.endswith(".webp"):
+        return "image/webp"
+    if lower.endswith(".pdf"):
+        return "application/pdf"
+    if lower.endswith(".txt"):
+        return "text/plain"
+    return "application/octet-stream"
 
 
 def list_community_posts(
@@ -85,6 +163,7 @@ def create_community_post(
     professor_name: str | None = None,
     is_anonymous: bool = False,
     general_tags: list[str] | None = None,
+    attachment_paths: list[str] | None = None,
 ) -> PostSummary:
     row: dict = {
         "user_id": user_id,
@@ -99,6 +178,7 @@ def create_community_post(
         row["professor_name"] = professor_name
     insert_resp = client.table("community_posts").insert(row).execute()
     post_id = insert_resp.data[0]["id"]
+    _insert_attachments(client, user_id, attachment_paths or [], post_id=post_id)
     fetch_resp = (
         client.table("community_posts_with_author")
         .select("*")
@@ -119,6 +199,7 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
     )
     if not post_resp.data:
         return None
+
     replies_resp = (
         client.table("community_replies_with_author")
         .select("*")
@@ -126,8 +207,46 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
         .order("created_at")
         .execute()
     )
-    replies = [ReplyOut.model_validate(r) for r in (replies_resp.data or [])]
-    return PostDetail(**PostSummary.model_validate(post_resp.data[0]).model_dump(), replies=replies)
+    raw_replies = replies_resp.data or []
+
+    # Fetch all attachments for this post and its replies in one query
+    reply_ids = [r["id"] for r in raw_replies]
+    att_query = (
+        client.table("community_attachments")
+        .select("*")
+        .eq("post_id", post_id)
+    )
+    post_att_resp = att_query.execute()
+    post_attachments = _sign_attachments(post_att_resp.data or [])
+
+    reply_attachments_map: dict[str, list[PostAttachment]] = {}
+    if reply_ids:
+        reply_att_resp = (
+            client.table("community_attachments")
+            .select("*")
+            .in_("reply_id", reply_ids)
+            .execute()
+        )
+        for row in (reply_att_resp.data or []):
+            rid = row["reply_id"]
+            if rid not in reply_attachments_map:
+                reply_attachments_map[rid] = []
+            reply_attachments_map[rid].append(row)
+        # Sign per-reply
+        reply_attachments_map = {
+            rid: _sign_attachments(rows)
+            for rid, rows in reply_attachments_map.items()
+        }
+
+    replies = [
+        ReplyOut.model_validate({**r, "attachments": reply_attachments_map.get(r["id"], [])})
+        for r in raw_replies
+    ]
+    return PostDetail(
+        **PostSummary.model_validate(post_resp.data[0]).model_dump(),
+        replies=replies,
+        attachments=post_attachments,
+    )
 
 
 def create_community_reply(
@@ -137,6 +256,7 @@ def create_community_reply(
     body: str,
     parent_reply_id: str | None = None,
     is_anonymous: bool = False,
+    attachment_paths: list[str] | None = None,
 ) -> None:
     check = client.table("community_posts").select("id").eq("id", post_id).limit(1).execute()
     if not check.data:
@@ -149,7 +269,46 @@ def create_community_reply(
     }
     if parent_reply_id:
         row["parent_reply_id"] = parent_reply_id
-    client.table("community_replies").insert(row).execute()
+    reply_resp = client.table("community_replies").insert(row).execute()
+    reply_id = reply_resp.data[0]["id"]
+    _insert_attachments(client, user_id, attachment_paths or [], reply_id=reply_id)
+
+
+# ---------------------------------------------------------------------------
+# Reply delete
+# ---------------------------------------------------------------------------
+
+def _get_reply_owned(client: Client, reply_id: str, user_id: str) -> dict:
+    resp = (
+        client.table("community_replies")
+        .select("id, user_id, is_deleted")
+        .eq("id", reply_id)
+        .limit(1)
+        .execute()
+    )
+    if not resp.data:
+        raise LookupError(f"Reply {reply_id} not found")
+    if resp.data[0]["user_id"] != user_id:
+        raise PermissionError("Not allowed to modify this reply")
+    return resp.data[0]
+
+
+def delete_community_reply(client: Client, reply_id: str, user_id: str) -> None:
+    """Soft-delete a reply by setting is_deleted=true."""
+    _get_reply_owned(client, reply_id, user_id)
+    client.table("community_replies").update({"is_deleted": True}).eq("id", reply_id).execute()
+
+
+def update_community_reply(client: Client, reply_id: str, user_id: str, body: str) -> None:
+    """Edit a reply body. Sets edited_at to now()."""
+    row = _get_reply_owned(client, reply_id, user_id)
+    if row.get("is_deleted"):
+        raise ValueError("Cannot edit a deleted reply")
+    import datetime
+    client.table("community_replies").update({
+        "body": body,
+        "edited_at": datetime.datetime.utcnow().isoformat(),
+    }).eq("id", reply_id).execute()
 
 
 # ---------------------------------------------------------------------------

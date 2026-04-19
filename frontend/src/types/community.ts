@@ -24,6 +24,8 @@ export interface ReplyOut {
   body: string;
   parentReplyId: string | null;
   isAnonymous: boolean;
+  isDeleted: boolean;
+  editedAt: string | null;
   authorDisplayName: string;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +33,7 @@ export interface ReplyOut {
   downvoteCount: number;
   userHasUpvoted: boolean;
   userHasDownvoted: boolean;
+  attachments?: PostAttachment[];
 }
 
 export interface PostAttachment {
@@ -44,7 +47,7 @@ export interface PostAttachment {
 
 export interface PostDetail extends PostSummary {
   replies: ReplyOut[];
-  attachments?: PostAttachment[];
+  attachments: PostAttachment[];
 }
 
 export interface PostListResponse {
@@ -68,6 +71,7 @@ export interface CreateReplyPayload {
   body: string;
   parentReplyId?: string;
   isAnonymous?: boolean;
+  attachmentPaths?: string[];
 }
 
 export interface UpvoteResponse {

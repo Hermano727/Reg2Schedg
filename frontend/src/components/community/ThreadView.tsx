@@ -1,14 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronUp, ChevronDown, MessageSquare, Tag } from "lucide-react";
-import { toggleUpvote, togglePostDownvote } from "@/lib/api/community";
+import { createClient } from "@/lib/supabase/client";
+import { ArrowLeft, ChevronUp, ChevronDown, MessageSquare, Tag, MoreHorizontal, Download, Flag, FileText, Bookmark, Check } from "lucide-react";
+import { toggleUpvote, togglePostDownvote, saveAttachmentToVault } from "@/lib/api/community";
 import { timeAgo, getInitials } from "@/lib/community/utils";
 import { MarkdownBody } from "./MarkdownBody";
 import { ReplyComposer } from "./ReplyComposer";
 import { ReplyNode } from "./ReplyNode";
-import type { PostDetail, ReplyOut } from "@/types/community";
+import { ImageLightbox } from "./ImageLightbox";
+import type { PostAttachment, PostDetail, ReplyOut } from "@/types/community";
+
+function PostAttachmentCard({ att, postId, postTitle }: { att: PostAttachment; postId: string; postTitle: string }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function close(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
+
+  function handleDownload() {
+    if (!att.signedUrl) return;
+    const a = document.createElement("a");
+    a.href = att.signedUrl;
+    a.download = att.name;
+    a.target = "_blank";
+    a.click();
+    setMenuOpen(false);
+  }
+
+  async function handleSaveToVault() {
+    setMenuOpen(false);
+    try {
+      await saveAttachmentToVault({ attachment: att, postId, postTitle });
+      setSaved(true);
+    } catch (err) {
+      if (err instanceof Error && err.message === "already_saved") setSaved(true);
+    }
+  }
+
+  const menu = (
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+        className="flex h-5 w-5 items-center justify-center rounded bg-hub-bg/70 text-hub-text-muted opacity-0 group-hover:opacity-100 transition-opacity hover:text-hub-text backdrop-blur-sm"
+        title="Options"
+      >
+        <MoreHorizontal className="h-3 w-3" />
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 top-6 z-50 min-w-[140px] rounded-lg border border-white/[0.1] bg-hub-surface-elevated shadow-xl py-1">
+          <button type="button" onClick={handleDownload} className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-hub-text-secondary hover:bg-white/[0.06] transition-colors">
+            <Download className="h-3.5 w-3.5" />
+            Download file
+          </button>
+          <button type="button" onClick={handleSaveToVault} className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-hub-text-secondary hover:bg-white/[0.06] transition-colors">
+            {saved ? <Check className="h-3.5 w-3.5 text-hub-success" /> : <Bookmark className="h-3.5 w-3.5" />}
+            {saved ? "Saved!" : "Save to vault"}
+          </button>
+          <button type="button" onClick={() => setMenuOpen(false)} className="flex w-full items-center gap-2 px-3 py-1.5 text-[12px] text-hub-text-muted hover:bg-white/[0.06] transition-colors">
+            <Flag className="h-3.5 w-3.5" />
+            Report
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  if (att.mimeType.startsWith("image/") && att.signedUrl) {
+    return (
+      <>
+        <div
+          className="group relative inline-block overflow-hidden rounded-lg border border-white/[0.08] cursor-zoom-in transition-all duration-200 hover:border-hub-cyan/30 hover:shadow-[0_0_16px_rgba(0,212,255,0.15)]"
+          onClick={() => setLightboxOpen(true)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={att.signedUrl} alt={att.name} className="block max-h-72 max-w-xs object-contain transition-transform duration-200 group-hover:scale-[1.02]" />
+          <div className="absolute top-1.5 right-1.5" onClick={(e) => e.stopPropagation()}>{menu}</div>
+        </div>
+        {lightboxOpen && (
+          <ImageLightbox
+            src={att.signedUrl}
+            alt={att.name}
+            onClose={() => setLightboxOpen(false)}
+            onDownload={handleDownload}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <div className="group relative inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-hub-surface/50 px-3 py-2 transition-all hover:border-hub-cyan/25 hover:bg-hub-surface">
+      <FileText className="h-3.5 w-3.5 shrink-0 text-hub-text-muted" />
+      <span className="max-w-[200px] truncate text-[12px] text-hub-text-secondary">{att.name}</span>
+      <div className="ml-1">{menu}</div>
+    </div>
+  );
+}
 
 const GENERAL_TAG_COLORS: Record<string, string> = {
   General: "bg-white/[0.08] text-hub-text-secondary",
@@ -26,6 +124,15 @@ function buildTree(flat: ReplyOut[]): ReplyOut[] {
 
 export function ThreadView({ post }: ThreadViewProps) {
   const [replies, setReplies] = useState<ReplyOut[]>(post.replies);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
+
+  const handleReplyDeleted = useCallback((replyId: string) => {
+    setReplies((prev) => prev.filter((r) => r.id !== replyId));
+  }, []);
 
   const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount);
   const [downvoteCount, setDownvoteCount] = useState(post.downvoteCount);
@@ -121,37 +228,12 @@ export function ThreadView({ post }: ThreadViewProps) {
         <h1 className="mb-4 text-2xl font-bold text-hub-text">{post.title}</h1>
         <MarkdownBody>{post.body}</MarkdownBody>
 
-        {/* Attached images */}
-        {post.attachments && post.attachments.length > 0 && (
+        {/* Attached files */}
+        {post.attachments.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-3">
-            {post.attachments.map((att) =>
-              att.signedUrl && att.mimeType.startsWith("image/") ? (
-                <a
-                  key={att.id}
-                  href={att.signedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block overflow-hidden rounded-lg border border-white/[0.08] transition hover:border-hub-cyan/30"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={att.signedUrl}
-                    alt={att.name}
-                    className="max-h-72 max-w-xs object-contain"
-                  />
-                </a>
-              ) : att.signedUrl ? (
-                <a
-                  key={att.id}
-                  href={att.signedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-hub-surface/50 px-3 py-2 text-xs text-hub-text-secondary transition hover:border-hub-cyan/30 hover:text-hub-text"
-                >
-                  {att.name}
-                </a>
-              ) : null,
-            )}
+            {post.attachments.map((att) => (
+              <PostAttachmentCard key={att.id} att={att} postId={post.id} postTitle={post.title} />
+            ))}
           </div>
         )}
 
@@ -231,10 +313,13 @@ export function ThreadView({ post }: ThreadViewProps) {
               <ReplyNode
                 reply={reply}
                 postId={post.id}
+                postTitle={post.title}
                 depth={0}
                 children={replies.filter((r) => r.parentReplyId === reply.id)}
                 allReplies={replies}
                 onRepliesUpdated={setReplies}
+                currentUserId={currentUserId}
+                onDeleted={handleReplyDeleted}
               />
             </div>
           ))

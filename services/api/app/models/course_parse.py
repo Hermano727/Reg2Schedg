@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SectionMeeting(BaseModel):
@@ -22,3 +22,11 @@ class CourseEntry(BaseModel):
 
 class ParseScreenshotResponse(BaseModel):
     courses: list[CourseEntry]
+    is_valid_schedule: bool = Field(
+        default=True,
+        description=(
+            "False if the image does not appear to be a UCSD WebReg schedule "
+            "(e.g. a photo, meme, unrelated document, or blank image). "
+            "When False, courses must be an empty list."
+        ),
+    )

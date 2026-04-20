@@ -102,30 +102,8 @@ export default async function SettingsPage() {
           description="Theme is fixed to command-deck dark for now."
         >
           <p className="text-sm text-hub-text-secondary">
-            Light mode is not planned for the initial release. Tokens live in{" "}
-            <code className="rounded bg-hub-bg/80 px-1.5 py-0.5 font-mono text-xs text-hub-cyan">
-              globals.css
-            </code>
-            .
+            Light mode is not planned for the initial release.
           </p>
-        </Card>
-
-        <Card
-          title="Data"
-          description="Export and deletion will call FastAPI once accounts exist."
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Button type="button" variant="ghost" disabled>
-              Export my data
-            </Button>
-            <Button type="button" variant="danger" disabled>
-              Delete account
-            </Button>
-          </div>
-          <Alert variant="warn" className="mt-4" title="No backend yet">
-            These actions will stay disabled until Supabase and your API enforce
-            auth and data lifecycle.
-          </Alert>
         </Card>
       </div>
     </main>

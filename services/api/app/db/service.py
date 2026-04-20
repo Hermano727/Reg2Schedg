@@ -278,6 +278,93 @@ def upsert_image_parse_cache(
     ).execute()
 
 
+# ---------------------------------------------------------------------------
+# Invalid image detection + rate limiting
+# ---------------------------------------------------------------------------
+
+INVALID_RATE_LIMIT_WINDOW_MINUTES = 10
+INVALID_RATE_LIMIT_COUNT = 3
+
+
+def is_image_invalid(client: Client, image_hash: str) -> bool:
+    """Return True if this image hash is already known to be invalid."""
+    resp = (
+        client.table("invalid_images")
+        .select("image_hash")
+        .eq("image_hash", image_hash)
+        .limit(1)
+        .execute()
+    )
+    return bool(resp.data)
+
+
+def mark_image_invalid(client: Client, image_hash: str) -> None:
+    """Record a new known-invalid image hash (ignores duplicates)."""
+    client.table("invalid_images").upsert(
+        {"image_hash": image_hash},
+        on_conflict="image_hash",
+    ).execute()
+
+
+def log_invalid_submission(
+    client: Client,
+    client_ip: str,
+    image_hash: str | None,
+    user_id: str | None = None,
+) -> None:
+    """Append one invalid-submission entry for rate-limit tracking.
+    Stores user_id when available so per-account limits apply instead of per-IP.
+    """
+    client.table("invalid_submission_log").insert(
+        {"client_ip": client_ip, "image_hash": image_hash, "user_id": user_id or None}
+    ).execute()
+
+
+def get_timeout_remaining_seconds(
+    client: Client,
+    client_ip: str,
+    user_id: str | None = None,
+) -> int:
+    """
+    Return seconds remaining in the 10-minute timeout, or 0 if not timed out.
+
+    When user_id is provided, limits are scoped to that account (preferred).
+    Falls back to client_ip for unauthenticated requests.
+
+    Timeout kicks in when INVALID_RATE_LIMIT_COUNT invalids exist within the
+    window; expires 10 minutes after the most recent one in that group.
+    """
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(minutes=INVALID_RATE_LIMIT_WINDOW_MINUTES)
+    ).isoformat()
+
+    q = (
+        client.table("invalid_submission_log")
+        .select("submitted_at")
+        .gte("submitted_at", cutoff)
+        .order("submitted_at", desc=True)
+        .limit(INVALID_RATE_LIMIT_COUNT)
+    )
+    if user_id:
+        q = q.eq("user_id", user_id)
+    else:
+        q = q.eq("client_ip", client_ip)
+
+    resp = q.execute()
+    rows = resp.data or []
+    if len(rows) < INVALID_RATE_LIMIT_COUNT:
+        return 0
+
+    most_recent_str = rows[0]["submitted_at"]
+    try:
+        most_recent = datetime.fromisoformat(most_recent_str.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+    timeout_until = most_recent + timedelta(minutes=INVALID_RATE_LIMIT_WINDOW_MINUTES)
+    remaining = (timeout_until - datetime.now(timezone.utc)).total_seconds()
+    return max(0, int(remaining))
+
+
 def get_known_schedule(
     client: Client,
     signature: str,

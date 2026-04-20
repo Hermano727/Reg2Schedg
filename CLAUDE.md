@@ -330,6 +330,8 @@ Dark navy theme. All tokens defined as CSS variables in `frontend/src/app/global
 
 **Tailwind utilities:** `hub-scroll` (thin scrollbar), `scrollbar-hide`. Borders consistently use `border-white/[0.08]` (subtle) — never solid grays.
 
+**UI composition rule — no boxes inside boxes:** Avoid placing a bordered/bg container directly inside another bordered/bg container. Modal panels are already elevated surfaces (`hub-surface-elevated`); content inside them should use whitespace, dividers (`border-t border-white/[0.06]`), and typography hierarchy to create structure — not nested cards or additional rounded containers. The one exception is data-dense components (e.g. grade distribution charts) where a distinct inner region is functionally required.
+
 **Leaflet CSS** is imported at the global level in `globals.css` (`@import "leaflet/dist/leaflet.css"`) — do NOT import it inside dynamic modules or Turbopack will fail to load the CSS chunk.
 
 ---

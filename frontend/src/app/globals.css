@@ -13,6 +13,12 @@
   --hub-text-muted: rgba(230, 241, 255, 0.95);
   --hub-danger: #ff6b6b;
   --hub-success: #5eead4;
+  --hub-watermark-size-mobile: 58%;
+  --hub-watermark-size-tablet: 74%;
+  --hub-watermark-size-desktop: 88%;
+  --hub-watermark-opacity-mobile: 0.012;
+  --hub-watermark-opacity-tablet: 0.018;
+  --hub-watermark-opacity-desktop: 0.022;
 }
 
 @theme inline {
@@ -106,6 +112,38 @@ p {
   background: color-mix(in srgb, var(--hub-surface) 88%, transparent);
   border: 1px solid var(--hub-border);
   backdrop-filter: blur(12px);
+}
+
+/* Idle watermark — UCSD Triton motif */
+.idle-watermark {
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/ucsd_tritons_logo.png');
+  background-repeat: no-repeat;
+  background-position: 50% 52%;
+  background-size: var(--hub-watermark-size-mobile);
+  opacity: var(--hub-watermark-opacity-mobile);
+  filter: brightness(0) invert(1);
+  mix-blend-mode: screen;
+  animation: idle-watermark-fadein 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.15s backwards;
+}
+
+@keyframes idle-watermark-fadein {
+  from { opacity: 0; }
+}
+
+@media (min-width: 768px) {
+  .idle-watermark {
+    background-size: var(--hub-watermark-size-tablet);
+    opacity: var(--hub-watermark-opacity-tablet);
+  }
+}
+
+@media (min-width: 1280px) {
+  .idle-watermark {
+    background-size: var(--hub-watermark-size-desktop);
+    opacity: var(--hub-watermark-opacity-desktop);
+  }
 }
 
 /* Leaflet popup dark theme */

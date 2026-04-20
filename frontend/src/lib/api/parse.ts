@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import type { CourseLogistics, FitnessCategory, ScheduleBriefing } from "@/types/dossier";
 
 export interface SectionMeeting {
@@ -112,6 +113,35 @@ export async function analyzeFit(
   return res.json() as Promise<FitAnalysisResult>;
 }
 
+export class InvalidScheduleError extends Error {
+  readonly code = "INVALID_SCHEDULE";
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidScheduleError";
+  }
+}
+
+export class RateLimitedError extends Error {
+  readonly code = "RATE_LIMITED";
+  readonly retryAfterSeconds: number;
+  constructor(message: string, retryAfterSeconds: number) {
+    super(message);
+    this.name = "RateLimitedError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+async function _getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+  } catch { /* unauthenticated — fall through */ }
+  return {};
+}
+
 export async function researchScreenshot(
   file: File,
   { forceRefresh = false }: { forceRefresh?: boolean } = {},
@@ -123,12 +153,30 @@ export async function researchScreenshot(
     ? "http://localhost:8000/api/research-screenshot?force_refresh=true"
     : "http://localhost:8000/api/research-screenshot";
 
+  const authHeaders = await _getAuthHeaders();
+
   const res = await fetch(url, {
     method: "POST",
+    headers: authHeaders,
     body: form,
   });
 
   if (!res.ok) {
+    let detail: { code?: string; message?: string; retry_after_seconds?: number } = {};
+    try {
+      const body = await res.json() as { detail?: typeof detail };
+      if (typeof body.detail === "object" && body.detail !== null) detail = body.detail;
+    } catch { /* ignore */ }
+
+    if (res.status === 422 && detail.code === "INVALID_SCHEDULE") {
+      throw new InvalidScheduleError(detail.message ?? "Invalid schedule image.");
+    }
+    if (res.status === 429 && detail.code === "RATE_LIMITED") {
+      throw new RateLimitedError(
+        detail.message ?? "Too many invalid uploads. Please wait before trying again.",
+        detail.retry_after_seconds ?? 600,
+      );
+    }
     throw new Error(`Research failed: ${res.status} ${res.statusText}`);
   }
 

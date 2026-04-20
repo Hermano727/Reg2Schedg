@@ -3,21 +3,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ChevronRight, Trash2 } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Clock, Images, Trash2, X, XCircle } from "lucide-react";
 import { LeftSidebar } from "@/components/layout/LeftSidebar";
 import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
 import { ScheduleBriefingModal } from "@/components/modals/ScheduleBriefingModal";
 import { DossierScheduleWorkspace, type DossierScheduleWorkspaceHandle } from "@/components/dashboard/DossierScheduleWorkspace";
 import { HubToast, type ToastPayload } from "@/components/ui/HubToast";
+import { IdleWatermark } from "@/components/ui/IdleWatermark";
 import { usePlanSync } from "@/hooks/usePlanSync";
 import { mockDossier } from "@/lib/mock/dossier";
-import { analyzeFit, researchScreenshot } from "@/lib/api/parse";
+import { analyzeFit, researchScreenshot, InvalidScheduleError, RateLimitedError } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import { dossiersToScheduleItems } from "@/lib/mappers/dossiersToScheduleItems";
 import type { ClassDossier, ScheduleBriefing, ScheduleEvaluation, UiPhase } from "@/types/dossier";
 
-const LINE_MS = 360;
 const FINISH_PAD_MS = 650;
 
 const WHAT_YOU_GET = [
@@ -29,6 +29,120 @@ const WHAT_YOU_GET = [
   { label: "MAP VISUALIZATION", detail: "Interactive campus map showing class locations and walking patterns between buildings" },
   { label: "COMMUNITY CENTER", detail: "Chat with other students to gain insights on courses and professors!"}
 ] as const;
+
+// ── Example input modal ───────────────────────────────────────────────────────
+const EXAMPLE_SLIDES = [
+  { src: "/images/schedule1.png", label: "List view", alt: "WebReg list view schedule" },
+  { src: "/images/schedule2.png", label: "Calendar view", alt: "WebReg calendar view schedule" },
+] as const;
+
+function ExampleInputModal({ onClose }: { onClose: () => void }) {
+  const [slideIndex, setSlideIndex] = useState(0);
+  const total = EXAMPLE_SLIDES.length;
+
+  const goPrev = useCallback(() => setSlideIndex((i) => (i - 1 + total) % total), [total]);
+  const goNext = useCallback(() => setSlideIndex((i) => (i + 1) % total), [total]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowRight") goNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, goPrev, goNext]);
+
+  const slide = EXAMPLE_SLIDES[slideIndex];
+
+  return (
+    <motion.div
+      key="example-modal-backdrop"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[90] flex flex-col bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* ── Top bar: title + close ── */}
+      <div className="flex items-start justify-between px-8 pt-8 pb-4" onClick={(e) => e.stopPropagation()}>
+        <div>
+          <p className="font-[family-name:var(--font-outfit)] text-xl font-semibold text-hub-text">
+            What to upload
+          </p>
+          <p className="mt-1 text-[13px] text-hub-text-muted">
+            Export your WebReg schedule as a screenshot. List or calendar view both work.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg p-1.5 text-hub-text-muted transition hover:text-hub-text"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* ── Image — fills remaining height ── */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-20 pb-6" onClick={(e) => e.stopPropagation()}>
+        {/* Left arrow */}
+        <button
+          type="button"
+          onClick={goPrev}
+          className="absolute left-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-hub-text-muted backdrop-blur-sm transition hover:border-hub-cyan/40 hover:text-hub-cyan"
+          aria-label="Previous example"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+
+        {/* Right arrow */}
+        <button
+          type="button"
+          onClick={goNext}
+          className="absolute right-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-hub-text-muted backdrop-blur-sm transition hover:border-hub-cyan/40 hover:text-hub-cyan"
+          aria-label="Next example"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
+
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={slideIndex}
+            src={slide.src}
+            alt={slide.alt}
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="max-h-full w-auto max-w-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </AnimatePresence>
+      </div>
+
+      {/* ── Footer: label + dots ── */}
+      <div className="flex items-center justify-between px-8 pb-7" onClick={(e) => e.stopPropagation()}>
+        <p className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] tracking-widest uppercase text-hub-text-muted">
+          {slide.label}
+        </p>
+        <div className="flex items-center gap-2">
+          {EXAMPLE_SLIDES.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setSlideIndex(i)}
+              className={`h-1.5 rounded-full transition-all duration-200 ${
+                i === slideIndex ? "w-5 bg-hub-cyan" : "w-1.5 bg-white/25 hover:bg-white/50"
+              }`}
+              aria-label={`Go to slide ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 // ── Idle preview card ─────────────────────────────────────────────────────────
 const PREVIEW_DAYS = ["M", "T", "W", "Th", "F"] as const;
@@ -241,6 +355,32 @@ export function CommandCenter() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  const [showExampleModal, setShowExampleModal] = useState(false);
+
+  // Upload error state (invalid image / rate limit)
+  type UploadError =
+    | { kind: "invalid_schedule"; message: string }
+    | { kind: "rate_limited"; message: string; retryAfterSeconds: number };
+  const [uploadError, setUploadError] = useState<UploadError | null>(null);
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  const countdownRef = useRef<number | null>(null);
+
+  const startCountdown = useCallback((seconds: number) => {
+    setRateLimitCountdown(seconds);
+    if (countdownRef.current) window.clearInterval(countdownRef.current);
+    countdownRef.current = window.setInterval(() => {
+      setRateLimitCountdown((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(countdownRef.current!);
+          countdownRef.current = null;
+          setUploadError(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
   // Briefing state
   const [showBriefing, setShowBriefing] = useState(false);
   const [briefingResearchDone, setBriefingResearchDone] = useState(false);
@@ -351,6 +491,8 @@ export function CommandCenter() {
       let nextClasses: ClassDossier[] = mockDossier.classes;
       let nextEvaluation: ScheduleEvaluation = mockDossier.evaluation;
 
+      setUploadError(null);
+
       if (imageFile?.type.startsWith("image/")) {
         try {
           // Open the briefing modal so the user can fill context while research runs.
@@ -406,11 +548,23 @@ export function CommandCenter() {
             };
           }
         } catch (err) {
-          // Resolve pending briefing promise so the flow doesn't hang
           briefingResolveRef.current?.(null);
           briefingResolveRef.current = null;
           setShowBriefing(false);
+          processingLockRef.current = false;
+          setPhase("idle");
+
+          if (err instanceof InvalidScheduleError) {
+            setUploadError({ kind: "invalid_schedule", message: err.message });
+            return;
+          }
+          if (err instanceof RateLimitedError) {
+            setUploadError({ kind: "rate_limited", message: err.message, retryAfterSeconds: err.retryAfterSeconds });
+            startCountdown(err.retryAfterSeconds);
+            return;
+          }
           console.error("runIngestionFlow: researchScreenshot failed:", err);
+          return;
         }
       }
 
@@ -551,6 +705,22 @@ export function CommandCenter() {
             phase === "dashboard" ? "px-4 lg:pl-3 lg:pr-8" : "px-4 lg:px-6"
           }`}
         >
+          {/* ── UCSD Tritons full-page watermark (idle only) ── */}
+          <AnimatePresence>
+            {phase === "idle" && (
+              <motion.div
+                key="ucsd-bg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                aria-hidden
+                className="pointer-events-none select-none absolute inset-0 overflow-hidden"
+              >
+                <IdleWatermark />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div
             className={`mx-auto w-full ${phase === "dashboard" ? "max-w-[min(100%,1760px)]" : "max-w-5xl"} ${phase === "processing" ? "pointer-events-none blur-[2px]" : ""}`}
           >
@@ -575,9 +745,10 @@ export function CommandCenter() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
                   transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                  className="grid grid-cols-1 gap-8 lg:grid-cols-[5fr_3fr] lg:gap-14"
+                  className="relative grid grid-cols-1 gap-8 lg:grid-cols-[5fr_3fr] lg:gap-14"
                 >
-                  {/* ── Left: Problem statement + action ── */}
+
+                  {/* ── Col 1: Problem statement + action ── */}
                   <div className="relative">
                     {/* Ambient glow */}
                     <motion.div
@@ -605,6 +776,18 @@ export function CommandCenter() {
                       </motion.p>
                     </div>
 
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.4, delay: 0.15 }}
+                      onClick={() => setShowExampleModal(true)}
+                      className="mb-4 flex items-center gap-2 text-[14px] text-hub-text-secondary transition hover:text-hub-cyan"
+                    >
+                      <Images className="h-4 w-4" />
+                      See what to upload
+                    </motion.button>
+
                     <IngestionHub
                       phase={phase}
                       collapsed={ingestionCollapsed}
@@ -615,20 +798,54 @@ export function CommandCenter() {
                       quarterLabel={quarterLabel}
                       isLocked={!authed || !isUcsdUser}
                     />
+
+                    {/* ── Upload error banners ── */}
+                    <AnimatePresence>
+                      {uploadError && (
+                        <motion.div
+                          key="upload-error"
+                          initial={{ opacity: 0, y: -6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                          className={`mt-3 flex items-start gap-3 rounded-xl border px-4 py-3 ${
+                            uploadError.kind === "rate_limited"
+                              ? "border-hub-gold/30 bg-hub-gold/[0.08]"
+                              : "border-hub-danger/30 bg-hub-danger/[0.08]"
+                          }`}
+                        >
+                          {uploadError.kind === "rate_limited" ? (
+                            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" />
+                          ) : (
+                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-hub-danger" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-sm font-semibold ${uploadError.kind === "rate_limited" ? "text-hub-gold" : "text-hub-danger"}`}>
+                              {uploadError.kind === "rate_limited" ? "Upload temporarily blocked" : "Invalid schedule detected"}
+                            </p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-hub-text-secondary">
+                              {uploadError.message}
+                            </p>
+                            {uploadError.kind === "rate_limited" && rateLimitCountdown > 0 && (
+                              <p className="mt-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-hub-gold/70">
+                                Unblocked in {Math.floor(rateLimitCountdown / 60)}:{String(rateLimitCountdown % 60).padStart(2, "0")}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setUploadError(null)}
+                            className="shrink-0 rounded p-0.5 text-hub-text-muted transition hover:text-hub-text"
+                          >
+                            <AlertCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
-                  {/* ── Right: Result story — sample output → feature list ── */}
+                  {/* ── Col 2: Sample output + feature list ── */}
                   <div className="flex flex-col gap-4 lg:pt-1">
-
-                    {/* Context label: tells first-time viewers what the card represents */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.35, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex items-center gap-2.5"
-                    >
-                      <span className="h-px flex-1 bg-white/[0.06]" />
-                    </motion.div>
 
                     <IdlePreviewCard />
 
@@ -665,6 +882,7 @@ export function CommandCenter() {
                       ))}
                     </div>
                   </div>
+
                 </motion.div>
               ) : phase === "dashboard" ? (
                 <motion.div
@@ -841,6 +1059,12 @@ export function CommandCenter() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showExampleModal && (
+          <ExampleInputModal onClose={() => setShowExampleModal(false)} />
         )}
       </AnimatePresence>
 

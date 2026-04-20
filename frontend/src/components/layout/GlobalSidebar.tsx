@@ -26,7 +26,7 @@ export function GlobalSidebar() {
       const [{ data: plansData }, { data: vaultData }] = await Promise.all([
         supabase
           .from("saved_plans")
-          .select("id, label, updated_at")
+          .select("id, title, updated_at")
           .neq("is_deleted", true)
           .order("updated_at", { ascending: false })
           .limit(20),
@@ -42,7 +42,7 @@ export function GlobalSidebar() {
       setPlans(
         (plansData ?? []).map((p) => ({
           id: p.id as string,
-          label: (p.label as string) || "Untitled plan",
+          label: (p.title as string) || "Untitled plan",
           updatedAt: p.updated_at as string,
         })),
       );

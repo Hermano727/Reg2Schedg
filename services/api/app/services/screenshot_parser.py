@@ -18,7 +18,13 @@ def parse_schedule_image(image_bytes: bytes, mime_type: str) -> ParseScreenshotR
         model="gemini-2.5-flash",
         contents=[
             (
-                "Extract every course listed in this screenshot. "
+                "First, determine whether this image is a UCSD WebReg course schedule. "
+                "A valid schedule shows enrolled courses with course codes (e.g. 'CSE 120'), "
+                "instructors, meeting times, and days. Both the list view and calendar/weekly view "
+                "from WebReg are valid. If the image is NOT a schedule (e.g. a photo, meme, "
+                "random document, blank image, or anything unrelated to a UCSD course schedule), "
+                "set is_valid_schedule to false and return an empty courses list immediately. "
+                "If it IS a valid schedule, set is_valid_schedule to true and extract every course. "
                 "For each course return: course_code (e.g. 'CSE 110'), "
                 "course_title (full name), professor_name (full name, or empty string if not shown), "
                 "and meetings — one entry per section type (Lecture, Discussion, Lab, etc.) with: "

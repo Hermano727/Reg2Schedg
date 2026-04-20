@@ -149,7 +149,7 @@ export function LeftSidebar({
       >
         {/* Panel header */}
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-3">
-          <p className="font-[family-name:var(--font-outfit)] text-xs font-semibold text-hub-text-muted">
+          <p className="font-[family-name:var(--font-outfit)] text-[18px] font-semibold text-hub-text-muted">
             {shownPanel === "plans" ? planSectionTitle : "Saved files"}
           </p>
           <button
@@ -190,30 +190,25 @@ export function LeftSidebar({
                           <span className="flex items-center justify-between gap-2">
                             <span className="min-w-0 truncate font-medium">{p.label}</span>
                             {active && (
-                              <span className="shrink-0 text-[10px] font-semibold text-hub-cyan">
+                              <span className="shrink-0 text-[12px] font-semibold text-hub-cyan">
                                 Active
                               </span>
                             )}
                           </span>
                           {p.subtitle && (
-                            <span className="mt-1 text-[10px] text-hub-cyan/60">
+                            <span className="mt-1 text-[12px] text-hub-cyan/60">
                               {p.subtitle}
                             </span>
                           )}
-                          {(p.courseCount != null || p.trendLabel || p.updatedAt) && (
+                          {(p.trendLabel || p.updatedAt) && (
                             <span className="mt-2 flex flex-col gap-0.5">
-                              {p.courseCount != null && (
-                                <span className="text-[10px] text-hub-text-secondary">
-                                  {p.courseCount} course{p.courseCount !== 1 ? "s" : ""}
-                                </span>
-                              )}
                               {p.trendLabel && (
-                                <span className={`text-[10px] font-medium ${trendColor(p.fitnessScore)}`}>
+                                <span className={`text-[12px] font-medium ${trendColor(p.fitnessScore)}`}>
                                   {p.trendLabel}
                                 </span>
                               )}
                               {p.updatedAt && (
-                                <span className="text-[10px] text-hub-text-secondary/60">
+                                <span className="text-[12px] text-hub-text-secondary/60">
                                   {relativeTime(p.updatedAt)}
                                 </span>
                               )}
@@ -244,7 +239,7 @@ export function LeftSidebar({
               onClick={() => onNewPlan?.()}
               disabled={!onNewPlan}
               title={!onNewPlan ? "Sign in to create a saved plan" : undefined}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.12] py-2 text-xs font-medium text-hub-text-secondary transition hover:border-hub-cyan/35 hover:text-hub-cyan disabled:pointer-events-none disabled:opacity-35"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-white/[0.12] py-2 text-[12px] font-medium text-hub-text-secondary transition hover:border-hub-cyan/35 hover:text-hub-cyan disabled:pointer-events-none disabled:opacity-35"
             >
               <Plus className="h-3.5 w-3.5" />
               {newPlanLabel}

@@ -279,44 +279,49 @@ def upsert_image_parse_cache(
 
 
 # ---------------------------------------------------------------------------
-# Invalid image detection + rate limiting
+# Invalid file detection + rate limiting
 # ---------------------------------------------------------------------------
 
 INVALID_RATE_LIMIT_WINDOW_MINUTES = 10
 INVALID_RATE_LIMIT_COUNT = 3
 
 
-def is_image_invalid(client: Client, image_hash: str) -> bool:
-    """Return True if this image hash is already known to be invalid."""
+def is_file_invalid(client: Client, file_hash: str) -> bool:
+    """Return True if this file hash is already known to be invalid."""
     resp = (
         client.table("invalid_images")
         .select("image_hash")
-        .eq("image_hash", image_hash)
+        .eq("image_hash", file_hash)
         .limit(1)
         .execute()
     )
     return bool(resp.data)
 
 
-def mark_image_invalid(client: Client, image_hash: str) -> None:
-    """Record a new known-invalid image hash (ignores duplicates)."""
+def mark_file_invalid(client: Client, file_hash: str) -> None:
+    """Record a new known-invalid file hash (ignores duplicates)."""
     client.table("invalid_images").upsert(
-        {"image_hash": image_hash},
+        {"image_hash": file_hash},
         on_conflict="image_hash",
     ).execute()
+
+
+# Backward-compatible aliases
+is_image_invalid = is_file_invalid
+mark_image_invalid = mark_file_invalid
 
 
 def log_invalid_submission(
     client: Client,
     client_ip: str,
-    image_hash: str | None,
+    file_hash: str | None,
     user_id: str | None = None,
 ) -> None:
     """Append one invalid-submission entry for rate-limit tracking.
     Stores user_id when available so per-account limits apply instead of per-IP.
     """
     client.table("invalid_submission_log").insert(
-        {"client_ip": client_ip, "image_hash": image_hash, "user_id": user_id or None}
+        {"client_ip": client_ip, "image_hash": file_hash, "user_id": user_id or None}
     ).execute()
 
 

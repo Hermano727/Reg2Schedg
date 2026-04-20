@@ -58,7 +58,7 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
 
   return (
     <div
-      className={`relative rounded-xl border border-dashed px-4 py-10 transition ${
+      className={`relative rounded-xl border border-dashed px-6 py-14 transition lg:px-8 lg:py-16 ${
         dragActive
           ? "border-hub-cyan/55 bg-hub-cyan/[0.06]"
           : "border-white/[0.14] bg-hub-bg/30"
@@ -92,7 +92,7 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
         onChange={(e) => handleFiles(e.target.files)}
       />
       <div className="flex flex-col items-center text-center">
-        <div className="mb-4 flex gap-3">
+        <div className="mb-5 flex gap-3.5">
           {DROP_ICONS.map((Icon, i) => (
             <motion.div
               key={i}
@@ -102,21 +102,21 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
               }
               className={`transition-colors duration-200 ${dragActive ? "text-hub-cyan" : "text-hub-text-muted"}`}
             >
-              <Icon className="h-6 w-6" aria-hidden />
+              <Icon className="h-7 w-7" aria-hidden />
             </motion.div>
           ))}
         </div>
-        <p className="font-[family-name:var(--font-outfit)] text-base font-semibold text-hub-text">
+        <p className="font-[family-name:var(--font-outfit)] text-lg font-semibold text-hub-text lg:text-xl">
           Attach your WebReg schedule or syllabi
         </p>
-        <p className="mt-2 max-w-md text-sm text-hub-text-secondary">
+        <p className="mt-2.5 max-w-[680px] text-[15px] leading-relaxed text-hub-text-secondary">
           We'll parse your schedule, cross-reference course evaluations, and
           build a summary for each class.
         </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <label
             htmlFor="ingest-input"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-4 py-2 text-sm font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-5 py-2.5 text-[15px] font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan"
           >
             <Upload className="h-4 w-4" />
             Browse files
@@ -125,7 +125,7 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
             type="button"
             onClick={handlePasteClick}
             disabled={disabled}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-4 py-2 text-sm font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan disabled:pointer-events-none disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-5 py-2.5 text-[15px] font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan disabled:pointer-events-none disabled:opacity-50"
           >
             <Clipboard className="h-4 w-4" />
             Paste screenshot

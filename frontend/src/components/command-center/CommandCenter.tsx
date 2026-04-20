@@ -164,12 +164,12 @@ function IdlePreviewCard() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="mb-4 overflow-hidden rounded-xl border border-white/[0.08] bg-hub-surface"
+      className="mb-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-hub-surface"
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/[0.05] px-3 py-2">
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] uppercase tracking-[0.13em] text-hub-text-muted">
-          Spring 2026 · 16 units
+      <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-2.5">
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] uppercase tracking-[0.13em] text-hub-text-muted">
+          Example Calendar
         </span>
         <div className="flex items-center gap-1.5">
           <motion.span
@@ -177,18 +177,18 @@ function IdlePreviewCard() {
             transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
             className="h-1.5 w-1.5 rounded-full bg-hub-success"
           />
-          <span className="text-[9px] font-medium text-hub-success">Workload OK</span>
+          <span className="text-[11px] font-medium text-hub-success">Workload OK</span>
         </div>
       </div>
 
       {/* Mini weekly calendar */}
-      <div className="p-2.5">
+      <div className="p-3.5">
         {/* Day labels */}
-        <div className="mb-1.5 flex gap-1">
+        <div className="mb-2 flex gap-1.5">
           {PREVIEW_DAYS.map((d) => (
             <div
               key={d}
-              className="flex-1 text-center font-[family-name:var(--font-jetbrains-mono)] text-[8.5px] text-hub-text-muted"
+              className="flex-1 text-center font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-hub-text-muted"
             >
               {d}
             </div>
@@ -196,7 +196,7 @@ function IdlePreviewCard() {
         </div>
 
         {/* Columns */}
-        <div className="flex gap-1" style={{ height: 108 }}>
+        <div className="flex gap-1.5" style={{ height: 136 }}>
           {PREVIEW_DAYS.map((day, colIdx) => {
             const dayBlocks = PREVIEW_BLOCKS.filter((b) => b.col === colIdx);
             return (
@@ -221,10 +221,10 @@ function IdlePreviewCard() {
                       borderLeft: `2px solid ${block.accent}99`,
                       transformOrigin: "top",
                     }}
-                    className="rounded-r px-1 pt-0.5"
+                    className="rounded-r px-1 pt-1.5"
                   >
                     <span
-                      className="block truncate font-[family-name:var(--font-jetbrains-mono)] text-[6.5px] font-bold leading-none"
+                      className="block truncate font-[family-name:var(--font-jetbrains-mono)] text-[13px] font-bold leading-none"
                       style={{ color: block.accent }}
                     >
                       {block.label}
@@ -238,20 +238,20 @@ function IdlePreviewCard() {
       </div>
 
       {/* Footer — RMP snapshot */}
-      <div className="flex items-center gap-3 border-t border-white/[0.05] px-3 py-2">
+      <div className="flex items-center gap-4 border-t border-white/[0.05] px-4 py-2.5">
         {[
           { label: "CSE 120", rmp: "4.2", color: "#00d4ff" },
           { label: "MATH 18", rmp: "3.8", color: "#e3b12f" },
           { label: "WCWP 10", rmp: "4.7", color: "#5eead4" },
         ].map((c) => (
           <div key={c.label} className="flex items-center gap-1">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[7.5px]" style={{ color: c.color }}>
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[12px]" style={{ color: c.color }}>
               ★ {c.rmp}
             </span>
-            <span className="text-[7.5px] text-hub-text-muted">{c.label}</span>
+            <span className="text-[12px] text-hub-text-muted">{c.label}</span>
           </div>
         ))}
-        <span className="ml-auto text-[7.5px] text-hub-text-muted/50">live via RMP</span>
+        <span className="ml-auto text-[11px] text-hub-text-muted/50">live via RMP</span>
       </div>
     </motion.div>
   );
@@ -301,9 +301,6 @@ function BreadcrumbNav({
       className="mb-4 flex flex-wrap items-center gap-1 text-sm text-hub-text-muted"
       aria-label="Breadcrumb"
     >
-      <span className="text-xs">Schedules</span>
-      <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
-      <span className="text-xs font-medium text-hub-text-secondary">{quarterLabel}</span>
       {phase === "dashboard" && (
         <>
           <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
@@ -380,6 +377,12 @@ export function CommandCenter() {
       });
     }, 1000);
   }, []);
+
+  useEffect(() => {
+    if (!uploadError) return;
+    const dismissId = window.setTimeout(() => setUploadError(null), 5000);
+    return () => window.clearTimeout(dismissId);
+  }, [uploadError]);
 
   // Briefing state
   const [showBriefing, setShowBriefing] = useState(false);
@@ -480,8 +483,11 @@ export function CommandCenter() {
     }
   }, [activePlanId, phase, switchToPlan, workspaceRef]);
 
+  const _isScheduleFile = (f: File | undefined): f is File =>
+    !!f && (f.type.startsWith("image/") || f.type === "application/pdf");
+
   const runIngestionFlow = useCallback(
-    async (imageFile: File | undefined) => {
+    async (scheduleFile: File | undefined) => {
       if (processingLockRef.current) return;
       processingLockRef.current = true;
       clearRun();
@@ -493,7 +499,8 @@ export function CommandCenter() {
 
       setUploadError(null);
 
-      if (imageFile?.type.startsWith("image/")) {
+      if (_isScheduleFile(scheduleFile)) {
+        const imageFile = scheduleFile;
         try {
           // Open the briefing modal so the user can fill context while research runs.
           // Create a promise that resolves only when the user explicitly acts (Begin/Skip).
@@ -568,7 +575,7 @@ export function CommandCenter() {
         }
       }
 
-      if (nextClasses === mockDossier.classes || !imageFile?.type.startsWith("image/")) {
+      if (nextClasses === mockDossier.classes || !_isScheduleFile(scheduleFile)) {
         const elapsed = Date.now() - started;
         const remaining = Math.max(0, FINISH_PAD_MS - elapsed);
         await new Promise<void>((resolve) => {
@@ -670,8 +677,10 @@ export function CommandCenter() {
   const handleFilesSelected = useCallback(
     (files: FileList | File[]) => {
       if (!authed || !isUcsdUser) return;
-      const imageFile = Array.from(files).find((f) => f.type.startsWith("image/"));
-      void runIngestionFlow(imageFile);
+      const scheduleFile = Array.from(files).find(
+        (f) => f.type.startsWith("image/") || f.type === "application/pdf",
+      );
+      void runIngestionFlow(scheduleFile);
     },
     [authed, isUcsdUser, runIngestionFlow],
   );
@@ -722,7 +731,7 @@ export function CommandCenter() {
             )}
           </AnimatePresence>
           <div
-            className={`mx-auto w-full ${phase === "dashboard" ? "max-w-[min(100%,1760px)]" : "max-w-5xl"} ${phase === "processing" ? "pointer-events-none blur-[2px]" : ""}`}
+            className={`mx-auto w-full ${phase === "dashboard" ? "max-w-[min(100%,1760px)]" : "max-w-[min(100%,1420px)]"} ${phase === "processing" ? "pointer-events-none blur-[2px]" : ""}`}
           >
             <BreadcrumbNav
               phase={phase}
@@ -745,7 +754,7 @@ export function CommandCenter() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
                   transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative grid grid-cols-1 gap-8 lg:grid-cols-[5fr_3fr] lg:gap-14"
+                  className="relative grid grid-cols-1 gap-8 lg:grid-cols-[6fr_5fr] lg:gap-12 xl:gap-14"
                 >
 
                   {/* ── Col 1: Problem statement + action ── */}
@@ -770,7 +779,7 @@ export function CommandCenter() {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                        className="mt-5 max-w-[520px] text-[15px] leading-[1.68] text-hub-text-secondary"
+                        className="mt-5 max-w-[520px] text-[18px] leading-[1.68] text-hub-text-secondary"
                       >
                         Upload your WebReg screenshot. Get professor ratings, grade distributions, Reddit posts, and a workload estimate for every class, before you finalize anything.
                       </motion.p>
@@ -782,7 +791,7 @@ export function CommandCenter() {
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.4, delay: 0.15 }}
                       onClick={() => setShowExampleModal(true)}
-                      className="mb-4 flex items-center gap-2 text-[14px] text-hub-text-secondary transition hover:text-hub-cyan"
+                      className="mb-4 flex items-center gap-2 text-[18px] text-hub-text-secondary transition hover:text-hub-cyan"
                     >
                       <Images className="h-4 w-4" />
                       See what to upload
@@ -799,53 +808,10 @@ export function CommandCenter() {
                       isLocked={!authed || !isUcsdUser}
                     />
 
-                    {/* ── Upload error banners ── */}
-                    <AnimatePresence>
-                      {uploadError && (
-                        <motion.div
-                          key="upload-error"
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                          className={`mt-3 flex items-start gap-3 rounded-xl border px-4 py-3 ${
-                            uploadError.kind === "rate_limited"
-                              ? "border-hub-gold/30 bg-hub-gold/[0.08]"
-                              : "border-hub-danger/30 bg-hub-danger/[0.08]"
-                          }`}
-                        >
-                          {uploadError.kind === "rate_limited" ? (
-                            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" />
-                          ) : (
-                            <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-hub-danger" />
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm font-semibold ${uploadError.kind === "rate_limited" ? "text-hub-gold" : "text-hub-danger"}`}>
-                              {uploadError.kind === "rate_limited" ? "Upload temporarily blocked" : "Invalid schedule detected"}
-                            </p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-hub-text-secondary">
-                              {uploadError.message}
-                            </p>
-                            {uploadError.kind === "rate_limited" && rateLimitCountdown > 0 && (
-                              <p className="mt-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[11px] text-hub-gold/70">
-                                Unblocked in {Math.floor(rateLimitCountdown / 60)}:{String(rateLimitCountdown % 60).padStart(2, "0")}
-                              </p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setUploadError(null)}
-                            className="shrink-0 rounded p-0.5 text-hub-text-muted transition hover:text-hub-text"
-                          >
-                            <AlertCircle className="h-3.5 w-3.5" />
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
 
                   {/* ── Col 2: Sample output + feature list ── */}
-                  <div className="flex flex-col gap-4 lg:pt-1">
+                  <div className="flex flex-col gap-5 lg:pt-1">
 
                     <IdlePreviewCard />
 
@@ -857,25 +823,25 @@ export function CommandCenter() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.35, delay: 0.38, ease: [0.22, 1, 0.36, 1] }}
-                      className="text-[10px] font-bold uppercase tracking-[0.18em] text-hub-cyan"
+                      className="text-[15px] font-bold uppercase tracking-[0.18em] text-hub-cyan"
                     >
                       What you get
                     </motion.p>
 
                     {/* Feature chips — 2 columns, scoped to this panel */}
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2.5">
                       {WHAT_YOU_GET.map((item, i) => (
                         <motion.div
                           key={item.label}
                           initial={{ opacity: 0, y: 5 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.26, delay: 0.44 + i * 0.048, ease: [0.22, 1, 0.36, 1] }}
-                          className="cursor-default rounded-lg border border-white/[0.06] bg-hub-surface/70 px-2.5 py-2.5 transition-colors duration-150 hover:border-white/[0.11] hover:bg-hub-surface"
+                          className="cursor-default rounded-xl border border-white/[0.06] bg-hub-surface/70 px-3.5 py-3.5 transition-colors duration-150 hover:border-white/[0.11] hover:bg-hub-surface"
                         >
-                          <div className="mb-1 font-[family-name:var(--font-jetbrains-mono)] text-[9.5px] font-bold tabular-nums text-hub-cyan">
+                          <div className="mb-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[15px] font-bold tabular-nums text-hub-cyan">
                             {String(i + 1).padStart(2, "0")}
                           </div>
-                          <div className="text-[10px] font-semibold leading-snug text-hub-text">
+                          <div className="text-[13px] font-semibold leading-snug text-hub-text">
                             {item.label}
                           </div>
                         </motion.div>
@@ -946,6 +912,64 @@ export function CommandCenter() {
         onSkip={handleBriefingSkip}
         researchDone={briefingResearchDone}
       />
+
+      <AnimatePresence>
+        {phase === "idle" && uploadError && (
+          <motion.div
+            key="upload-error-popup"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="pointer-events-none fixed inset-0 z-[78] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className={`pointer-events-auto relative w-full max-w-md rounded-2xl border p-5 shadow-2xl ${
+                uploadError.kind === "rate_limited"
+                  ? "border-hub-gold/35 bg-hub-surface-elevated"
+                  : "border-hub-danger/35 bg-hub-surface-elevated"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setUploadError(null)}
+                className="absolute right-3 top-3 rounded-lg p-1.5 text-hub-text-muted transition hover:bg-white/[0.05] hover:text-hub-text"
+                aria-label="Dismiss warning"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              <div className="flex items-start gap-3 pr-8">
+                {uploadError.kind === "rate_limited" ? (
+                  <Clock className="mt-0.5 h-5 w-5 shrink-0 text-hub-gold" />
+                ) : (
+                  <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-hub-danger" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className={`text-[13px] font-semibold ${uploadError.kind === "rate_limited" ? "text-hub-gold" : "text-hub-danger"}`}>
+                    {uploadError.kind === "rate_limited" ? "Upload temporarily blocked" : "Invalid schedule detected"}
+                  </p>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-hub-text-secondary">
+                    {uploadError.message}
+                  </p>
+                  {uploadError.kind === "rate_limited" && rateLimitCountdown > 0 && (
+                    <p className="mt-2 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-hub-gold/80">
+                      Unblocked in {Math.floor(rateLimitCountdown / 60)}:{String(rateLimitCountdown % 60).padStart(2, "0")}
+                    </p>
+                  )}
+                  <p className="mt-2 text-[13px] text-hub-text-muted/80">
+                    This message will close automatically in about 5 seconds.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Unsaved-changes guard modal ── */}
       <AnimatePresence>

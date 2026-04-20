@@ -89,12 +89,12 @@ export function IngestionHub({
   return (
     <motion.section
       layout
-      className="glass-panel mb-6 rounded-xl border border-white/[0.08] p-4"
+      className="glass-panel mb-6 rounded-xl border border-white/[0.08] p-5 lg:p-6"
     >
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <div className="flex items-center gap-2">
-            <h2 className="font-[family-name:var(--font-outfit)] text-lg font-semibold tracking-tight text-hub-text">
+            <h2 className="font-[family-name:var(--font-outfit)] text-xl font-semibold tracking-tight text-hub-text lg:text-[1.45rem]">
               {isDashboardExpanded ? "Add files" : "Attach your schedule"}
             </h2>
             {!isDashboardExpanded && (
@@ -108,7 +108,7 @@ export function IngestionHub({
               </button>
             )}
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-hub-text-secondary">
+          <p className="mt-1.5 text-[15px] leading-relaxed text-hub-text-secondary">
             {isDashboardExpanded
               ? "Attach another WebReg export or syllabus to refresh your schedule."
               : "Attach your WebReg schedule to get started. Export a PDF directly from WebReg, take a screenshot, or paste one from your clipboard."}

@@ -169,7 +169,7 @@ export async function researchScreenshot(
     } catch { /* ignore */ }
 
     if (res.status === 422 && detail.code === "INVALID_SCHEDULE") {
-      throw new InvalidScheduleError(detail.message ?? "Invalid schedule image.");
+      throw new InvalidScheduleError(detail.message ?? "Invalid schedule file.");
     }
     if (res.status === 429 && detail.code === "RATE_LIMITED") {
       throw new RateLimitedError(

@@ -4,12 +4,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { ProfileEditCard } from "@/components/profile/ProfileEditCard";
+import { createClient } from "@/lib/supabase/server";
 
 const linkGhost =
   "inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/[0.08] px-4 text-sm font-semibold text-hub-text-secondary transition hover:border-white/[0.14] hover:text-hub-text outline-none ring-hub-cyan/40 focus-visible:ring-2";
 const linkPrimary =
   "inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-hub-cyan/15 px-4 text-sm font-semibold text-hub-cyan ring-1 ring-hub-cyan/35 transition hover:bg-hub-cyan/25 outline-none focus-visible:ring-2 focus-visible:ring-hub-cyan/50";
-import { createClient } from "@/lib/supabase/server";
 
 function ToggleRow({
   id,
@@ -50,6 +51,18 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let profileData = null;
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select(
+        "major, career_path, skill_preference, biggest_concerns, transit_mode, living_situation, commute_minutes, external_commitment_hours",
+      )
+      .eq("id", user.id)
+      .maybeSingle();
+    profileData = data;
+  }
+
   return (
     <main className="relative mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto px-4 py-8 pb-12 lg:px-6">
       <PageHeader
@@ -78,6 +91,27 @@ export default async function SettingsPage() {
             <Link href="/login?next=/settings" className={linkPrimary}>
               Sign in
             </Link>
+          </Card>
+        )}
+
+        {user && profileData !== null && (
+          <Card
+            title="Academic Profile"
+            description="Your major, career goals, and logistical context. Used by the AI to personalize every schedule analysis."
+          >
+            <ProfileEditCard
+              userId={user.id}
+              initial={{
+                major: profileData?.major ?? null,
+                career_path: profileData?.career_path ?? null,
+                skill_preference: profileData?.skill_preference ?? null,
+                biggest_concerns: profileData?.biggest_concerns ?? null,
+                transit_mode: profileData?.transit_mode ?? null,
+                living_situation: profileData?.living_situation ?? null,
+                commute_minutes: profileData?.commute_minutes ?? null,
+                external_commitment_hours: profileData?.external_commitment_hours ?? null,
+              }}
+            />
           </Card>
         )}
 

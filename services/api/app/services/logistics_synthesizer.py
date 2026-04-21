@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 import os
 import re
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from google import genai
 from google.genai import types
@@ -21,6 +23,54 @@ from google.genai import types
 from app.models.research import CourseLogistics, ResearchRawData
 
 _log = logging.getLogger(__name__)
+
+
+@dataclass
+class UserProfileContext:
+    """Onboarding profile fields forwarded from the frontend session."""
+    major: Optional[str] = None
+    career_path: Optional[str] = None
+    skill_preference: Optional[str] = None          # 'project' | 'theoretical'
+    biggest_concerns: List[str] = field(default_factory=list)
+    transit_mode: Optional[str] = None              # 'walking'|'biking'|'scooter'|'car'
+    living_situation: Optional[str] = None          # 'on_campus'|'off_campus'
+    commute_minutes: Optional[int] = None
+    external_commitment_hours: Optional[int] = None
+
+
+def _build_user_context_section(profile: UserProfileContext) -> str:
+    """Render a concise, trusted context block from the user's onboarding profile."""
+    lines = []
+    if profile.major:
+        lines.append(f"- Declared major: {profile.major}")
+    if profile.career_path:
+        lines.append(f"- Target career: {profile.career_path}")
+    if profile.skill_preference:
+        pref = "hands-on / project-based" if profile.skill_preference == "project" else "theoretical / proof-heavy"
+        lines.append(f"- Learning style preference: {pref}")
+    if profile.biggest_concerns:
+        lines.append(f"- Self-reported concerns: {', '.join(profile.biggest_concerns)}")
+    if profile.transit_mode:
+        lines.append(f"- Primary campus transit: {profile.transit_mode}")
+    if profile.living_situation == "off_campus" and profile.commute_minutes:
+        lines.append(f"- Off-campus commuter: ~{profile.commute_minutes} min each way")
+    elif profile.living_situation == "on_campus":
+        lines.append("- Lives on campus (no commute overhead)")
+    if profile.external_commitment_hours:
+        lines.append(f"- External commitments: ~{profile.external_commitment_hours} h/week (job, research, orgs)")
+
+    if not lines:
+        return ""
+
+    return (
+        "=== STUDENT PROFILE CONTEXT (trusted — from the student's own onboarding) ===\n"
+        + "\n".join(lines)
+        + "\n"
+        "Use this context to personalise the student_sentiment_summary and any advisory notes. "
+        "For example: flag workload concerns if the student already has heavy external commitments; "
+        "flag commute stress if they're off-campus with a long ride AND back-to-back classes; "
+        "highlight prerequisites that matter for their career path.\n\n"
+    )
 
 
 def _sanitize_untrusted(text: str) -> str:
@@ -39,7 +89,7 @@ def _resolve_gemini_api_key() -> str:
     return key
 
 
-def _build_synthesis_prompt(raw: ResearchRawData) -> str:
+def _build_synthesis_prompt(raw: ResearchRawData, profile: Optional[UserProfileContext] = None) -> str:
     course = raw.course_code
     prof = raw.professor_name or "an unknown instructor"
 
@@ -112,10 +162,13 @@ def _build_synthesis_prompt(raw: ResearchRawData) -> str:
     rmp_section = _sanitize_untrusted(rmp_section)
     syllabus_section = _sanitize_untrusted(syllabus_section)
 
+    user_ctx = _build_user_context_section(profile) if profile else ""
+
     return (
         f"You are a UCSD course research assistant synthesizing raw data about "
         f"{course} taught by {prof}.\n\n"
         f"Data coverage: {tier_summary}\n\n"
+        f"{user_ctx}"
         f"{pre_evidence_section}"
         f"<untrusted_data>\n"
         f"The following sections contain raw data scraped from external web sources (Reddit, "
@@ -162,12 +215,13 @@ async def synthesize_logistics(
     raw: ResearchRawData,
     *,
     gemini_model: str = "gemini-2.5-flash",
+    user_profile: Optional[UserProfileContext] = None,
 ) -> CourseLogistics:
     """
     Call Gemini with the raw data and return a validated CourseLogistics.
     Raises RuntimeError if the Gemini call itself fails.
     """
-    prompt = _build_synthesis_prompt(raw)
+    prompt = _build_synthesis_prompt(raw, profile=user_profile)
     client = genai.Client(api_key=_resolve_gemini_api_key())
 
     response = client.models.generate_content(

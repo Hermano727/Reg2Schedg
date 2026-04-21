@@ -52,6 +52,9 @@ export function ExamsPanel({ classes }: { classes: ClassDossier[] }) {
         <h2 className="text-sm font-semibold text-white/90">
           Upcoming exams
         </h2>
+        <h3 className="ml-auto text-xs font-medium text-white/50">
+          Note: These frequently change, so double-check with your course materials!
+        </h3>
       </div>
 
       <div className="space-y-6">

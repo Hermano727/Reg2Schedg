@@ -736,13 +736,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div
-              className={`grid gap-8 items-start ${
-                classes.length <= 2 ? "grid-cols-2" :
-                classes.length === 3 ? "grid-cols-3" :
-                "grid-cols-2 xl:grid-cols-3"
-              }`}
-            >
+            <div className="mx-auto w-full max-w-[1040px] flex flex-col gap-5">
               {classes.map((c, idx) => (
                 <ClassCard
                   key={`${c.id}:${idx}`} dossier={c}
@@ -892,7 +886,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                 onGoToCourses={() => setCurrentPhase("dossiers")}
                 onOpenCalendar={openCalendar}
               />
-              <div className={`grid gap-6 items-start ${classes.length <= 2 ? "grid-cols-2" : "grid-cols-2 xl:grid-cols-3"}`}>
+              <div className="flex flex-col gap-5">
                 {classes.map((c, idx) => (
                   <ClassCard
                     key={`${c.id}:${idx}`} dossier={c}

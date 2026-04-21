@@ -104,16 +104,19 @@ async function fetchExpandedPlan(
     });
     if (!res.ok) return null;
     const data = await res.json() as {
+      payload_version?: number;
       classes: CourseResearchResult[];
       evaluation: ScheduleEvaluation | null;
       commitments: ScheduleCommitment[];
       course_labels?: Record<string, string>;
     };
-    // The expanded endpoint returns snake_case CourseResearchResult-shaped objects.
-    // Run them through the same mapper used by the research flow so that
-    // courseCode, courseTitle, professorName etc. are properly set on ClassDossier.
+    // v1 passthrough: backend returns already-mapped camelCase ClassDossier[] — don't double-map.
+    // v2 (default): backend returns snake_case CourseResearchResult-shaped objects that need mapping.
+    const classes = data.payload_version === 1
+      ? (data.classes ?? []) as unknown as ClassDossier[]
+      : (data.classes ?? []).map(courseResearchResultToDossier);
     return {
-      classes: (data.classes ?? []).map(courseResearchResultToDossier),
+      classes,
       evaluation: data.evaluation ?? mockDossier.evaluation,
       commitments: data.commitments ?? [],
       courseLabels: data.course_labels ?? {},
@@ -414,7 +417,7 @@ export function usePlanSync({
         .single();
 
       const [plansRes, vaultRes] = await Promise.all([
-        supabase.from("saved_plans").select("*").order("updated_at", { ascending: false }),
+        supabase.from("saved_plans").select("*").eq("is_deleted", false).order("updated_at", { ascending: false }),
         supabase.from("vault_items").select("*").order("updated_at", { ascending: false }),
       ]);
       setAuthed(true);

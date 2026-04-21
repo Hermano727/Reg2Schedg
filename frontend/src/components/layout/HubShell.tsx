@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getApiBaseUrl } from "@/lib/api/client";
 import { CalendarSyncProvider } from "@/components/layout/calendar-sync-context";
 import { CalendarStateProvider } from "@/components/layout/calendar-state-context";
 import { Header } from "@/components/layout/Header";
+import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import type { HubUser } from "@/types/hub-user";
 
 type HubShellProps = {
@@ -14,6 +15,10 @@ type HubShellProps = {
 };
 
 export function HubShell({ children, user }: HubShellProps) {
+  const [onboardingDone, setOnboardingDone] = useState(
+    !user?.needsOnboarding,
+  );
+
   const handleSyncCalendar = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -59,6 +64,12 @@ export function HubShell({ children, user }: HubShellProps) {
           <Header user={user} />
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         </div>
+        {!onboardingDone && user?.id && (
+          <OnboardingFlow
+            userId={user.id}
+            onComplete={() => setOnboardingDone(true)}
+          />
+        )}
       </CalendarSyncProvider>
     </CalendarStateProvider>
   );

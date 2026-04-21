@@ -16,7 +16,7 @@ export default async function HubLayout({
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("display_name, avatar_url")
+      .select("display_name, avatar_url, onboarding_complete")
       .eq("id", user.id)
       .maybeSingle();
     const email = user.email ?? "";
@@ -30,10 +30,14 @@ export default async function HubLayout({
       avatarUrl = signed?.signedUrl ?? null;
     }
 
+    const onboardingComplete = (profile as { onboarding_complete?: boolean } | null)?.onboarding_complete ?? false;
+
     hubUser = {
+      id: user.id,
       email,
       displayName: profile?.display_name?.trim() || email.split("@")[0] || "User",
       avatarUrl,
+      needsOnboarding: !onboardingComplete,
     };
   }
 

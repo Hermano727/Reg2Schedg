@@ -16,9 +16,9 @@
   --hub-watermark-size-mobile: 58%;
   --hub-watermark-size-tablet: 74%;
   --hub-watermark-size-desktop: 88%;
-  --hub-watermark-opacity-mobile: 0.008;
-  --hub-watermark-opacity-tablet: 0.010;
-  --hub-watermark-opacity-desktop: 0.012;
+  --hub-watermark-opacity-mobile: 0.012;
+  --hub-watermark-opacity-tablet: 0.018;
+  --hub-watermark-opacity-desktop: 0.025;
 }
 
 @theme inline {

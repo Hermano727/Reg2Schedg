@@ -29,7 +29,9 @@ from app.db.service import (
     get_saved_plan_classes,
     get_course_research_cache_by_id,
 )
+from app.db.sunset_db import get_sunset_grade_distribution
 from app.models.research import CourseLogistics
+from app.services.sunset import build_sunset_grade_distribution
 
 _log = logging.getLogger(__name__)
 router = APIRouter()
@@ -83,10 +85,23 @@ def _expand_from_class_refs(
             logistics_dict = row.logistics  # fallback: raw dict
 
         overrides = ref.get("overrides") or {}
+        professor_name = ref.get("professor_name") or row.professor_name or None
+
+        sunset_row, is_fallback = get_sunset_grade_distribution(
+            client,
+            course_code=row.course_code,
+            professor_name=professor_name,
+        )
+        sunset_dist = build_sunset_grade_distribution(
+            sunset_row,
+            is_cross_course_fallback=is_fallback,
+            source_course_code=row.course_code if is_fallback else None,
+        )
+
         assembled.append({
             "course_code": row.course_code,
             # Prefer the saved ref value over cache — user may have renamed the professor.
-            "professor_name": ref.get("professor_name") or row.professor_name or None,
+            "professor_name": professor_name,
             # Prefer overrides.course_title if the user renamed the course.
             "course_title": overrides.get("course_title") or row.course_title,
             "meetings": ref.get("meetings", []),
@@ -98,6 +113,7 @@ def _expand_from_class_refs(
             "stale": _is_stale(row.updated_at),
             "missing": False,
             "data_source": row.data_source,
+            "sunset_grade_distribution": sunset_dist.model_dump(mode="json") if sunset_dist else None,
         })
 
     return assembled

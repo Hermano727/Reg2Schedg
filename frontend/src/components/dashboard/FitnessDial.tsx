@@ -8,7 +8,7 @@ type FitnessDialProps = {
 };
 
 const GAP_DEG = 5;
-const SLICE_DEG = 90 - GAP_DEG; // 85° per category for 4 slices
+const SLICE_DEG = 72 - GAP_DEG; // 67° per category for 5 slices
 const OUTER_R = 72;
 const INNER_R = 46;
 const CX = 90;
@@ -38,9 +38,8 @@ function donutSlicePath(startAngle: number, sweepAngle: number): string {
 }
 
 function scoreColor(score: number): string {
-  if (score <= 5) return "#34d399";
-  if (score <= 7) return "#e3b12f";
-  return "#ff6b6b";
+  if (score <= 4) return "#34d399";
+  return "#e3b12f";
 }
 
 export function FitnessDial({ evaluation }: FitnessDialProps) {
@@ -71,7 +70,7 @@ export function FitnessDial({ evaluation }: FitnessDialProps) {
             ? categories.map((_, i) => (
                 <path
                   key={`bg-${i}`}
-                  d={donutSlicePath(i * 90, SLICE_DEG)}
+                  d={donutSlicePath(i * 72, SLICE_DEG)}
                   fill="rgba(255,255,255,0.05)"
                   stroke="rgba(255,255,255,0.02)"
                   strokeWidth="1"
@@ -148,7 +147,7 @@ export function FitnessDial({ evaluation }: FitnessDialProps) {
 
       {/* Category breakdown legend */}
       {hasCats && (
-        <div className="grid grid-cols-2 gap-x-5 gap-y-3 w-full max-w-[260px]">
+        <div className="grid grid-cols-3 gap-x-4 gap-y-3 w-full max-w-[320px]">
           {categories.map((cat) => (
             <div key={cat.label} className="flex flex-col gap-1">
               <div className="flex items-center gap-1.5">
@@ -181,6 +180,13 @@ export function FitnessDial({ evaluation }: FitnessDialProps) {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Edge hint */}
+      {hasCats && (
+        <p className="text-[10px] text-hub-text-muted text-center">
+          Closer to the edge = harder in that category
+        </p>
       )}
 
       {/* Trend badge */}

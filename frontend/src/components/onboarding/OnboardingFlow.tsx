@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { getLearningStyles } from "@/lib/onboarding/learning-styles";
 
 // ---------------------------------------------------------------------------
 // Static data
@@ -103,7 +104,7 @@ const SLIDE_COUNT = 4;
 type OnboardingData = {
   major: string;
   careerPath: string;
-  skillPreference: "project" | "theoretical" | "";
+  skillPreference: string;
   concerns: string[];
   transitMode: string;
   livingSituation: "on_campus" | "off_campus" | "";
@@ -294,7 +295,7 @@ function PreviewRadar({ data }: { data: OnboardingData }) {
   ];
 
   const avg = radarData.reduce((s, d) => s + d.value, 0) / radarData.length;
-  const color = avg <= 4 ? "#5eead4" : avg <= 6.5 ? "#e3b12f" : "#f05a5a";
+  const color = avg <= 4 ? "#5eead4" : "#e3b12f";
 
   return (
     <div className="w-full">
@@ -325,7 +326,7 @@ function PreviewRadar({ data }: { data: OnboardingData }) {
         </RadarChart>
       </ResponsiveContainer>
       <p className="mt-1 text-center text-[11px] text-hub-text-muted">
-        This preview sharpens once you upload your first schedule.
+        Closer to the edge = harder in that category. Sharpens once you upload a schedule.
       </p>
     </div>
   );
@@ -381,25 +382,22 @@ function Slide1({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
-          <SectionLabel>Learning Style</SectionLabel>
-          <div className="flex gap-3">
-            {[
-              { id: "project", label: "Project-Based", sub: "Labs, coding, building things" },
-              { id: "theoretical", label: "Theoretical", sub: "Math, proofs, analysis" },
-            ].map(({ id, label, sub }) => (
+          <SectionLabel>Learning Preferences</SectionLabel>
+          <div className="grid grid-cols-2 gap-2">
+            {getLearningStyles(data.major).map(({ id, label, sub }) => (
               <button
                 key={id}
                 type="button"
-                onClick={() => onChange({ skillPreference: id as "project" | "theoretical" })}
+                onClick={() => onChange({ skillPreference: id })}
                 className={[
-                  "flex-1 rounded-xl border p-4 text-left transition-all duration-150 outline-none",
+                  "rounded-xl border p-3.5 text-left transition-all duration-150 outline-none",
                   data.skillPreference === id
                     ? "border-hub-cyan/40 bg-hub-cyan/[0.07] ring-1 ring-hub-cyan/25"
                     : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.14]",
                 ].join(" ")}
               >
                 <p className="font-semibold text-sm text-hub-text">{label}</p>
-                <p className="mt-0.5 text-xs text-hub-text-muted">{sub}</p>
+                {sub && <p className="mt-0.5 text-xs text-hub-text-muted">{sub}</p>}
               </button>
             ))}
           </div>
@@ -539,70 +537,74 @@ function Slide2({
 
 function Slide3() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 flex gap-3">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
         <p className="text-sm text-amber-200/80">
-          Our parser is optimized for WebReg's <strong>List View</strong>. Using the Calendar View
-          may result in missing exam dates in your Dossier.
+          Our parser is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View omits
+          exam dates, leaving your Upcoming Exams sidebar empty.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Preferred */}
-        <div className="space-y-3">
-          <div className="overflow-hidden rounded-xl border-2 border-hub-cyan/40 ring-1 ring-hub-cyan/20 shadow-lg">
+      {/* Two-column comparison — horizontal image gets more space since it's wider */}
+      <div className="flex gap-5 items-start">
+
+        {/* ── Preferred: horizontal list view (wider image) ── */}
+        <div className="flex-[3] space-y-3 min-w-0">
+          <div className="overflow-hidden rounded-xl border-2 border-hub-cyan/40 ring-1 ring-hub-cyan/20 shadow-xl">
             <Image
               src="/images/schedule1.png"
               alt="Horizontal list view — preferred"
-              width={560}
-              height={360}
+              width={900}
+              height={520}
               className="w-full object-cover"
+              style={{ display: "block" }}
               priority
             />
           </div>
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-hub-cyan/15 ring-1 ring-hub-cyan/40">
-              <Check className="h-3 w-3 text-hub-cyan" />
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hub-cyan/15 ring-1 ring-hub-cyan/40">
+              <Check className="h-3.5 w-3.5 text-hub-cyan" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-hub-cyan">Use This View</p>
-              <p className="text-xs text-hub-text-muted mt-0.5">
+              <p className="text-[18px] font-bold text-hub-cyan">Use This View</p>
+              <p className="text-[16px] text-hub-text-secondary mt-0.5 leading-relaxed">
                 Horizontal list view: includes exam timings and full section detail for best analysis.
+              </p>
+              <p className="text-[16px] py-3 text-hub-text-muted pt-1">
+                In WebReg: <strong className="text-hub-text-secondary">Take a screenshot OR print schedule → Save File</strong>.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Not preferred */}
-        <div className="space-y-3">
-          <div className="overflow-hidden rounded-xl border border-white/[0.08] opacity-60">
+        {/* ── Not preferred: vertical calendar view (taller, narrower image) ── */}
+        <div className="flex-[2] space-y-3 min-w-0">
+          <div className="overflow-hidden rounded-xl border border-white/[0.08] opacity-50">
             <Image
               src="/images/schedule2.png"
               alt="Vertical calendar view — not preferred"
               width={560}
-              height={360}
+              height={720}
               className="w-full object-cover grayscale"
+              style={{ display: "block" }}
               priority
             />
           </div>
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-400/10 ring-1 ring-red-400/30">
-              <X className="h-3 w-3 text-red-400" />
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.05] ring-1 ring-white/[0.12]">
+              <X className="h-3.5 w-3.5 text-hub-text-muted" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-hub-text-secondary">Avoid This View</p>
-              <p className="text-xs text-hub-text-muted mt-0.5">
-                Vertical calendar view: no exam data, results in incomplete analysis.
+              <p className="text-[18px] font-semibold text-hub-cyan">Avoid This View</p>
+              <p className="text-[16px] text-hub-text-muted mt-0.5 leading-relaxed">
+                Vertical calendar view: missing exam info, leading to incomplete analysis.
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      <p className="text-center text-xs text-hub-text-muted">
-        In WebReg: <strong className="text-hub-text-secondary">Menu → Print Schedule → List View</strong>. Take a screenshot of that page.
-      </p>
     </div>
   );
 }
@@ -662,14 +664,14 @@ function canAdvance(slide: number, data: OnboardingData): boolean {
 const SLIDE_TITLES = [
   "Academic Identity",
   "Your Constraints",
-  "One Quick Tip",
+  "What to Upload",
   "You're Ready",
 ];
 
 const SLIDE_SUBTITLES = [
   "Help us personalize every schedule analysis to your goals.",
   "These details shape your workload fitness score and commute warnings.",
-  "Get the most out of your first upload.",
+  "Ensure your first upload is successful.",
   "Here's how your profile will influence your quarter intelligence.",
 ];
 
@@ -726,9 +728,11 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       className="fixed inset-0 z-[9999] flex items-center justify-center"
       style={{ background: "rgba(10, 25, 47, 0.97)", backdropFilter: "blur(8px)" }}
     >
-      {/* Card */}
-      <div
-        className="relative w-full max-w-[600px] mx-4 rounded-2xl border border-white/[0.08] overflow-hidden"
+      {/* Card — widens on the image-comparison slide */}
+      <motion.div
+        animate={{ maxWidth: slide === 2 ? "1200px" : "900px" }}
+        transition={{ type: "tween" as const, ease: [0.22, 1, 0.36, 1] as const, duration: 0.35 }}
+        className="relative w-full mx-4 rounded-2xl border border-white/[0.08] overflow-hidden"
         style={{ background: "#0d1f38", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }}
       >
         {/* Progress bar */}
@@ -743,7 +747,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-xl font-bold text-hub-text font-[family-name:var(--font-outfit)]"
+              className="text-[20pt] font-bold text-hub-text font-[family-name:var(--font-outfit)]"
             >
               {SLIDE_TITLES[slide]}
             </motion.h2>
@@ -752,7 +756,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.05 }}
-              className="mt-1.5 text-sm text-hub-text-secondary"
+              className="mt-1.5 text-[14pt] text-hub-text-secondary"
             >
               {SLIDE_SUBTITLES[slide]}
             </motion.p>
@@ -814,7 +818,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

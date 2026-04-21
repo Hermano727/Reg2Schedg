@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, MapPin, Briefcase, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getLearningStyles } from "@/lib/onboarding/learning-styles";
 
 // ---------------------------------------------------------------------------
 // Same static lists as OnboardingFlow (kept in sync here)
@@ -278,27 +279,24 @@ export function ProfileEditCard({ userId, initial }: Props) {
         />
       </div>
 
-      {/* Skill preference */}
+      {/* Skill preference — options are major-aware */}
       <div>
         <FieldLabel>Learning Style</FieldLabel>
-        <div className="flex gap-3">
-          {[
-            { id: "project", label: "Project-Based", sub: "Labs, coding, building" },
-            { id: "theoretical", label: "Theoretical", sub: "Math, proofs, analysis" },
-          ].map(({ id, label, sub }) => (
+        <div className="grid grid-cols-2 gap-2">
+          {getLearningStyles(form.major ?? "").map(({ id, label, sub }) => (
             <button
               key={id}
               type="button"
               onClick={() => patch({ skill_preference: form.skill_preference === id ? null : id })}
               className={[
-                "flex-1 rounded-xl border p-3.5 text-left transition-all duration-150 outline-none",
+                "rounded-xl border p-3.5 text-left transition-all duration-150 outline-none",
                 form.skill_preference === id
                   ? "border-hub-cyan/40 bg-hub-cyan/[0.07] ring-1 ring-hub-cyan/25"
                   : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.14]",
               ].join(" ")}
             >
               <p className="font-medium text-sm text-hub-text">{label}</p>
-              <p className="mt-0.5 text-xs text-hub-text-muted">{sub}</p>
+              {sub && <p className="mt-0.5 text-xs text-hub-text-muted">{sub}</p>}
             </button>
           ))}
         </div>

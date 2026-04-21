@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ChevronLeft, ChevronRight, Clock, Images, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, ChevronRight, Clock, Images, Trash2, X, XCircle } from "lucide-react";
 import { LeftSidebar } from "@/components/layout/LeftSidebar";
 import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
@@ -31,29 +31,13 @@ const WHAT_YOU_GET = [
 ] as const;
 
 // ── Example input modal ───────────────────────────────────────────────────────
-const EXAMPLE_SLIDES = [
-  { src: "/images/schedule1.png", label: "List view", alt: "WebReg list view schedule" },
-  { src: "/images/schedule2.png", label: "Calendar view", alt: "WebReg calendar view schedule" },
-] as const;
 
 function ExampleInputModal({ onClose }: { onClose: () => void }) {
-  const [slideIndex, setSlideIndex] = useState(0);
-  const total = EXAMPLE_SLIDES.length;
-
-  const goPrev = useCallback(() => setSlideIndex((i) => (i - 1 + total) % total), [total]);
-  const goNext = useCallback(() => setSlideIndex((i) => (i + 1) % total), [total]);
-
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "ArrowRight") goNext();
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, goPrev, goNext]);
-
-  const slide = EXAMPLE_SLIDES[slideIndex];
+  }, [onClose]);
 
   return (
     <motion.div
@@ -62,84 +46,101 @@ function ExampleInputModal({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-[90] flex flex-col bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-sm p-6"
       onClick={onClose}
     >
-      {/* ── Top bar: title + close ── */}
-      <div className="flex items-start justify-between px-8 pt-8 pb-4" onClick={(e) => e.stopPropagation()}>
-        <div>
-          <p className="font-[family-name:var(--font-outfit)] text-xl font-semibold text-hub-text">
-            What to upload
-          </p>
-          <p className="mt-1 text-[13px] text-hub-text-muted">
-            Export your WebReg schedule as a screenshot. List or calendar view both work.
-          </p>
-        </div>
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-[900px] rounded-2xl border border-white/[0.08] p-7"
+        style={{ background: "#0d1f38", boxShadow: "0 32px 80px rgba(0,0,0,0.7)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close */}
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg p-1.5 text-hub-text-muted transition hover:text-hub-text"
+          className="absolute right-5 top-5 rounded-lg p-1.5 text-hub-text-muted transition hover:text-hub-text"
+          aria-label="Close"
         >
           <X className="h-5 w-5" />
         </button>
-      </div>
 
-      {/* ── Image — fills remaining height ── */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center px-20 pb-6" onClick={(e) => e.stopPropagation()}>
-        {/* Left arrow */}
-        <button
-          type="button"
-          onClick={goPrev}
-          className="absolute left-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-hub-text-muted backdrop-blur-sm transition hover:border-hub-cyan/40 hover:text-hub-cyan"
-          aria-label="Previous example"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-
-        {/* Right arrow */}
-        <button
-          type="button"
-          onClick={goNext}
-          className="absolute right-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.12] bg-white/[0.06] text-hub-text-muted backdrop-blur-sm transition hover:border-hub-cyan/40 hover:text-hub-cyan"
-          aria-label="Next example"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
-
-        <AnimatePresence mode="wait">
-          <motion.img
-            key={slideIndex}
-            src={slide.src}
-            alt={slide.alt}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="max-h-full w-auto max-w-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </AnimatePresence>
-      </div>
-
-      {/* ── Footer: label + dots ── */}
-      <div className="flex items-center justify-between px-8 pb-7" onClick={(e) => e.stopPropagation()}>
-        <p className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] tracking-widest uppercase text-hub-text-muted">
-          {slide.label}
-        </p>
-        <div className="flex items-center gap-2">
-          {EXAMPLE_SLIDES.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setSlideIndex(i)}
-              className={`h-1.5 rounded-full transition-all duration-200 ${
-                i === slideIndex ? "w-5 bg-hub-cyan" : "w-1.5 bg-white/25 hover:bg-white/50"
-              }`}
-              aria-label={`Go to slide ${i + 1}`}
-            />
-          ))}
+        {/* Header */}
+        <div className="mb-5">
+          <p className="font-[family-name:var(--font-outfit)] text-lg font-semibold text-hub-text">
+            What to upload
+          </p>
+          <p className="mt-1 text-sm text-hub-text-secondary">
+            Use WebReg&apos;s List View for the highest-fidelity analysis, including exam dates.
+          </p>
         </div>
-      </div>
+
+        {/* Advisory banner */}
+        <div className="mb-5 flex gap-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <p className="text-sm text-amber-200/80">
+            Our parser is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View omits
+            exam dates, leaving your Upcoming Exams sidebar empty.
+          </p>
+        </div>
+
+        {/* Side-by-side comparison */}
+        <div className="flex gap-5 items-start">
+          {/* Preferred: horizontal list view */}
+          <div className="flex-[3] min-w-0 space-y-3">
+            <div className="overflow-hidden rounded-xl border-2 border-hub-cyan/40 ring-1 ring-hub-cyan/20 shadow-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/schedule1.png"
+                alt="Horizontal list view — preferred"
+                className="w-full object-cover block"
+              />
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hub-cyan/15 ring-1 ring-hub-cyan/40">
+                <Check className="h-3.5 w-3.5 text-hub-cyan" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-hub-cyan">Use This View</p>
+                <p className="mt-0.5 text-xs text-hub-text-secondary leading-relaxed">
+                  Horizontal list view. Includes exam timings and full section detail — highest fidelity.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Not preferred: vertical calendar view */}
+          <div className="flex-[2] min-w-0 space-y-3">
+            <div className="overflow-hidden rounded-xl border border-white/[0.08] opacity-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/schedule2.png"
+                alt="Vertical calendar view — not preferred"
+                className="w-full object-cover block grayscale"
+              />
+            </div>
+            <div className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.05] ring-1 ring-white/[0.12]">
+                <X className="h-3.5 w-3.5 text-hub-text-muted" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-hub-text-secondary">Avoid This View</p>
+                <p className="mt-0.5 text-xs text-hub-text-muted leading-relaxed">
+                  Vertical calendar view. No exam data — incomplete analysis.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <p className="mt-5 text-center text-xs text-hub-text-muted">
+          In WebReg: <strong className="text-hub-text-secondary">Print Schedule → List View</strong>. Take a screenshot of that page.
+        </p>
+      </motion.div>
     </motion.div>
   );
 }

@@ -381,7 +381,8 @@ export function CommandCenter() {
     | { kind: "rate_limited"; message: string; retryAfterSeconds: number };
   const [uploadError, setUploadError] = useState<UploadError | null>(null);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
-  const [lookupQuery, setLookupQuery] = useState("");
+  const [lookupCourseCode, setLookupCourseCode] = useState("");
+  const [lookupProfessorName, setLookupProfessorName] = useState("");
   const countdownRef = useRef<number | null>(null);
 
   const startCountdown = useCallback((seconds: number) => {
@@ -401,8 +402,13 @@ export function CommandCenter() {
   }, []);
 
   const handleOpenLookup = useCallback(() => {
-    window.dispatchEvent(new CustomEvent("hub:open-lookup", { detail: { query: lookupQuery } }));
-  }, [lookupQuery]);
+    window.dispatchEvent(new CustomEvent("hub:open-lookup", {
+      detail: {
+        query: lookupCourseCode.trim(),
+        professorName: lookupProfessorName.trim(),
+      },
+    }));
+  }, [lookupCourseCode, lookupProfessorName]);
 
   useEffect(() => {
     if (!uploadError) return;
@@ -893,28 +899,45 @@ export function CommandCenter() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-2.5 sm:flex-row">
-                        <label className="relative block min-w-0 flex-1">
-                          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-hub-text-muted" />
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[1.1fr_1fr]">
+                        <label className="flex min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.10] bg-[#0d1f35]/70 px-3 py-2.5 transition focus-within:border-hub-cyan/40 focus-within:ring-1 focus-within:ring-hub-cyan/20">
+                          <Search className="h-3.5 w-3.5 shrink-0 text-white/40" />
                           <input
                             type="text"
-                            value={lookupQuery}
-                            onChange={(e) => setLookupQuery(e.target.value)}
+                            value={lookupCourseCode}
+                            onChange={(e) => setLookupCourseCode(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
                                 handleOpenLookup();
                               }
                             }}
-                            placeholder="CSE 120, MATH 18, Prof. Smith..."
-                            className="w-full rounded-lg border border-white/[0.10] bg-white/[0.03] py-2.5 pl-9 pr-3 text-[13px] text-hub-text placeholder:text-hub-text-muted outline-none transition focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20"
+                            placeholder="Course code (e.g. CSE 120)"
+                            className="min-w-0 flex-1 bg-transparent text-[13px] text-white/90 placeholder:text-white/30 outline-none"
+                          />
+                        </label>
+
+                        <label className="flex min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.10] bg-[#0d1f35]/70 px-3 py-2.5 transition focus-within:border-hub-cyan/40 focus-within:ring-1 focus-within:ring-hub-cyan/20">
+                          <GraduationCap className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                          <input
+                            type="text"
+                            value={lookupProfessorName}
+                            onChange={(e) => setLookupProfessorName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleOpenLookup();
+                              }
+                            }}
+                            placeholder="Professor (optional)"
+                            className="min-w-0 flex-1 bg-transparent text-[13px] text-white/90 placeholder:text-white/30 outline-none"
                           />
                         </label>
 
                         <button
                           type="button"
                           onClick={handleOpenLookup}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-hub-cyan/35 bg-hub-cyan/15 px-4 py-2.5 text-[13px] font-semibold text-hub-cyan transition hover:bg-hub-cyan/25"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-4 py-2.5 text-[13px] font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan sm:col-span-2"
                         >
                           Search
                           <ChevronRight className="h-3.5 w-3.5" />

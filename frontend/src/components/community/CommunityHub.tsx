@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
   PlusCircle,
   Search,
@@ -21,9 +22,18 @@ type CommunityHubProps = {
   initialPosts: PostSummary[];
   initialTotal: number;
   userId: string;
+  initialComposeCourseCode?: string;
+  initialComposeProfessorName?: string;
 };
 
-export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHubProps) {
+export function CommunityHub({
+  initialPosts,
+  initialTotal,
+  userId,
+  initialComposeCourseCode = "",
+  initialComposeProfessorName = "",
+}: CommunityHubProps) {
+  const router = useRouter();
   const [posts, setPosts] = useState<PostSummary[]>(initialPosts);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
@@ -41,6 +51,9 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
   const [pendingCourse, setPendingCourse] = useState("");
   const [activeDept, setActiveDept] = useState("");
   const [activeCourse, setActiveCourse] = useState("");
+  const [composeOpen, setComposeOpen] = useState(Boolean(initialComposeCourseCode || initialComposeProfessorName));
+  const [composeCourseCode, setComposeCourseCode] = useState(initialComposeCourseCode);
+  const [composeProfessorName, setComposeProfessorName] = useState(initialComposeProfessorName);
 
   const filterRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -66,6 +79,20 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
       getDepartments().then(setDepartments).catch(() => {});
     }
   }, [filterOpen, departments.length]);
+
+  useEffect(() => {
+    if (!initialComposeCourseCode && !initialComposeProfessorName) return;
+    setComposeCourseCode(initialComposeCourseCode);
+    setComposeProfessorName(initialComposeProfessorName);
+    setComposeOpen(true);
+  }, [initialComposeCourseCode, initialComposeProfessorName]);
+
+  function handleComposerOpenChange(nextOpen: boolean) {
+    setComposeOpen(nextOpen);
+    if (!nextOpen) {
+      router.replace("/community");
+    }
+  }
 
   function fetchPosts(opts: {
     search?: string;
@@ -119,6 +146,8 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
   function handlePostCreated(post: PostSummary) {
     setPosts((prev) => [post, ...prev]);
     setTotal((t) => t + 1);
+    setComposeOpen(false);
+    router.replace("/community");
   }
 
   function handlePostDeleted(postId: string) {
@@ -155,6 +184,10 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
           }
           onCreated={handlePostCreated}
           userId={userId}
+          open={composeOpen}
+          onOpenChange={handleComposerOpenChange}
+          initialCourseCode={composeCourseCode}
+          initialProfessorName={composeProfessorName}
         />
       </div>
 
@@ -329,7 +362,7 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
           <div className="flex flex-wrap items-center gap-1.5">
             {activeSearch && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-xs text-hub-text-muted">
-                Search: <span className="text-hub-text-secondary">"{activeSearch}"</span>
+                Search: <span className="text-hub-text-secondary">&ldquo;{activeSearch}&rdquo;</span>
               </span>
             )}
             {activeDept && (

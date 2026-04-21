@@ -3,7 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { CommunityHub } from "@/components/community/CommunityHub";
 import type { PostSummary } from "@/types/community";
 
-export default async function CommunityPage() {
+type CommunityPageProps = {
+  searchParams?: {
+    composeCourse?: string;
+    composeProfessor?: string;
+  };
+};
+
+export default async function CommunityPage({ searchParams }: CommunityPageProps) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -43,5 +50,13 @@ export default async function CommunityPage() {
     userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
   }));
 
-  return <CommunityHub initialPosts={posts} initialTotal={count ?? 0} userId={user.id} />;
+  return (
+    <CommunityHub
+      initialPosts={posts}
+      initialTotal={count ?? 0}
+      userId={user.id}
+      initialComposeCourseCode={searchParams?.composeCourse ?? ""}
+      initialComposeProfessorName={searchParams?.composeProfessor ?? ""}
+    />
+  );
 }

@@ -37,11 +37,13 @@ export function Header({ user }: HeaderProps) {
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupQuery, setLookupQuery] = useState("");
+  const [lookupProfessorName, setLookupProfessorName] = useState("");
 
   useEffect(() => {
     function handleLookupOpen(event: Event) {
-      const customEvent = event as CustomEvent<{ query?: string }>;
+      const customEvent = event as CustomEvent<{ query?: string; professorName?: string }>;
       setLookupQuery(customEvent.detail?.query?.trim() ?? "");
+      setLookupProfessorName(customEvent.detail?.professorName?.trim() ?? "");
       setLookupOpen(true);
     }
 
@@ -194,6 +196,7 @@ export function Header({ user }: HeaderProps) {
         onOpenLookup={(q) => {
           setPaletteOpen(false);
           setLookupQuery(q);
+          setLookupProfessorName("");
           setLookupOpen(true);
         }}
       />
@@ -202,7 +205,7 @@ export function Header({ user }: HeaderProps) {
         open={lookupOpen}
         onClose={() => setLookupOpen(false)}
         initialQuery={lookupQuery}
-        userId={user?.id}
+        initialProfessorName={lookupProfessorName}
       />
     </>
   );

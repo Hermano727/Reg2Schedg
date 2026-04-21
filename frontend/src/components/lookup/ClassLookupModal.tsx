@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookOpen, ChevronLeft, Loader2, MessageSquarePlus, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   searchCourseCache,
   expandCacheEntry,
@@ -11,9 +12,7 @@ import {
 } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import { DashboardContent } from "@/components/dashboard/DossierDashboardModal";
-import { CreatePostModal } from "@/components/community/CreatePostModal";
 import type { ClassDossier } from "@/types/dossier";
-import type { PostSummary } from "@/types/community";
 
 type Phase = "search" | "results" | "dossier";
 
@@ -21,10 +20,16 @@ type Props = {
   open: boolean;
   onClose: () => void;
   initialQuery?: string;
-  userId?: string;
+  initialProfessorName?: string;
 };
 
-export function ClassLookupModal({ open, onClose, initialQuery = "", userId }: Props) {
+export function ClassLookupModal({
+  open,
+  onClose,
+  initialQuery = "",
+  initialProfessorName = "",
+}: Props) {
+  const router = useRouter();
   const [courseCode, setCourseCode] = useState(initialQuery);
   const [professorName, setProfessorName] = useState("");
   const [phase, setPhase] = useState<Phase>("search");
@@ -36,11 +41,16 @@ export function ClassLookupModal({ open, onClose, initialQuery = "", userId }: P
   const [results, setResults] = useState<CourseLookupSearchResult[]>([]);
   const [dossier, setDossier] = useState<ClassDossier | null>(null);
   const courseInputRef = useRef<HTMLInputElement>(null);
+  const initialProfessorNameRef = useRef(initialProfessorName);
+
+  useEffect(() => {
+    initialProfessorNameRef.current = initialProfessorName;
+  }, [initialProfessorName]);
 
   useEffect(() => {
     if (open) {
       setCourseCode(initialQuery);
-      setProfessorName("");
+      setProfessorName(initialProfessorNameRef.current);
       setPhase("search");
       setSearching(false);
       setExpanding(false);
@@ -110,6 +120,17 @@ export function ClassLookupModal({ open, onClose, initialQuery = "", userId }: P
     }
   }
 
+  function handleCreatePostAboutCourse() {
+    if (!dossier) return;
+    const params = new URLSearchParams();
+    params.set("composeCourse", dossier.courseCode);
+    if (dossier.professorName !== "TBA") {
+      params.set("composeProfessor", dossier.professorName);
+    }
+    onClose();
+    router.push(`/community?${params.toString()}`);
+  }
+
   return (
     <AnimatePresence>
       {open && (
@@ -120,7 +141,7 @@ export function ClassLookupModal({ open, onClose, initialQuery = "", userId }: P
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[75] bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[75] bg-black/50 backdrop-blur-[2px]"
             onClick={onClose}
           />
 
@@ -301,21 +322,14 @@ export function ClassLookupModal({ open, onClose, initialQuery = "", userId }: P
                 <span className="flex-1 text-xs text-white/30">
                   Have experience with {dossier.courseCode}? Share it with other students.
                 </span>
-                <CreatePostModal
-                  userId={userId}
-                  initialCourseCode={dossier.courseCode}
-                  initialProfessorName={dossier.professorName !== "TBA" ? dossier.professorName : ""}
-                  trigger={
-                    <button
-                      type="button"
-                      className="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm text-white/70 transition hover:border-hub-cyan/30 hover:bg-hub-cyan/10 hover:text-hub-cyan"
-                    >
-                      <MessageSquarePlus className="h-4 w-4" />
-                      Create post about this course
-                    </button>
-                  }
-                  onCreated={(_post: PostSummary) => {}}
-                />
+                <button
+                  type="button"
+                  onClick={handleCreatePostAboutCourse}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.05] px-4 py-2 text-sm text-white/70 transition hover:border-hub-cyan/30 hover:bg-hub-cyan/10 hover:text-hub-cyan"
+                >
+                  <MessageSquarePlus className="h-4 w-4" />
+                  Create post about this course
+                </button>
               </div>
             )}
           </motion.div>

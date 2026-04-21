@@ -40,6 +40,21 @@ type ProfileFitContext = {
   externalCommitmentHours?: number;
 };
 
+const CONCERN_LABELS: Record<string, string> = {
+  workload: "heavy workload",
+  scheduling: "tight scheduling",
+  commute: "long commute",
+  gpa: "gpa protection",
+  attendance: "attendance requirements",
+  heavy_math_load: "heavy math load",
+  theoretical_classes: "theoretical classes",
+  lab_scheduling: "lab scheduling",
+  ochem: "organic chemistry",
+  group_projects: "group projects",
+  reading_writing_intensity: "reading/writing intensity",
+  discussion_heavy: "discussion-heavy classes",
+};
+
 // ── Example input modal ───────────────────────────────────────────────────────
 
 function ExampleInputModal({ onClose }: { onClose: () => void }) {
@@ -495,11 +510,17 @@ export function CommandCenter() {
 
     try {
       const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) return null;
+
       const { data, error } = await supabase
         .from("profiles")
         .select(
           "major,career_path,skill_preference,biggest_concerns,transit_mode,living_situation,commute_minutes,external_commitment_hours",
         )
+        .eq("id", user.id)
         .maybeSingle();
 
       if (error || !data) {
@@ -510,7 +531,11 @@ export function CommandCenter() {
         major: data.major ?? undefined,
         careerPath: data.career_path ?? undefined,
         skillPreference: data.skill_preference ?? undefined,
-        biggestConcerns: data.biggest_concerns ?? undefined,
+        biggestConcerns: Array.isArray(data.biggest_concerns)
+          ? data.biggest_concerns
+              .map((c: string) => CONCERN_LABELS[c] ?? c)
+              .filter((c: string) => c.trim().length > 0)
+          : undefined,
         transitMode: data.transit_mode ?? undefined,
         livingSituation: data.living_situation ?? undefined,
         commuteMinutes: data.commute_minutes ?? undefined,

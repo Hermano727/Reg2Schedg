@@ -200,6 +200,10 @@ export function DifficultyScoreHud({ evaluation, isHero = false, onGoToCourses, 
   const cats = evaluation.categories ?? [];
   const bullets = toBullets(evaluation.recommendation);
   const goalFeedback = toUserInputFeedback(evaluation.userInputFeedback);
+  const hasGoalFeedback = Boolean(
+    goalFeedback &&
+    (goalFeedback.academic_alignment.length > 0 || goalFeedback.practical_risks.length > 0),
+  );
 
   const radarData: RadarDatum[] = cats.map((c) => ({
     subject: c.label,
@@ -237,7 +241,7 @@ export function DifficultyScoreHud({ evaluation, isHero = false, onGoToCourses, 
             className="font-[family-name:var(--font-outfit)] font-bold text-white/90"
             style={{ fontSize: "26px", letterSpacing: "-0.02em" }}
           >
-            Quarter Dossier
+            Quarter Difficulty
           </h2>
           <HudInfoTooltip text="Graded on class difficulty, schedule timing, and total workload" />
         </div>
@@ -371,7 +375,7 @@ export function DifficultyScoreHud({ evaluation, isHero = false, onGoToCourses, 
       )}
 
       {/* ── Advisor notes — plain bullets ──────────────────────────────────── */}
-      {bullets.length > 0 && (
+      {bullets.length > 0 && !hasGoalFeedback && (
         <div className="border-t border-white/[0.06] px-6 py-4">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.15em] text-white/30">
             Advisor Notes
@@ -390,7 +394,7 @@ export function DifficultyScoreHud({ evaluation, isHero = false, onGoToCourses, 
       )}
 
       {/* ── Your goals vs. this schedule — two-column ──────────────────────── */}
-      {goalFeedback && (goalFeedback.academic_alignment.length > 0 || goalFeedback.practical_risks.length > 0) && (
+      {hasGoalFeedback && goalFeedback && (
         <div className="border-t border-hub-cyan/[0.12] bg-hub-cyan/[0.025] px-6 py-5">
           <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.15em] text-hub-cyan/50">
             Your Goals vs. This Schedule

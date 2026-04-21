@@ -3,32 +3,42 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, AlertTriangle, Check, ChevronRight, Clock, Images, Trash2, X, XCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, ChevronRight, Clock, GraduationCap, Images, Search, Trash2, X, XCircle } from "lucide-react";
 import { LeftSidebar } from "@/components/layout/LeftSidebar";
 import { IngestionHub } from "@/components/ingestion/IngestionHub";
 import { ProcessingModal } from "@/components/modals/ProcessingModal";
-import { ScheduleBriefingModal } from "@/components/modals/ScheduleBriefingModal";
 import { DossierScheduleWorkspace, type DossierScheduleWorkspaceHandle } from "@/components/dashboard/DossierScheduleWorkspace";
 import { HubToast, type ToastPayload } from "@/components/ui/HubToast";
 import { IdleWatermark } from "@/components/ui/IdleWatermark";
 import { usePlanSync } from "@/hooks/usePlanSync";
+import { createClient } from "@/lib/supabase/client";
 import { mockDossier } from "@/lib/mock/dossier";
 import { analyzeFit, researchScreenshot, InvalidScheduleError, RateLimitedError } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import { dossiersToScheduleItems } from "@/lib/mappers/dossiersToScheduleItems";
-import type { ClassDossier, ScheduleBriefing, ScheduleEvaluation, UiPhase } from "@/types/dossier";
+import type { ClassDossier, ScheduleEvaluation, UiPhase } from "@/types/dossier";
 
 const FINISH_PAD_MS = 650;
 
 const WHAT_YOU_GET = [
   { label: "PROFESSOR RATINGS", detail: "RMP scores + teaching style pulled live for your section" },
   { label: "GRADE DISTRIBUTIONS", detail: "CAPE/SunSET A–F breakdowns for every course" },
-  { label: "STUDENT POSTS", detail: "Reddit r/UCSD threads ranked by relevance" },
+  { label: "COMMUNITY DISCUSSIONS", detail: "Reddit r/UCSD threads ranked by relevance" },
   { label: "WORKLOAD SCORE", detail: "A ranked estimate of how survivable your full schedule and workload is" },
   { label: "CUSTOMIZABLE CALENDAR", detail: "Drag-reschedulable weekly view with custom commitments and export to Google Calendar" },
   { label: "MAP VISUALIZATION", detail: "Interactive campus map showing class locations and walking patterns between buildings" },
-  { label: "COMMUNITY CENTER", detail: "Chat with other students to gain insights on courses and professors!"}
 ] as const;
+
+type ProfileFitContext = {
+  major?: string;
+  careerPath?: string;
+  skillPreference?: string;
+  biggestConcerns?: string[];
+  transitMode?: string;
+  livingSituation?: string;
+  commuteMinutes?: number;
+  externalCommitmentHours?: number;
+};
 
 // ── Example input modal ───────────────────────────────────────────────────────
 
@@ -70,11 +80,11 @@ function ExampleInputModal({ onClose }: { onClose: () => void }) {
 
         {/* Header */}
         <div className="mb-5">
-          <p className="font-[family-name:var(--font-outfit)] text-lg font-semibold text-hub-text">
+          <p className="font-[family-name:var(--font-outfit)] text-[18px] font-semibold text-hub-text">
             What to upload
           </p>
-          <p className="mt-1 text-sm text-hub-text-secondary">
-            Use WebReg&apos;s List View for the highest-fidelity analysis, including exam dates.
+          <p className="mt-1 text-[16px] leading-relaxed text-hub-text-secondary">
+            Use WebReg&apos;s List View for the best analysis.
           </p>
         </div>
 
@@ -82,8 +92,8 @@ function ExampleInputModal({ onClose }: { onClose: () => void }) {
         <div className="mb-5 flex gap-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
           <p className="text-sm text-amber-200/80">
-            Our parser is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View omits
-            exam dates, leaving your Upcoming Exams sidebar empty.
+            Our app is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View does not display
+            exam dates, losing important information for your analysis.
           </p>
         </div>
 
@@ -104,9 +114,12 @@ function ExampleInputModal({ onClose }: { onClose: () => void }) {
                 <Check className="h-3.5 w-3.5 text-hub-cyan" />
               </span>
               <div>
-                <p className="text-sm font-bold text-hub-cyan">Use This View</p>
-                <p className="mt-0.5 text-xs text-hub-text-secondary leading-relaxed">
-                  Horizontal list view. Includes exam timings and full section detail — highest fidelity.
+                <p className="text-[18px] font-bold text-hub-cyan">Use This View</p>
+                <p className="mt-0.5 text-[16px] text-hub-text-secondary leading-relaxed">
+                  Horizontal list view: includes exam timings and full section detail for best analysis.
+                </p>
+                <p className="mt-5 text-[16px] leading-relaxed text-hub-text-muted">
+                  In WebReg: <strong className="text-hub-text-secondary">Take a screenshot OR print schedule → Save File</strong>.
                 </p>
               </div>
             </div>
@@ -127,19 +140,14 @@ function ExampleInputModal({ onClose }: { onClose: () => void }) {
                 <X className="h-3.5 w-3.5 text-hub-text-muted" />
               </span>
               <div>
-                <p className="text-sm font-semibold text-hub-text-secondary">Avoid This View</p>
-                <p className="mt-0.5 text-xs text-hub-text-muted leading-relaxed">
-                  Vertical calendar view. No exam data — incomplete analysis.
+                <p className="text-[18px] font-semibold text-hub-cyan">Avoid This View</p>
+                <p className="mt-0.5 text-[16px] text-hub-text-muted leading-relaxed">
+                  Vertical calendar view: missing exam info, leading to incomplete analysis.
                 </p>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="mt-5 text-center text-xs text-hub-text-muted">
-          In WebReg: <strong className="text-hub-text-secondary">Print Schedule → List View</strong>. Take a screenshot of that page.
-        </p>
       </motion.div>
     </motion.div>
   );
@@ -263,13 +271,11 @@ function BreadcrumbNav({
   phase,
   quarterLabel,
   activePlanTitle,
-  briefingTitle,
   onRename,
 }: {
   phase: string;
   quarterLabel: string;
   activePlanTitle: string;
-  briefingTitle?: string;
   onRename: (newTitle: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -277,8 +283,7 @@ function BreadcrumbNav({
   const [emptyWarning, setEmptyWarning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // The displayed plan name: briefingTitle wins, then saved plan title, then quarterLabel
-  const planName = briefingTitle || activePlanTitle || quarterLabel || "New schedule";
+  const planName = activePlanTitle || quarterLabel || "New schedule";
 
   function open() {
     setDraft(planName);
@@ -361,6 +366,7 @@ export function CommandCenter() {
     | { kind: "rate_limited"; message: string; retryAfterSeconds: number };
   const [uploadError, setUploadError] = useState<UploadError | null>(null);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  const [lookupQuery, setLookupQuery] = useState("");
   const countdownRef = useRef<number | null>(null);
 
   const startCountdown = useCallback((seconds: number) => {
@@ -379,18 +385,15 @@ export function CommandCenter() {
     }, 1000);
   }, []);
 
+  const handleOpenLookup = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("hub:open-lookup", { detail: { query: lookupQuery } }));
+  }, [lookupQuery]);
+
   useEffect(() => {
     if (!uploadError) return;
     const dismissId = window.setTimeout(() => setUploadError(null), 5000);
     return () => window.clearTimeout(dismissId);
   }, [uploadError]);
-
-  // Briefing state
-  const [showBriefing, setShowBriefing] = useState(false);
-  const [briefingResearchDone, setBriefingResearchDone] = useState(false);
-  const [briefingData, setBriefingData] = useState<ScheduleBriefing | null>(null);
-  const briefingDataRef = useRef<ScheduleBriefing | null>(null);
-  const briefingResolveRef = useRef<((data: ScheduleBriefing | null) => void) | null>(null);
 
   const workspaceRef = useRef<DossierScheduleWorkspaceHandle | null>(null);
   const timeoutsRef = useRef<number[]>([]);
@@ -487,10 +490,46 @@ export function CommandCenter() {
   const _isScheduleFile = (f: File | undefined): f is File =>
     !!f && (f.type.startsWith("image/") || f.type === "application/pdf");
 
+  const loadProfileFitContext = useCallback(async (): Promise<ProfileFitContext | null> => {
+    if (!authed) return null;
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "major,career_path,skill_preference,biggest_concerns,transit_mode,living_situation,commute_minutes,external_commitment_hours",
+        )
+        .maybeSingle();
+
+      if (error || !data) {
+        return null;
+      }
+
+      const context: ProfileFitContext = {
+        major: data.major ?? undefined,
+        careerPath: data.career_path ?? undefined,
+        skillPreference: data.skill_preference ?? undefined,
+        biggestConcerns: data.biggest_concerns ?? undefined,
+        transitMode: data.transit_mode ?? undefined,
+        livingSituation: data.living_situation ?? undefined,
+        commuteMinutes: data.commute_minutes ?? undefined,
+        externalCommitmentHours: data.external_commitment_hours ?? undefined,
+      };
+
+      return context;
+    } catch {
+      return null;
+    }
+  }, [authed]);
+
   const runIngestionFlow = useCallback(
     async (scheduleFile: File | undefined) => {
       if (processingLockRef.current) return;
       processingLockRef.current = true;
+
+      const fitContext = await loadProfileFitContext();
+
       clearRun();
       setPhase("processing");
 
@@ -503,27 +542,9 @@ export function CommandCenter() {
       if (_isScheduleFile(scheduleFile)) {
         const imageFile = scheduleFile;
         try {
-          // Open the briefing modal so the user can fill context while research runs.
-          // Create a promise that resolves only when the user explicitly acts (Begin/Skip).
-          briefingDataRef.current = null;
-          setBriefingData(null);
-          setBriefingResearchDone(false);
-          setShowBriefing(true);
-
-          const briefingPromise = new Promise<ScheduleBriefing | null>((resolve) => {
-            briefingResolveRef.current = resolve;
-          });
-
           const response = await researchScreenshot(imageFile);
           const parsed = response.results.map(courseResearchResultToDossier);
           if (parsed.length > 0) nextClasses = parsed;
-
-          // Research is done — update status in modal but keep it open until user acts
-          setBriefingResearchDone(true);
-
-          // Await user input (Begin → or Skip for now)
-          const currentBriefing = await briefingPromise;
-          briefingResolveRef.current = null;
 
           const minWaitPromise = new Promise<void>((resolve) => {
             const elapsed = Date.now() - started;
@@ -534,11 +555,12 @@ export function CommandCenter() {
 
           // Use cached fit evaluation when the fast-path returned one —
           // avoids a redundant Gemini call and keeps the score deterministic.
-          const cachedFit = response.fit_evaluation ?? null;
+          // If profile context exists, always re-run fit analysis so output is personalized.
+          const cachedFit = fitContext ? null : (response.fit_evaluation ?? null);
           const [fitResult] = await Promise.all([
             cachedFit
               ? Promise.resolve(cachedFit)
-              : analyzeFit(response.results, currentBriefing ?? undefined).catch(() => null),
+              : analyzeFit(response.results, fitContext ?? undefined).catch(() => null),
             minWaitPromise,
           ]);
 
@@ -556,9 +578,6 @@ export function CommandCenter() {
             };
           }
         } catch (err) {
-          briefingResolveRef.current?.(null);
-          briefingResolveRef.current = null;
-          setShowBriefing(false);
           processingLockRef.current = false;
           setPhase("idle");
 
@@ -602,7 +621,7 @@ export function CommandCenter() {
           const newPlanId = await handleAutoSave(
             nextClasses,
             nextEvaluation,
-            briefingDataRef.current?.scheduleTitle ?? undefined,
+            undefined,
           );
           if (newPlanId) setLastSavedAt(new Date());
         } catch {
@@ -611,14 +630,14 @@ export function CommandCenter() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clearRun, authed, handleAutoSave],
+    [clearRun, authed, handleAutoSave, loadProfileFitContext],
   );
 
   const handleManualSave = useCallback(async () => {
     setIsSaving(true);
     setSaveError(null);
     try {
-      await handleSave(briefingData?.scheduleTitle);
+      await handleSave();
       // Reset dirty state so isDirty goes false and the orange dot disappears.
       workspaceRef.current?.commit();
       setLastSavedAt(new Date());
@@ -629,7 +648,7 @@ export function CommandCenter() {
     } finally {
       setIsSaving(false);
     }
-  }, [handleSave, briefingData, workspaceRef]);
+  }, [handleSave, workspaceRef]);
 
   // Guard against deleting the last plan: show a warning modal first.
   const handleDeleteWithWarning = useCallback((id: string) => {
@@ -647,7 +666,7 @@ export function CommandCenter() {
     setIsSaving(true);
     setSaveError(null);
     try {
-      await handleSave(briefingData?.scheduleTitle);
+      await handleSave();
       workspaceRef.current?.commit();
       setLastSavedAt(new Date());
       setToast({ message: "Plan saved", variant: "success" });
@@ -657,23 +676,7 @@ export function CommandCenter() {
       setIsSaving(false);
     }
     switchToPlan(targetId);
-  }, [pendingSwitchId, handleSave, briefingData, switchToPlan]);
-
-  const handleBriefingSubmit = useCallback((data: ScheduleBriefing) => {
-    briefingDataRef.current = data;
-    setBriefingData(data);
-    setShowBriefing(false);
-    setBriefingResearchDone(false);
-    briefingResolveRef.current?.(data);
-    briefingResolveRef.current = null;
-  }, []);
-
-  const handleBriefingSkip = useCallback(() => {
-    setShowBriefing(false);
-    setBriefingResearchDone(false);
-    briefingResolveRef.current?.(null);
-    briefingResolveRef.current = null;
-  }, []);
+  }, [pendingSwitchId, handleSave, switchToPlan]);
 
   const handleFilesSelected = useCallback(
     (files: FileList | File[]) => {
@@ -738,12 +741,10 @@ export function CommandCenter() {
               phase={phase}
               quarterLabel={quarterLabel}
               activePlanTitle={activePlanTitle}
-              briefingTitle={briefingData?.scheduleTitle}
               onRename={(newTitle) => {
                 if (activePlanId && authed) {
                   void handleRenamePlan(activePlanId, newTitle);
                 }
-                setBriefingData((prev) => prev ? { ...prev, scheduleTitle: newTitle } : null);
               }}
             />
 
@@ -814,11 +815,6 @@ export function CommandCenter() {
                   {/* ── Col 2: Sample output + feature list ── */}
                   <div className="flex flex-col gap-5 lg:pt-1">
 
-                    <IdlePreviewCard />
-
-                    {/* Separator */}
-                    <div className="h-px bg-white/[0.05]" />
-
                     {/* What you get label */}
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -828,6 +824,11 @@ export function CommandCenter() {
                     >
                       What you get
                     </motion.p>
+
+                    <IdlePreviewCard />
+
+                    {/* Separator */}
+                    <div className="h-px bg-white/[0.05]" />
 
                     {/* Feature chips — 2 columns, scoped to this panel */}
                     <div className="grid grid-cols-2 gap-2.5">
@@ -848,6 +849,53 @@ export function CommandCenter() {
                         </motion.div>
                       ))}
                     </div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.26, delay: 0.76, ease: [0.22, 1, 0.36, 1] }}
+                      className="rounded-xl border border-white/[0.08] bg-hub-surface/75 p-4"
+                    >
+                      <div className="mb-3 flex items-start gap-2.5">
+                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-hub-cyan/25 bg-hub-cyan/10 text-hub-cyan">
+                          <GraduationCap className="h-4 w-4" />
+                        </span>
+                        <div>
+                          <p className="text-[14px] font-semibold text-hub-text">Look up a class or professor</p>
+                          <p className="mt-0.5 text-[12px] leading-relaxed text-hub-text-muted">
+                            Search any class or instructor to preview ratings, grade trends, and community signals.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2.5 sm:flex-row">
+                        <label className="relative block min-w-0 flex-1">
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-hub-text-muted" />
+                          <input
+                            type="text"
+                            value={lookupQuery}
+                            onChange={(e) => setLookupQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleOpenLookup();
+                              }
+                            }}
+                            placeholder="CSE 120, MATH 18, Prof. Smith..."
+                            className="w-full rounded-lg border border-white/[0.10] bg-white/[0.03] py-2.5 pl-9 pr-3 text-[13px] text-hub-text placeholder:text-hub-text-muted outline-none transition focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20"
+                          />
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={handleOpenLookup}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-hub-cyan/35 bg-hub-cyan/15 px-4 py-2.5 text-[13px] font-semibold text-hub-cyan transition hover:bg-hub-cyan/25"
+                        >
+                          Search
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </motion.div>
                   </div>
 
                 </motion.div>
@@ -895,7 +943,6 @@ export function CommandCenter() {
                       isSaving={isSaving}
                       lastSavedAt={lastSavedAt}
                       saveError={saveError}
-                      transitProfile={briefingData?.transitProfile}
                     />
                   )}
                 </motion.div>
@@ -907,12 +954,6 @@ export function CommandCenter() {
       </div>
 
       <ProcessingModal open={phase === "processing"} />
-      <ScheduleBriefingModal
-        open={showBriefing}
-        onSubmit={handleBriefingSubmit}
-        onSkip={handleBriefingSkip}
-        researchDone={briefingResearchDone}
-      />
 
       <AnimatePresence>
         {phase === "idle" && uploadError && (

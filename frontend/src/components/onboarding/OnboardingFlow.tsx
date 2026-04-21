@@ -12,6 +12,7 @@ import {
 import {
   AlertTriangle,
   Bike,
+  BrainCircuit,
   BookOpen,
   Briefcase,
   Car,
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  FlaskConical,
   MapPin,
   Navigation,
   Search,
@@ -30,6 +32,7 @@ import {
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { getLearningStyles } from "@/lib/onboarding/learning-styles";
+import { getConcernOptions } from "@/lib/onboarding/concerns";
 
 // ---------------------------------------------------------------------------
 // Static data
@@ -60,14 +63,20 @@ const CAREER_PATHS: Record<string, string[]> = {
   default: ["Industry / Private Sector", "Research / Academia", "Graduate School", "Medicine / Health", "Other"],
 };
 
-const CONCERN_OPTIONS: { id: string; label: string; icon: React.ReactNode }[] = [
-  { id: "workload",    label: "Heavy Workload",         icon: <BookOpen     className="h-3.5 w-3.5" /> },
-  { id: "scheduling", label: "Tight Scheduling",        icon: <Clock        className="h-3.5 w-3.5" /> },
-  { id: "commute",    label: "Long Commute",            icon: <Navigation   className="h-3.5 w-3.5" /> },
-  { id: "gpa",        label: "GPA Protection",          icon: <TrendingUp   className="h-3.5 w-3.5" /> },
-  { id: "math",       label: "Heavy Math Load",         icon: <Sigma        className="h-3.5 w-3.5" /> },
-  { id: "attendance", label: "Attendance Requirements", icon: <ClipboardList className="h-3.5 w-3.5" /> },
-];
+const CONCERN_ICON_MAP: Record<string, React.ReactNode> = {
+  workload: <BookOpen className="h-3.5 w-3.5" />,
+  scheduling: <Clock className="h-3.5 w-3.5" />,
+  commute: <Navigation className="h-3.5 w-3.5" />,
+  gpa: <TrendingUp className="h-3.5 w-3.5" />,
+  attendance: <ClipboardList className="h-3.5 w-3.5" />,
+  heavy_math_load: <Sigma className="h-3.5 w-3.5" />,
+  theoretical_classes: <BrainCircuit className="h-3.5 w-3.5" />,
+  lab_scheduling: <FlaskConical className="h-3.5 w-3.5" />,
+  ochem: <FlaskConical className="h-3.5 w-3.5" />,
+  group_projects: <BookOpen className="h-3.5 w-3.5" />,
+  reading_writing_intensity: <BookOpen className="h-3.5 w-3.5" />,
+  discussion_heavy: <ClipboardList className="h-3.5 w-3.5" />,
+};
 
 // Inline SVGs for transit modes that have no Lucide equivalent
 const WalkIcon = () => (
@@ -276,12 +285,19 @@ function MajorSelect({
 // ---------------------------------------------------------------------------
 
 function PreviewRadar({ data }: { data: OnboardingData }) {
-  const workload = data.concerns.includes("workload") ? 8 : data.concerns.includes("math") ? 7 : 5;
+  const hasAnyConcern = (...ids: string[]) => ids.some((id) => data.concerns.includes(id));
+
+  const workload =
+    hasAnyConcern("workload")
+      ? 8
+      : hasAnyConcern("heavy_math_load", "math", "ochem", "reading_writing_intensity")
+        ? 7
+        : 5;
   const commute =
     data.livingSituation === "off_campus"
       ? Math.min(10, Math.round((Number(data.commuteMinutes) || 20) / 6))
       : data.transitMode === "walking" ? 3 : 4;
-  const scheduling = data.concerns.includes("scheduling") ? 8 : 5;
+  const scheduling = hasAnyConcern("scheduling", "lab_scheduling", "group_projects") ? 8 : 5;
   const gpaRisk = data.concerns.includes("gpa") ? 7 : 4;
   const balance =
     Number(data.externalHours) >= 15 ? 8 : Number(data.externalHours) >= 8 ? 6 : 3;
@@ -300,12 +316,6 @@ function PreviewRadar({ data }: { data: OnboardingData }) {
   return (
     <div className="w-full">
       <div className="mb-1 flex items-center justify-between">
-        <p className="text-xs font-semibold text-hub-text-muted uppercase tracking-widest">
-          Your Risk Preview
-        </p>
-        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] font-medium text-hub-text-secondary">
-          Estimated from your profile
-        </span>
       </div>
       <ResponsiveContainer width="100%" height={220}>
         <RadarChart cx="50%" cy="50%" outerRadius="78%" data={radarData}>
@@ -325,8 +335,8 @@ function PreviewRadar({ data }: { data: OnboardingData }) {
           />
         </RadarChart>
       </ResponsiveContainer>
-      <p className="mt-1 text-center text-[11px] text-hub-text-muted">
-        Closer to the edge = harder in that category. Sharpens once you upload a schedule.
+      <p className="mt-1 text-center text-[13px] text-hub-text-muted">
+        Closeness to the edge represents difficulty in that category.
       </p>
     </div>
   );
@@ -414,6 +424,8 @@ function Slide2({
   data: OnboardingData;
   onChange: (patch: Partial<OnboardingData>) => void;
 }) {
+  const concernOptions = getConcernOptions(data.major);
+
   function toggleConcern(id: string) {
     const next = data.concerns.includes(id)
       ? data.concerns.filter((c) => c !== id)
@@ -427,13 +439,14 @@ function Slide2({
         <SectionLabel>Biggest Concerns</SectionLabel>
         <p className="mb-3 text-xs text-hub-text-muted">Select all that apply. Used to sharpen your schedule fitness score.</p>
         <div className="flex flex-wrap gap-2">
-          {CONCERN_OPTIONS.map(({ id, label, icon }) => (
+          {concernOptions.map(({ id, label }) => (
             <ChipButton
               key={id}
               selected={data.concerns.includes(id)}
               onClick={() => toggleConcern(id)}
             >
-              {icon}{label}
+              {CONCERN_ICON_MAP[id] ?? <BookOpen className="h-3.5 w-3.5" />}
+              {label}
             </ChipButton>
           ))}
         </div>
@@ -494,19 +507,25 @@ function Slide2({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 flex items-center gap-3">
+              <SectionLabel>Commute time</SectionLabel>
+              <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 shrink-0 text-hub-text-muted" />
-                <input
-                  type="number"
-                  min={1}
-                  max={180}
-                  placeholder="Average commute (minutes)"
-                  value={data.commuteMinutes}
-                  onChange={(e) =>
-                    onChange({ commuteMinutes: e.target.value === "" ? "" : Number(e.target.value) })
-                  }
-                  className="w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
-                />
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min={1}
+                    max={180}
+                    placeholder="0"
+                    value={data.commuteMinutes}
+                    onChange={(e) =>
+                      onChange({ commuteMinutes: e.target.value === "" ? "" : Number(e.target.value) })
+                    }
+                    className="w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3 pr-20 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-hub-text-muted">
+                    minutes
+                  </span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -518,17 +537,22 @@ function Slide2({
         <p className="mb-2 text-xs text-hub-text-muted">Jobs, research labs, intensive clubs, etc.</p>
         <div className="flex items-center gap-3">
           <Briefcase className="h-4 w-4 shrink-0 text-hub-text-muted" />
-          <input
-            type="number"
-            min={0}
-            max={60}
-            placeholder="Hours per week (0 if none)"
-            value={data.externalHours}
-            onChange={(e) =>
-              onChange({ externalHours: e.target.value === "" ? "" : Number(e.target.value) })
-            }
-            className="w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
-          />
+          <div className="relative flex-1">
+            <input
+              type="number"
+              min={0}
+              max={60}
+              placeholder="0"
+              value={data.externalHours}
+              onChange={(e) =>
+                onChange({ externalHours: e.target.value === "" ? "" : Number(e.target.value) })
+              }
+              className="w-full rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-3 pr-12 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-hub-text-muted">
+              hrs
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -541,8 +565,8 @@ function Slide3() {
       <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 flex gap-3">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
         <p className="text-sm text-amber-200/80">
-          Our parser is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View omits
-          exam dates, leaving your Upcoming Exams sidebar empty.
+          Our app is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View does not display
+          exam dates, losing important information for your analysis.
         </p>
       </div>
 
@@ -613,12 +637,10 @@ function Slide4({ data }: { data: OnboardingData }) {
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-4">
-        <BookOpen className="mt-1 h-5 w-5 shrink-0 text-hub-cyan" />
         <div>
           <p className="font-semibold text-hub-text">Your profile is set.</p>
           <p className="mt-1 text-sm text-hub-text-secondary">
-            Here's a preview of how your profile shapes the AI's analysis. Every time you upload a
-            schedule, this radar adapts to reflect the real quarter.
+            Every time you upload a schedule, this radar adapts to reflect your uploaded quarter.
           </p>
         </div>
       </div>
@@ -665,20 +687,21 @@ const SLIDE_TITLES = [
   "Academic Identity",
   "Your Constraints",
   "What to Upload",
-  "You're Ready",
+  "Results Preview",
 ];
 
 const SLIDE_SUBTITLES = [
   "Help us personalize every schedule analysis to your goals.",
   "These details shape your workload fitness score and commute warnings.",
   "Ensure your first upload is successful.",
-  "Here's how your profile will influence your quarter intelligence.",
+  "Here's how your profile will influence your results.",
 ];
 
 export function OnboardingFlow({ userId, onComplete }: Props) {
   const [slide, setSlide] = useState(0);
   const [dir, setDir] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [data, setData] = useState<OnboardingData>({
     major: "",
     careerPath: "",
@@ -692,6 +715,14 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
 
   const patch = useCallback((p: Partial<OnboardingData>) => setData((d) => ({ ...d, ...p })), []);
 
+  useEffect(() => {
+    const validConcernIds = new Set(getConcernOptions(data.major).map((opt) => opt.id));
+    setData((d) => ({
+      ...d,
+      concerns: d.concerns.filter((id) => validConcernIds.has(id)),
+    }));
+  }, [data.major]);
+
   function go(delta: number) {
     const next = slide + delta;
     if (next < 0 || next >= SLIDE_COUNT) return;
@@ -701,9 +732,11 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
 
   async function finish() {
     setSaving(true);
+    setSaveError(null);
     try {
       const supabase = createClient();
-      await supabase.from("profiles").update({
+      const { error } = await supabase.from("profiles").upsert({
+        id: userId,
         major: data.major || null,
         career_path: data.careerPath || null,
         skill_preference: data.skillPreference || null,
@@ -711,11 +744,14 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
         transit_mode: data.transitMode || null,
         living_situation: data.livingSituation || null,
         commute_minutes: data.commuteMinutes !== "" ? Number(data.commuteMinutes) : null,
-        external_commitment_hours: data.externalHours !== "" ? Number(data.externalHours) : null,
+        external_commitment_hours: data.externalHours === "" ? 0 : Number(data.externalHours),
         onboarding_complete: true,
-      }).eq("id", userId);
+      });
+      if (error) throw error;
       onComplete();
-    } catch {
+    } catch (err) {
+      console.log("Failed to save onboarding data:", err);
+      setSaveError(err instanceof Error ? err.message : "Failed to save. Please try again.");
       setSaving(false);
     }
   }
@@ -730,7 +766,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     >
       {/* Card — widens on the image-comparison slide */}
       <motion.div
-        animate={{ maxWidth: slide === 2 ? "1200px" : "900px" }}
+        animate={{ maxWidth: slide === 2 ? "900px" : "600px" }}
         transition={{ type: "tween" as const, ease: [0.22, 1, 0.36, 1] as const, duration: 0.35 }}
         className="relative w-full mx-4 rounded-2xl border border-white/[0.08] overflow-hidden"
         style={{ background: "#0d1f38", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }}
@@ -783,39 +819,44 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
           </div>
 
           {/* Footer nav */}
-          <div className="mt-8 flex items-center justify-between border-t border-white/[0.06] pt-5">
-            <button
-              type="button"
-              onClick={() => go(-1)}
-              disabled={slide === 0}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-30"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </button>
+          <div className="mt-8 border-t border-white/[0.06] pt-5">
+            {saveError && (
+              <p className="mb-3 text-center text-xs text-hub-danger">{saveError}</p>
+            )}
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => go(-1)}
+                disabled={slide === 0}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-30"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
 
-            <button
-              type="button"
-              onClick={isLast ? finish : () => go(1)}
-              disabled={!canGoNext || saving}
-              className={[
-                "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-150 outline-none disabled:pointer-events-none disabled:opacity-40",
-                isLast
-                  ? "bg-hub-cyan text-[#0a192f] hover:bg-hub-cyan/90"
-                  : "bg-hub-cyan/15 text-hub-cyan ring-1 ring-hub-cyan/35 hover:bg-hub-cyan/25",
-              ].join(" ")}
-            >
-              {saving ? (
-                "Saving…"
-              ) : isLast ? (
-                "Begin Research"
-              ) : (
-                <>
-                  Continue
-                  <ChevronRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
+              <button
+                type="button"
+                onClick={isLast ? finish : () => go(1)}
+                disabled={!canGoNext || saving}
+                className={[
+                  "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-150 outline-none disabled:pointer-events-none disabled:opacity-40",
+                  isLast
+                    ? "bg-hub-cyan text-[#0a192f] hover:bg-hub-cyan/90"
+                    : "bg-hub-cyan/15 text-hub-cyan ring-1 ring-hub-cyan/35 hover:bg-hub-cyan/25",
+                ].join(" ")}
+              >
+                {saving ? (
+                  "Saving…"
+                ) : isLast ? (
+                  "Continue"
+                ) : (
+                  <>
+                    Continue
+                    <ChevronRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>

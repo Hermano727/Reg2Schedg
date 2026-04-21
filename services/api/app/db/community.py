@@ -2,6 +2,9 @@
 Community posts and replies: Supabase CRUD operations.
 """
 
+from datetime import datetime, timedelta, timezone
+
+from fastapi import HTTPException
 from supabase import Client
 
 from app.db.client import get_supabase_client
@@ -15,6 +18,8 @@ from app.models.community import (
 )
 
 ATTACHMENT_SIGNED_URL_TTL = 3600  # seconds
+COMMUNITY_RATE_LIMIT_WINDOW_MINUTES = 10
+COMMUNITY_RATE_LIMIT_COUNT = 3
 
 
 def _sign_attachments(rows: list[dict]) -> list[PostAttachment]:
@@ -89,6 +94,106 @@ def _guess_mime(filename: str) -> str:
     if lower.endswith(".txt"):
         return "text/plain"
     return "application/octet-stream"
+
+
+def _rate_limit_action_label(action_type: str) -> str:
+    if action_type == "post_create":
+        return "posting"
+    if action_type == "reply_create":
+        return "commenting"
+    if action_type == "reply_attachment_upload":
+        return "uploading comment attachments"
+    return action_type.replace("_", " ")
+
+
+def _rate_limit_message(action_type: str, remaining_seconds: int) -> str:
+    minutes = (remaining_seconds + 59) // 60
+    label = _rate_limit_action_label(action_type)
+    return f"Too many attempts at {label}. Please wait {minutes} minute(s) before trying again."
+
+
+def log_community_action(
+    client: Client,
+    user_id: str,
+    action_type: str,
+    metadata: dict | None = None,
+) -> None:
+    client.table("community_action_log").insert(
+        {
+            "user_id": user_id,
+            "action_type": action_type,
+            "metadata": metadata or {},
+        }
+    ).execute()
+
+
+def get_community_timeout_remaining_seconds(
+    client: Client,
+    user_id: str,
+    action_type: str,
+) -> int:
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=COMMUNITY_RATE_LIMIT_WINDOW_MINUTES)).isoformat()
+
+    resp = (
+        client.table("community_action_log")
+        .select("created_at")
+        .eq("user_id", user_id)
+        .eq("action_type", action_type)
+        .gte("created_at", cutoff)
+        .order("created_at", desc=True)
+        .limit(COMMUNITY_RATE_LIMIT_COUNT)
+        .execute()
+    )
+    rows = resp.data or []
+    if len(rows) < COMMUNITY_RATE_LIMIT_COUNT:
+        return 0
+
+    most_recent_str = rows[0]["created_at"]
+    try:
+        most_recent = datetime.fromisoformat(most_recent_str.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+
+    timeout_until = most_recent + timedelta(minutes=COMMUNITY_RATE_LIMIT_WINDOW_MINUTES)
+    remaining = (timeout_until - datetime.now(timezone.utc)).total_seconds()
+    return max(0, int(remaining))
+
+
+def check_community_action_rate_limit(
+    client: Client,
+    user_id: str,
+    action_type: str,
+) -> None:
+    remaining = get_community_timeout_remaining_seconds(client, user_id, action_type)
+    if remaining > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "RATE_LIMITED",
+                "message": _rate_limit_message(action_type, remaining),
+                "retry_after_seconds": remaining,
+            },
+        )
+
+
+def record_community_action(
+    client: Client,
+    user_id: str,
+    action_type: str,
+    metadata: dict | None = None,
+) -> None:
+    """Record an action attempt, then enforce the rolling timeout window."""
+    log_community_action(client, user_id, action_type, metadata=metadata)
+    remaining = get_community_timeout_remaining_seconds(client, user_id, action_type)
+    if remaining > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "RATE_LIMITED",
+                "message": _rate_limit_message(action_type, remaining),
+                "retry_after_seconds": remaining,
+            },
+        )
 
 
 def list_community_posts(
@@ -297,6 +402,22 @@ def delete_community_reply(client: Client, reply_id: str, user_id: str) -> None:
     """Soft-delete a reply by setting is_deleted=true."""
     _get_reply_owned(client, reply_id, user_id)
     client.table("community_replies").update({"is_deleted": True}).eq("id", reply_id).execute()
+
+
+def delete_community_post(client: Client, post_id: str, user_id: str) -> None:
+    """Soft-delete a post by setting is_deleted=true."""
+    resp = (
+        client.table("community_posts")
+        .select("id, user_id")
+        .eq("id", post_id)
+        .limit(1)
+        .execute()
+    )
+    if not resp.data:
+        raise LookupError(f"Post {post_id} not found")
+    if resp.data[0]["user_id"] != user_id:
+        raise PermissionError("Not allowed to delete this post")
+    client.table("community_posts").update({"is_deleted": True}).eq("id", post_id).execute()
 
 
 def update_community_reply(client: Client, reply_id: str, user_id: str, body: str) -> None:

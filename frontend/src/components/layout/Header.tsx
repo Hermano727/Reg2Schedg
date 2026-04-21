@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell, HelpCircle, Users } from "lucide-react";
 import { UserAccountMenu } from "@/components/layout/UserAccountMenu";
 import { TritonMark } from "@/components/ui/TritonMark";
 import { CommandPalette, CommandPaletteTrigger, useCommandPalette } from "@/components/layout/CommandPalette";
+import { ClassLookupModal } from "@/components/lookup/ClassLookupModal";
 import { getNotifications, markNotificationsRead } from "@/lib/api/community";
 import { timeAgo } from "@/lib/community/utils";
 import type { NotificationOut } from "@/types/community";
@@ -24,12 +26,28 @@ function notificationMessage(n: NotificationOut): string {
 }
 
 export function Header({ user }: HeaderProps) {
+  const pathname = usePathname();
+  const isSettingsPage = pathname.startsWith("/profile") || pathname.startsWith("/settings");
+  const isCommunityPage = pathname.startsWith("/community");
   const [notifications, setNotifications] = useState<NotificationOut[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
+  const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupQuery, setLookupQuery] = useState("");
+
+  useEffect(() => {
+    function handleLookupOpen(event: Event) {
+      const customEvent = event as CustomEvent<{ query?: string }>;
+      setLookupQuery(customEvent.detail?.query?.trim() ?? "");
+      setLookupOpen(true);
+    }
+
+    window.addEventListener("hub:open-lookup", handleLookupOpen as EventListener);
+    return () => window.removeEventListener("hub:open-lookup", handleLookupOpen as EventListener);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -66,7 +84,7 @@ export function Header({ user }: HeaderProps) {
 
   return (
     <>
-      <header className="glass-panel sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-white/[0.07] pl-[72px] pr-4">
+      <header className={`glass-panel sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-white/[0.07] pr-4 ${isSettingsPage ? "pl-6" : "pl-[72px]"}`}>
         {/* Brand — offset to clear sidebar rail */}
         <a
           href="/"
@@ -83,18 +101,26 @@ export function Header({ user }: HeaderProps) {
         </div>
 
         {/* Right actions */}
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-1">
           <Link
             href="/community"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/[0.22] bg-white/[0.11] px-3 text-xs font-medium text-white/70 transition hover:border-white/[0.14] hover:text-white/90 active:scale-[0.98]"
+            aria-current={isCommunityPage ? "page" : undefined}
+            className={[
+              "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-xs font-semibold tracking-[0.02em] transition-all duration-150 active:scale-[0.98]",
+              isCommunityPage
+                ? "bg-hub-cyan/18 text-hub-cyan"
+                : "bg-hub-cyan/10 text-hub-cyan/85 hover:bg-hub-cyan/16 hover:text-hub-cyan",
+            ].join(" ")}
           >
             <Users className="h-3.5 w-3.5" />
             Community
           </Link>
 
+          <div className="mx-1 h-5 w-px bg-white/[0.10]" aria-hidden />
+
           <button
             type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-white/50 transition hover:border-white/[0.14] hover:text-white/80"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/60 transition hover:bg-white/[0.05] hover:text-white/80"
             aria-label="Help"
           >
             <HelpCircle className="h-3.5 w-3.5" />
@@ -106,7 +132,7 @@ export function Header({ user }: HeaderProps) {
               ref={bellRef}
               type="button"
               onClick={handleBellClick}
-              className="relative inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/[0.08] text-white/50 transition hover:border-white/[0.14] hover:text-white/80"
+              className="relative inline-flex h-8 w-8 items-center justify-center rounded-md text-white/60 transition hover:bg-white/[0.05] hover:text-white/80"
               aria-label="Notifications"
               aria-expanded={dropdownOpen}
             >
@@ -162,10 +188,21 @@ export function Header({ user }: HeaderProps) {
         </div>
       </header>
 
-      {/* Command palette — rendered at top level, accessible from anywhere */}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
+        onOpenLookup={(q) => {
+          setPaletteOpen(false);
+          setLookupQuery(q);
+          setLookupOpen(true);
+        }}
+      />
+
+      <ClassLookupModal
+        open={lookupOpen}
+        onClose={() => setLookupOpen(false)}
+        initialQuery={lookupQuery}
+        userId={user?.id}
       />
     </>
   );

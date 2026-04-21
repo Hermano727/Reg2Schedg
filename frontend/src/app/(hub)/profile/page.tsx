@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
-import { ProfileHub } from "@/components/profile/ProfileHub";
+import { ProfileSettingsHub } from "@/components/profile/ProfileSettingsHub";
 import { formatUpdatedAt } from "@/lib/hub/format-updated";
 import { createClient } from "@/lib/supabase/server";
 import type { VaultItem } from "@/types/dossier";
 import type { SavedPlanRow } from "@/types/saved-plan";
 import type { PostSummary } from "@/types/community";
+import type { ProfileData } from "@/components/profile/ProfileEditCard";
 
 function buildQuarterRollup(
   plans: Pick<SavedPlanRow, "id" | "quarter_label">[],
@@ -37,7 +38,9 @@ export default async function ProfilePage() {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, college, expected_grad_term, avatar_url")
+      .select(
+        "display_name, college, expected_grad_term, avatar_url, major, career_path, skill_preference, biggest_concerns, transit_mode, living_situation, commute_minutes, external_commitment_hours",
+      )
       .eq("id", user.id)
       .maybeSingle(),
     supabase
@@ -64,7 +67,7 @@ export default async function ProfilePage() {
       "id" | "title" | "quarter_label" | "status" | "updated_at"
     >[]) ?? [];
 
-  // Signed URL for avatar (1-year expiry; regenerated on each page load)
+  // Signed URL for avatar
   let avatarSignedUrl: string | null = null;
   const rawAvatarUrl = (profile as { avatar_url?: string | null } | null)?.avatar_url;
   if (rawAvatarUrl) {
@@ -105,6 +108,7 @@ export default async function ProfilePage() {
         mimeType: row.mime_type ?? null,
         sizeBytes: row.size_bytes ?? null,
         updatedAt: formatUpdatedAt(row.updated_at),
+        updatedAtFull: new Date(row.updated_at).toLocaleString(),
         signedUrl,
         communityPostId: row.community_post_id ?? null,
         communityReplyId: row.community_reply_id ?? null,
@@ -133,6 +137,19 @@ export default async function ProfilePage() {
     userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
   }));
 
+  const profileData: ProfileData | null = profile
+    ? {
+        major: (profile as { major?: string | null }).major ?? null,
+        career_path: (profile as { career_path?: string | null }).career_path ?? null,
+        skill_preference: (profile as { skill_preference?: string | null }).skill_preference ?? null,
+        biggest_concerns: (profile as { biggest_concerns?: string[] | null }).biggest_concerns ?? null,
+        transit_mode: (profile as { transit_mode?: string | null }).transit_mode ?? null,
+        living_situation: (profile as { living_situation?: string | null }).living_situation ?? null,
+        commute_minutes: (profile as { commute_minutes?: number | null }).commute_minutes ?? null,
+        external_commitment_hours: (profile as { external_commitment_hours?: number | null }).external_commitment_hours ?? null,
+      }
+    : null;
+
   const displayName =
     profile?.display_name?.trim() ||
     user.email?.split("@")[0] ||
@@ -141,17 +158,18 @@ export default async function ProfilePage() {
   const quarters = buildQuarterRollup(plans);
 
   return (
-    <ProfileHub
+    <ProfileSettingsHub
       userId={user.id}
       displayName={displayName}
       email={email}
-      college={profile?.college ?? null}
-      expectedGrad={profile?.expected_grad_term ?? null}
+      college={(profile as { college?: string | null } | null)?.college ?? null}
+      expectedGrad={(profile as { expected_grad_term?: string | null } | null)?.expected_grad_term ?? null}
       avatarUrl={avatarSignedUrl}
       plans={plans}
       quarters={quarters}
       vaultItems={vaultItems}
       userPosts={userPosts}
+      profileData={profileData}
     />
   );
 }

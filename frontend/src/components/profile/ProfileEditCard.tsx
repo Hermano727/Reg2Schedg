@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, MapPin, Briefcase, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getLearningStyles } from "@/lib/onboarding/learning-styles";
+import { getConcernOptions } from "@/lib/onboarding/concerns";
 
 // ---------------------------------------------------------------------------
 // Same static lists as OnboardingFlow (kept in sync here)
@@ -33,15 +34,6 @@ const CAREER_OPTIONS = [
   "Data Engineering", "Machine Learning / AI", "Business Analytics",
   "Hardware Engineering", "Embedded Systems", "Signal Processing",
   "Industry / Private Sector", "Graduate School", "Medicine / Health", "Other",
-];
-
-const CONCERN_OPTIONS = [
-  { id: "workload", label: "Heavy Workload" },
-  { id: "scheduling", label: "Tight Scheduling" },
-  { id: "commute", label: "Long Commute" },
-  { id: "gpa", label: "GPA Protection" },
-  { id: "math", label: "Heavy Math Load" },
-  { id: "attendance", label: "Attendance Requirements" },
 ];
 
 const TRANSIT_OPTIONS = [
@@ -224,14 +216,31 @@ function SimpleSelect({
 // Main component
 // ---------------------------------------------------------------------------
 
+function validateProfile(form: ProfileData): string | null {
+  if (!form.major) return "Please select your declared major.";
+  if (!form.career_path) return "Please select a target career path.";
+  if (!form.skill_preference) return "Please select a learning style.";
+  if (!form.biggest_concerns?.length) return "Please select at least one concern.";
+  if (!form.transit_mode) return "Please select your primary transit mode.";
+  if (!form.living_situation) return "Please select your living situation.";
+  if (
+    form.living_situation === "off_campus" &&
+    (form.commute_minutes == null || form.commute_minutes <= 0)
+  )
+    return "Please enter your commute time.";
+  return null;
+}
+
 export function ProfileEditCard({ userId, initial }: Props) {
   const [form, setForm] = useState<ProfileData>(initial);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   function patch(p: Partial<ProfileData>) {
     setForm((f) => ({ ...f, ...p }));
     setSaved(false);
+    setValidationError(null);
   }
 
   function toggleConcern(id: string) {
@@ -240,8 +249,22 @@ export function ProfileEditCard({ userId, initial }: Props) {
     patch({ biggest_concerns: next });
   }
 
+  useEffect(() => {
+    const validConcernIds = new Set(getConcernOptions(form.major ?? "").map((opt) => opt.id));
+    setForm((f) => ({
+      ...f,
+      biggest_concerns: (f.biggest_concerns ?? []).filter((id) => validConcernIds.has(id)),
+    }));
+  }, [form.major]);
+
   async function handleSave() {
+    const err = validateProfile(form);
+    if (err) {
+      setValidationError(err);
+      return;
+    }
     setSaving(true);
+    setValidationError(null);
     try {
       const supabase = createClient();
       await supabase.from("profiles").update({
@@ -306,7 +329,7 @@ export function ProfileEditCard({ userId, initial }: Props) {
       <div>
         <FieldLabel>Biggest Concerns</FieldLabel>
         <div className="flex flex-wrap gap-2">
-          {CONCERN_OPTIONS.map(({ id, label }) => (
+          {getConcernOptions(form.major ?? "").map(({ id, label }) => (
             <ChipToggle
               key={id}
               selected={(form.biggest_concerns ?? []).includes(id)}
@@ -368,19 +391,27 @@ export function ProfileEditCard({ userId, initial }: Props) {
               exit={{ opacity: 0, height: 0 }}
               className="mt-3 overflow-hidden"
             >
+              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-hub-text-muted">
+                Commute time
+              </p>
               <div className="flex items-center gap-3">
                 <MapPin className="h-4 w-4 shrink-0 text-hub-text-muted" />
-                <input
-                  type="number"
-                  min={1}
-                  max={180}
-                  placeholder="Average commute (minutes)"
-                  value={form.commute_minutes ?? ""}
-                  onChange={(e) =>
-                    patch({ commute_minutes: e.target.value === "" ? null : Number(e.target.value) })
-                  }
-                  className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
-                />
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    min={1}
+                    max={180}
+                    placeholder="0"
+                    value={form.commute_minutes ?? ""}
+                    onChange={(e) =>
+                      patch({ commute_minutes: e.target.value === "" ? null : Number(e.target.value) })
+                    }
+                    className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 pr-16 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-hub-text-muted">
+                    minutes
+                  </span>
+                </div>
               </div>
             </motion.div>
           )}
@@ -392,22 +423,31 @@ export function ProfileEditCard({ userId, initial }: Props) {
         <FieldLabel>Weekly External Commitments</FieldLabel>
         <div className="flex items-center gap-3">
           <Briefcase className="h-4 w-4 shrink-0 text-hub-text-muted" />
-          <input
-            type="number"
-            min={0}
-            max={60}
-            placeholder="Hours per week (0 if none)"
-            value={form.external_commitment_hours ?? ""}
-            onChange={(e) =>
-              patch({ external_commitment_hours: e.target.value === "" ? null : Number(e.target.value) })
-            }
-            className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
-          />
+          <div className="relative flex-1">
+            <input
+              type="number"
+              min={0}
+              max={60}
+              placeholder="0"
+              value={form.external_commitment_hours ?? ""}
+              onChange={(e) =>
+                patch({ external_commitment_hours: e.target.value === "" ? null : Number(e.target.value) })
+              }
+              className="w-full rounded-lg border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 pr-12 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-hub-text-muted">
+              hrs
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Save button */}
-      <div className="flex items-center gap-3 border-t border-white/[0.06] pt-4">
+      <div className="border-t border-white/[0.06] pt-4">
+        {validationError && (
+          <p className="mb-3 text-xs text-hub-danger">{validationError}</p>
+        )}
+        <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={handleSave}
@@ -429,6 +469,7 @@ export function ProfileEditCard({ userId, initial }: Props) {
             </motion.span>
           )}
         </AnimatePresence>
+        </div>
       </div>
     </div>
   );

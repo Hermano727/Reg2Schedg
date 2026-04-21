@@ -102,7 +102,7 @@ export interface FitAnalysisResult {
 
 export async function analyzeFit(
   results: CourseResearchResult[],
-  context?: ScheduleBriefing,
+  context?: ScheduleBriefing | Record<string, unknown>,
 ): Promise<FitAnalysisResult> {
   const res = await fetch("http://localhost:8000/api/fit-analysis", {
     method: "POST",
@@ -140,6 +140,44 @@ async function _getAuthHeaders(): Promise<Record<string, string>> {
     }
   } catch { /* unauthenticated — fall through */ }
   return {};
+}
+
+export interface CourseLookupSearchResult {
+  cache_id: string;
+  course_code: string;
+  course_title: string | null;
+  professor_name: string;
+  updated_at: string;
+}
+
+export async function searchCourseCache(
+  courseCode: string,
+  professorName?: string,
+): Promise<CourseLookupSearchResult[]> {
+  const params = new URLSearchParams({ course_code: courseCode });
+  if (professorName) params.set("professor_name", professorName);
+  const res = await fetch(`http://localhost:8000/api/lookup-course/search?${params}`);
+  if (!res.ok) throw new Error(`Search failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CourseLookupSearchResult[]>;
+}
+
+export async function expandCacheEntry(cacheId: string): Promise<CourseResearchResult> {
+  const res = await fetch(`http://localhost:8000/api/lookup-course/${cacheId}`);
+  if (!res.ok) throw new Error(`Expand failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CourseResearchResult>;
+}
+
+export async function researchCourseByText(
+  courseCode: string,
+  professorName?: string,
+): Promise<CourseResearchResult> {
+  const res = await fetch("http://localhost:8000/api/lookup-course/research", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ course_code: courseCode, professor_name: professorName || null }),
+  });
+  if (!res.ok) throw new Error(`Research failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CourseResearchResult>;
 }
 
 export async function researchScreenshot(

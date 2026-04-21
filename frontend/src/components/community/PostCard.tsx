@@ -4,8 +4,8 @@ import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronUp, ChevronDown, MessageSquare, Tag } from "lucide-react";
-import { toggleUpvote, togglePostDownvote } from "@/lib/api/community";
+import { ChevronUp, ChevronDown, MessageSquare, Tag, Trash2 } from "lucide-react";
+import { toggleUpvote, togglePostDownvote, deletePost } from "@/lib/api/community";
 import { timeAgo, getInitials } from "@/lib/community/utils";
 import type { PostSummary } from "@/types/community";
 
@@ -90,9 +90,13 @@ function UpvoteBurst({
 // PostCard
 // ---------------------------------------------------------------------------
 
-type PostCardProps = { post: PostSummary };
+type PostCardProps = {
+  post: PostSummary;
+  currentUserId?: string;
+  onDeleted?: (id: string) => void;
+};
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, currentUserId, onDeleted }: PostCardProps) {
   const [upvoteCount, setUpvoteCount] = useState(post.upvoteCount);
   const [downvoteCount, setDownvoteCount] = useState(post.downvoteCount);
   const [userHasUpvoted, setUserHasUpvoted] = useState(post.userHasUpvoted);
@@ -100,6 +104,25 @@ export function PostCard({ post }: PostCardProps) {
   const [voting, setVoting] = useState(false);
   const [burstTrigger, setBurstTrigger] = useState(0);
   const upvoteBtnRef = useRef<HTMLButtonElement>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const isOwner = !!currentUserId && currentUserId === post.userId;
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deletePost(post.id);
+      onDeleted?.(post.id);
+    } catch {
+      setConfirmDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const score = upvoteCount - downvoteCount;
 
@@ -154,6 +177,44 @@ export function PostCard({ post }: PostCardProps) {
       href={`/community/${post.id}`}
       className="glass-panel group relative block overflow-hidden rounded-xl border border-white/[0.08] p-5 transition-all duration-200 hover:border-hub-cyan/30 hover:bg-hub-surface-elevated/60 hover:shadow-[0_4px_24px_rgba(0,212,255,0.06)] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-transparent before:transition hover:before:bg-hub-cyan"
     >
+      {/* Owner delete button */}
+      {isOwner && (
+        <div
+          className="absolute right-3 top-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        >
+          {confirmDelete ? (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-hub-danger/40 bg-hub-bg px-2 py-1">
+              <span className="text-[11px] text-hub-danger">Delete?</span>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-[11px] font-semibold text-hub-danger hover:text-hub-danger/80 disabled:opacity-50 transition"
+              >
+                {deleting ? "…" : "Yes"}
+              </button>
+              <span className="text-hub-text-muted text-[11px]">/</span>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(false); }}
+                className="text-[11px] text-hub-text-muted hover:text-hub-text transition"
+              >
+                No
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setConfirmDelete(true); }}
+              aria-label="Delete post"
+              className="flex h-6 w-6 items-center justify-center rounded-md bg-hub-bg/80 text-hub-text-muted hover:text-hub-danger transition"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         {/* Course + professor tag */}
         {(post.courseCode || post.professorName) && (

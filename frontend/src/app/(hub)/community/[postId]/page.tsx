@@ -29,18 +29,56 @@ export default async function ThreadPage({ params }: Props) {
     notFound();
   }
 
-  const [{ data: rawReplies }, { data: rawAttachments }] = await Promise.all([
-    supabase
-      .from("community_replies_with_author")
-      .select("*")
-      .eq("post_id", postId)
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("community_post_attachments")
-      .select("id, storage_path, name, mime_type, size_bytes")
-      .eq("post_id", postId)
-      .order("created_at", { ascending: true }),
-  ]);
+  const { data: rawReplies } = await supabase
+    .from("community_replies_with_author")
+    .select("*")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
+
+  const replyIds = (rawReplies ?? []).map((row) => row.id as string);
+  let attachmentsQuery = supabase
+    .from("community_attachments")
+    .select("id, post_id, reply_id, storage_path, name, mime_type, size_bytes");
+
+  if (replyIds.length > 0) {
+    attachmentsQuery = attachmentsQuery.or(`post_id.eq.${postId},reply_id.in.(${replyIds.join(",")})`);
+  } else {
+    attachmentsQuery = attachmentsQuery.eq("post_id", postId);
+  }
+
+  const { data: rawAttachments } = await attachmentsQuery.order("created_at", { ascending: true });
+
+  const signedAttachments = await Promise.all(
+    (rawAttachments ?? []).map(async (row) => {
+      const { data: signed } = await supabase.storage
+        .from("user-content")
+        .createSignedUrl(row.storage_path as string, 3600);
+      return {
+        id: row.id as string,
+        replyId: (row.reply_id as string | null) ?? null,
+        postId: (row.post_id as string | null) ?? null,
+        storagePath: row.storage_path as string,
+        name: row.name as string,
+        mimeType: row.mime_type as string,
+        sizeBytes: row.size_bytes as number,
+        signedUrl: signed?.signedUrl ?? undefined,
+      };
+    }),
+  );
+
+  const postAttachments: PostAttachment[] = signedAttachments
+    .filter((row) => row.postId === postId && row.replyId === null)
+    .map(({ replyId: _replyId, postId: _postId, ...attachment }) => attachment);
+
+  const replyAttachmentsByReplyId = new Map<string, PostAttachment[]>();
+  signedAttachments
+    .filter((row) => row.replyId)
+    .forEach(({ replyId, postId: _postId, ...attachment }) => {
+      const rid = replyId as string;
+      const existing = replyAttachmentsByReplyId.get(rid) ?? [];
+      existing.push(attachment);
+      replyAttachmentsByReplyId.set(rid, existing);
+    });
 
   const replies: ReplyOut[] = (rawReplies ?? []).map((row) => ({
     id: row.id as string,
@@ -58,24 +96,8 @@ export default async function ThreadPage({ params }: Props) {
     downvoteCount: (row.downvote_count as number) ?? 0,
     userHasUpvoted: (row.user_has_upvoted as boolean) ?? false,
     userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
+    attachments: replyAttachmentsByReplyId.get(row.id as string) ?? [],
   }));
-
-  // Generate signed URLs for attachments (1-hour validity)
-  const attachments: PostAttachment[] = await Promise.all(
-    (rawAttachments ?? []).map(async (row) => {
-      const { data: signed } = await supabase.storage
-        .from("user-content")
-        .createSignedUrl(row.storage_path as string, 3600);
-      return {
-        id: row.id as string,
-        storagePath: row.storage_path as string,
-        name: row.name as string,
-        mimeType: row.mime_type as string,
-        sizeBytes: row.size_bytes as number,
-        signedUrl: signed?.signedUrl ?? undefined,
-      };
-    }),
-  );
 
   const post: PostDetail = {
     id: rawPost.id as string,
@@ -95,7 +117,7 @@ export default async function ThreadPage({ params }: Props) {
     userHasUpvoted: (rawPost.user_has_upvoted as boolean) ?? false,
     userHasDownvoted: (rawPost.user_has_downvoted as boolean) ?? false,
     replies,
-    attachments,
+    attachments: postAttachments,
   };
 
   return <ThreadView post={post} />;

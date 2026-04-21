@@ -121,6 +121,11 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
     setTotal((t) => t + 1);
   }
 
+  function handlePostDeleted(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    setTotal((t) => Math.max(0, t - 1));
+  }
+
   return (
     <div className="w-full px-8 py-8">
       {/* Header */}
@@ -359,7 +364,7 @@ export function CommunityHub({ initialPosts, initialTotal, userId }: CommunityHu
                 visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } },
               }}
             >
-              <PostCard post={post} />
+              <PostCard post={post} currentUserId={userId} onDeleted={handlePostDeleted} />
             </motion.div>
           ))
         )}

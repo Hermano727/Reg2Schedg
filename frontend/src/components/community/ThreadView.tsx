@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ArrowLeft, ChevronUp, ChevronDown, MessageSquare, Tag, MoreHorizontal, Download, Flag, FileText, Bookmark, Check } from "lucide-react";
-import { toggleUpvote, togglePostDownvote, saveAttachmentToVault } from "@/lib/api/community";
+import { ArrowLeft, ChevronUp, ChevronDown, MessageSquare, Tag, MoreHorizontal, Download, Flag, FileText, Bookmark, Check, Trash2 } from "lucide-react";
+import { toggleUpvote, togglePostDownvote, saveAttachmentToVault, deletePost } from "@/lib/api/community";
 import { timeAgo, getInitials } from "@/lib/community/utils";
 import { MarkdownBody } from "./MarkdownBody";
 import { ReplyComposer } from "./ReplyComposer";
@@ -123,8 +124,11 @@ function buildTree(flat: ReplyOut[]): ReplyOut[] {
 }
 
 export function ThreadView({ post }: ThreadViewProps) {
+  const router = useRouter();
   const [replies, setReplies] = useState<ReplyOut[]>(post.replies);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [confirmDeletePost, setConfirmDeletePost] = useState(false);
+  const [deletingPost, setDeletingPost] = useState(false);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
@@ -142,6 +146,19 @@ export function ThreadView({ post }: ThreadViewProps) {
 
   const score = upvoteCount - downvoteCount;
   const rootReplies = buildTree(replies);
+  const isPostOwner = !!currentUserId && currentUserId === post.userId;
+
+  async function handleDeletePost() {
+    if (deletingPost) return;
+    setDeletingPost(true);
+    try {
+      await deletePost(post.id);
+      router.push("/community");
+    } catch {
+      setConfirmDeletePost(false);
+      setDeletingPost(false);
+    }
+  }
 
   async function handleUpvote() {
     if (voting) return;
@@ -246,8 +263,43 @@ export function ThreadView({ post }: ThreadViewProps) {
           <span className="text-xs text-hub-text-muted">·</span>
           <span className="text-xs text-hub-text-muted">{timeAgo(post.createdAt)}</span>
 
-          {/* Vote row */}
-          <div className="ml-auto flex items-center gap-0.5 rounded-full bg-white/[0.06] px-1.5 py-1">
+          {/* Vote row + owner delete */}
+          <div className="ml-auto flex items-center gap-2">
+            {isPostOwner && (
+              <div className="flex items-center">
+                {confirmDeletePost ? (
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-hub-danger/40 bg-hub-bg px-2 py-1">
+                    <span className="text-[11px] text-hub-danger">Delete post?</span>
+                    <button
+                      type="button"
+                      onClick={handleDeletePost}
+                      disabled={deletingPost}
+                      className="text-[11px] font-semibold text-hub-danger hover:text-hub-danger/80 disabled:opacity-50 transition"
+                    >
+                      {deletingPost ? "…" : "Yes"}
+                    </button>
+                    <span className="text-hub-text-muted text-[11px]">/</span>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeletePost(false)}
+                      className="text-[11px] text-hub-text-muted hover:text-hub-text transition"
+                    >
+                      No
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeletePost(true)}
+                    aria-label="Delete post"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-hub-text-muted hover:text-hub-danger transition"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+          <div className="flex items-center gap-0.5 rounded-full bg-white/[0.06] px-1.5 py-1">
             <button
               type="button"
               onClick={handleUpvote}
@@ -277,6 +329,7 @@ export function ThreadView({ post }: ThreadViewProps) {
             >
               <ChevronDown className="h-4 w-4" />
             </button>
+          </div>
           </div>
         </div>
       </div>

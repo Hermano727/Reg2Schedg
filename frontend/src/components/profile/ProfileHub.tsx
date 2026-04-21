@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -13,6 +13,7 @@ import {
   GraduationCap,
   MessageSquare,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
@@ -22,6 +23,7 @@ import { AvatarCropModal } from "./AvatarCropModal";
 import { VaultUploadModal } from "./VaultUploadModal";
 import type { VaultItem } from "@/types/dossier";
 import type { PostSummary } from "@/types/community";
+import { getPost } from "@/lib/api/community";
 
 export type ProfilePlan = {
   id: string;
@@ -80,6 +82,38 @@ export function ProfileHub({
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
+  const [postMetaByItemId, setPostMetaByItemId] = useState<Record<string, {
+    courseCode?: string | null;
+    professorName?: string | null;
+    replyAuthor?: string | null;
+    replyBody?: string | null;
+  }>>({});
+
+  // Fetch post metadata for community-saved vault items
+  useEffect(() => {
+    const communityItems = vaultItems.filter((i) => i.kind === "community" && i.communityPostId);
+    if (communityItems.length === 0) return;
+    communityItems.forEach((item) => {
+      if (postMetaByItemId[item.id]) return;
+      (async () => {
+        try {
+          const post = await getPost(item.communityPostId!);
+          const meta: any = {
+            courseCode: post.courseCode ?? null,
+            professorName: post.professorName ?? null,
+          };
+          if (item.communityReplyId) {
+            const reply = post.replies?.find((r: any) => r.id === item.communityReplyId);
+            meta.replyAuthor = reply?.authorDisplayName ?? null;
+            meta.replyBody = reply?.body ?? null;
+          }
+          setPostMetaByItemId((s) => ({ ...s, [item.id]: meta }));
+        } catch (err) {
+          // ignore
+        }
+      })();
+    });
+  }, [vaultItems, postMetaByItemId]);
 
   const initials =
     displayName
@@ -116,7 +150,7 @@ export function ProfileHub({
   }
 
   return (
-    <div className="relative mx-auto min-h-0 w-full max-w-5xl flex-1 px-4 py-8 pb-16 lg:px-8">
+    <div className="relative min-h-0 w-full max-w-5xl flex-1 px-4 py-8 pb-16 lg:px-8">
       {/* Chart grid: utilitarian "nav plot" without overwhelming the hub canvas */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
@@ -351,7 +385,7 @@ export function ProfileHub({
         animate="show"
         className="relative mt-10"
       >
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.1] pb-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-3">
           <div className="flex items-center gap-2">
             <FolderArchive className="h-5 w-5 text-hub-cyan" aria-hidden />
             <div>
@@ -393,34 +427,63 @@ export function ProfileHub({
             vaultItems.map((item) =>
               item.kind === "community" && item.communityPostId ? (
                 // Community attachment save — rich card with post + comment context
-                <li key={item.id}>
-                  <Link
-                    href={`/community/${item.communityPostId}${item.communityReplyId ? `#reply-${item.communityReplyId}` : ""}`}
-                    className="flex w-full flex-col gap-2 rounded-xl border border-hub-cyan/20 bg-hub-surface/50 p-4 transition hover:border-hub-cyan/40 hover:bg-hub-surface-elevated/60"
-                  >
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0 text-hub-cyan/70" aria-hidden />
-                      <span className="truncate text-xs font-medium text-hub-cyan">
-                        {item.communityPostTitle ?? "Community post"}
-                      </span>
+                <li key={item.id} className="sm:col-span-2">
+                  <article className="mb-6 p-0">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1 pr-4">
+                        <div className="flex items-baseline gap-3">
+                          <h3 className="truncate text-sm font-medium text-hub-cyan">{item.communityPostTitle ?? "Community post"}</h3>
+                          <span className="text-[11px] text-hub-text-muted">
+                            {(postMetaByItemId[item.id]?.courseCode || postMetaByItemId[item.id]?.professorName)
+                              ? `${postMetaByItemId[item.id]?.courseCode ?? ""} ${postMetaByItemId[item.id]?.professorName ?? ""}`.trim()
+                              : ""}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-hub-text">
+                        {item.updatedAtFull ?? item.updatedAt}
+                      </div>
                     </div>
-                    {item.communityReplyPreview && (
-                      <p className="line-clamp-2 text-sm italic text-hub-text-secondary/70">
-                        &ldquo;{item.communityReplyPreview}&rdquo;
-                      </p>
-                    )}
-                    {item.signedUrl && item.mimeType?.startsWith("image/") && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.signedUrl}
-                        alt={item.name}
-                        className="h-32 w-full rounded-lg object-cover"
-                      />
-                    )}
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
-                      {item.name} · <span className="text-hub-cyan/60">Go to comment →</span>
-                    </span>
-                  </Link>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr,240px]">
+                      <div>
+                        {item.signedUrl && item.mimeType?.startsWith("image/") && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.signedUrl} alt={item.name} className="w-full object-cover" />
+                        )}
+                        {item.communityReplyPreview && (
+                          <p className="mt-3 line-clamp-2 text-sm italic text-hub-text-secondary/70">&ldquo;{item.communityReplyPreview}&rdquo;</p>
+                        )}
+                        <div className="mt-3 text-[10px] text-hub-text-muted uppercase tracking-wide">{item.name}</div>
+                      </div>
+
+                      <aside className="w-full lg:w-[240px]">
+                        <h4 className="text-sm font-semibold text-hub-text-muted">Post logistics</h4>
+                        <ul className="mt-3 space-y-2 text-sm text-hub-text-secondary">
+                          <li>
+                            <div className="text-[11px] text-hub-text-muted">Saved</div>
+                            <div className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-hub-text">{item.updatedAtFull ?? item.updatedAt}</div>
+                          </li>
+                          <li>
+                            <div className="text-[11px] text-hub-text-muted">Comment</div>
+                            <div className="mt-0.5 italic text-sm text-hub-text">{postMetaByItemId[item.id]?.replyBody ?? item.communityReplyPreview ?? "—"}</div>
+                          </li>
+                          <li>
+                            <div className="text-[11px] text-hub-text-muted">Original commenter</div>
+                            <div className="mt-0.5 text-sm text-hub-text">{postMetaByItemId[item.id]?.replyAuthor ?? "—"}</div>
+                          </li>
+                        </ul>
+
+                        <div className="mt-4">
+                          <Link href={`/community/${item.communityPostId}${item.communityReplyId ? `#reply-${item.communityReplyId}` : ""}`} className="inline-flex items-center gap-1 text-hub-cyan text-sm">
+                            <span>Go to comment</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </aside>
+                    </div>
+                  </article>
                 </li>
               ) : item.signedUrl ? (
                 // Regular file with signed URL — downloadable

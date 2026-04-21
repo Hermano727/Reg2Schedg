@@ -24,6 +24,17 @@ async function getAccessToken(): Promise<string> {
   return session.access_token;
 }
 
+async function readApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  const detail = await res.json().catch(() => null);
+  const payload = detail?.detail ?? detail;
+  if (typeof payload === "string") return payload;
+  if (payload && typeof payload === "object") {
+    if (typeof payload.message === "string") return payload.message;
+    if (typeof payload.detail === "string") return payload.detail;
+  }
+  return fallback;
+}
+
 export async function listPosts(opts?: {
   courseCode?: string;
   professorName?: string;
@@ -83,11 +94,22 @@ export async function createPost(
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const detail = await res.json().catch(() => null);
-    const msg = detail?.detail ?? `createPost failed: ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    throw new Error(await readApiErrorMessage(res, `createPost failed: ${res.status}`));
   }
   return res.json() as Promise<PostSummary>;
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(`${getApiBaseUrl()}/api/community/${postId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const msg = detail?.detail ?? `deletePost failed: ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
 }
 
 export async function createReply(
@@ -107,9 +129,7 @@ export async function createReply(
     },
   );
   if (!res.ok) {
-    const detail = await res.json().catch(() => null);
-    const msg = detail?.detail ?? `createReply failed: ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    throw new Error(await readApiErrorMessage(res, `createReply failed: ${res.status}`));
   }
   return res.json() as Promise<PostDetail>;
 }

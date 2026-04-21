@@ -30,6 +30,7 @@ export interface VaultItem {
   mimeType?: string | null;
   sizeBytes?: number | null;
   updatedAt: string;
+  updatedAtFull?: string;
   signedUrl?: string;
   // Community attachment saves
   communityPostId?: string | null;

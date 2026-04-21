@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Image as ImageIcon, Paperclip, X } from "lucide-react";
 import { createPost } from "@/lib/api/community";
@@ -24,9 +24,11 @@ type CreatePostModalProps = {
   trigger: React.ReactNode;
   onCreated: (post: PostSummary) => void;
   userId?: string;
+  initialCourseCode?: string;
+  initialProfessorName?: string;
 };
 
-export function CreatePostModal({ trigger, onCreated, userId }: CreatePostModalProps) {
+export function CreatePostModal({ trigger, onCreated, userId, initialCourseCode, initialProfessorName }: CreatePostModalProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -38,6 +40,14 @@ export function CreatePostModal({ trigger, onCreated, userId }: CreatePostModalP
   const [attachments, setAttachments] = useState<AttachmentState[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Seed pre-filled values when opened from an external context (e.g. ClassLookupModal)
+  useEffect(() => {
+    if (open) {
+      if (initialCourseCode) setCourseCode(initialCourseCode);
+      if (initialProfessorName) setProfessorName(initialProfessorName);
+    }
+  }, [open, initialCourseCode, initialProfessorName]);
 
   function toggleGeneralTag(tag: string) {
     setGeneralTags((prev) =>

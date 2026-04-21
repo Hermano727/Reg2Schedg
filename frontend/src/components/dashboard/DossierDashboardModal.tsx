@@ -744,7 +744,7 @@ export function DossierDashboardModal({
 // Dashboard content
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DashboardContent({
+export function DashboardContent({
   dossier,
   index,
   total,

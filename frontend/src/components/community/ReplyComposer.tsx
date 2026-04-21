@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip, X, FileText, ImageIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/storage";
@@ -10,6 +10,9 @@ import type { ReplyOut } from "@/types/community";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "text/plain", "application/pdf"];
 const MAX_BYTES = 10 * 1_000_000;
+const MAX_ATTACHMENTS = 3;
+const MAX_UPLOAD_FAILURES = 3;
+const UPLOAD_COOLDOWN_MS = 10 * 60 * 1000;
 
 type PendingAttachment = {
   file: File;
@@ -40,8 +43,26 @@ export function ReplyComposer({
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadFailures, setUploadFailures] = useState(0);
+  const [uploadCooldownUntil, setUploadCooldownUntil] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadCoolingDown = uploadCooldownUntil !== null && uploadCooldownUntil > Date.now();
+  const remainingCooldownMinutes = uploadCoolingDown
+    ? Math.max(1, Math.ceil((uploadCooldownUntil - Date.now()) / 60000))
+    : 0;
+
+  useEffect(() => {
+    if (!uploadCooldownUntil) return;
+    const delay = uploadCooldownUntil - Date.now();
+    if (delay <= 0) {
+      setUploadCooldownUntil(null);
+      return;
+    }
+    const timeout = window.setTimeout(() => setUploadCooldownUntil(null), delay);
+    return () => window.clearTimeout(timeout);
+  }, [uploadCooldownUntil]);
 
   function handleToggleFormat(label: string) {
     setActiveFormats((prev) => {
@@ -58,16 +79,30 @@ export function ReplyComposer({
     setActiveFormats(new Set());
     setError(null);
     setAttachments([]);
+    setUploadFailures(0);
+    setUploadCooldownUntil(null);
     onCancel?.();
   }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (uploadCoolingDown) {
+      setError(`Attachment uploads are temporarily paused. Try again in about ${remainingCooldownMinutes} minute(s).`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const files = Array.from(e.target.files ?? []);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (!files.length) return;
 
+    const remainingSlots = MAX_ATTACHMENTS - attachments.length;
+    if (remainingSlots <= 0) {
+      setError(`You can attach up to ${MAX_ATTACHMENTS} files per comment.`);
+      return;
+    }
+
     setUploading(true);
     setError(null);
+    let nextFailureCount = uploadFailures;
 
     try {
       const supabase = createClient();
@@ -75,12 +110,14 @@ export function ReplyComposer({
       if (!user) throw new Error("Not signed in");
 
       const newAttachments: PendingAttachment[] = [];
-      for (const file of files) {
+      for (const file of files.slice(0, remainingSlots)) {
         if (!ALLOWED_TYPES.includes(file.type)) {
+          nextFailureCount += 1;
           setError(`${file.name}: file type not allowed (png, jpg, gif, webp, txt, pdf only)`);
           continue;
         }
         if (file.size > MAX_BYTES) {
+          nextFailureCount += 1;
           setError(`${file.name}: too large (max 10 MB)`);
           continue;
         }
@@ -91,7 +128,19 @@ export function ReplyComposer({
         newAttachments.push({ file, path, previewUrl });
       }
       setAttachments((prev) => [...prev, ...newAttachments]);
+      if (newAttachments.length > 0) {
+        setUploadFailures(0);
+      } else if (nextFailureCount > 0) {
+        setUploadFailures(nextFailureCount);
+      }
     } catch (err) {
+      nextFailureCount += 1;
+      if (nextFailureCount >= MAX_UPLOAD_FAILURES) {
+        setUploadCooldownUntil(Date.now() + UPLOAD_COOLDOWN_MS);
+        setUploadFailures(0);
+      } else {
+        setUploadFailures(nextFailureCount);
+      }
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
@@ -105,6 +154,10 @@ export function ReplyComposer({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!body.trim()) return;
+    if (attachments.length > MAX_ATTACHMENTS) {
+      setError(`You can attach up to ${MAX_ATTACHMENTS} files per comment.`);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -207,7 +260,7 @@ export function ReplyComposer({
               type="button"
               title="Attach file"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || uploadCoolingDown || attachments.length >= MAX_ATTACHMENTS}
               className="flex h-6 w-6 items-center justify-center text-hub-text-muted/60 transition-colors hover:text-hub-cyan disabled:opacity-30"
             >
               {uploading ? (
@@ -243,6 +296,9 @@ export function ReplyComposer({
           </div>
 
           <div className="flex items-center gap-2">
+            {uploadCoolingDown && !error && (
+              <span className="text-[11px] text-hub-text-muted">Attachment uploads are cooling down for about {remainingCooldownMinutes} minute(s).</span>
+            )}
             {error && <span className="text-[11px] text-hub-danger">{error}</span>}
             <button
               type="button"

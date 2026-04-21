@@ -179,7 +179,13 @@ export function usePlanSync({
         return;
       }
       setAuthed(true);
-      setIsUcsdUser(isUcsdEmail(user.email));
+      const identityEmails = (user.identities ?? []).map(
+        (i) => i.identity_data?.email as string | undefined,
+      );
+      const allEmails = [user.email, ...identityEmails].filter(
+        (e): e is string => typeof e === "string",
+      );
+      setIsUcsdUser(allEmails.some(isUcsdEmail));
       const [plansRes, vaultRes] = await Promise.all([
         // Filter soft-deleted plans so they never appear in the sidebar or get selected
         supabase.from("saved_plans").select("*").eq("is_deleted", false).order("updated_at", { ascending: false }),

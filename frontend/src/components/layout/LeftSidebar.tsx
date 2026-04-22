@@ -358,13 +358,13 @@ export function LeftSidebar({
         className="fixed top-0 left-0 z-50 flex h-dvh w-14 shrink-0 flex-col items-center gap-1 border-r border-white/[0.07] bg-[#091727]/90 backdrop-blur-xl py-3"
       >
         {/* Brand mark fills the header-height slot at the top of the rail */}
-        <a
+        <Link
           href="/"
           className="mb-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-hub-surface/80 text-hub-cyan transition hover:border-hub-cyan/30"
           aria-label="Home"
         >
           <Home className="h-4 w-4" aria-hidden />
-        </a>
+        </Link>
         <div className="my-1 h-px w-6 bg-white/[0.06]" />
         <IconButton
           icon={BookmarkCheck}

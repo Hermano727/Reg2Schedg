@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, HelpCircle, Upload, X } from "lucide-react";
 import { DropZone } from "@/components/ingestion/DropZone";
@@ -25,7 +26,6 @@ export function IngestionHub({
   collapsed,
   onToggleCollapse,
   onFilesSelected,
-  onManualSubmit,
   classCount,
   quarterLabel,
   isLocked,
@@ -178,9 +178,11 @@ export function IngestionHub({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <img
+            <Image
               src="/images/print_schedule_help.png"
               alt="Screenshot showing the WebReg print flow to save your schedule as a PDF"
+              width={1280}
+              height={720}
               className="w-full rounded-lg border border-white/[0.08]"
             />
             <p className="mt-3 text-xs leading-relaxed text-hub-text-muted">

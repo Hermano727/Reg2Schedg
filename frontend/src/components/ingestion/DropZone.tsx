@@ -110,7 +110,7 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
           Attach your WebReg schedule or syllabi
         </p>
         <p className="mt-2.5 max-w-[680px] text-[15px] leading-relaxed text-hub-text-secondary">
-          We'll parse your schedule, cross-reference course evaluations, and
+          We&apos;ll parse your schedule, cross-reference course evaluations, and
           build a summary for each class.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">

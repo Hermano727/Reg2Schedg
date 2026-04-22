@@ -339,7 +339,7 @@ function BreadcrumbNav({
               {emptyWarning && (
                 <span className="flex items-center gap-1 text-xs text-hub-danger">
                   <AlertCircle className="h-3 w-3" />
-                  Can't be empty
+                  Cannot be empty
                 </span>
               )}
             </span>
@@ -721,7 +721,7 @@ export function CommandCenter() {
   );
 
   const handleManualSubmit = useCallback(
-    (_payload: { professor: string; course: string; quarter: string }) => {
+    () => {
       void runIngestionFlow(undefined);
     },
     [runIngestionFlow],

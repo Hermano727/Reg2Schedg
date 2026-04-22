@@ -22,7 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AvatarCropModal } from "./AvatarCropModal";
 import { VaultUploadModal } from "./VaultUploadModal";
 import type { VaultItem } from "@/types/dossier";
-import type { PostSummary } from "@/types/community";
+import type { PostSummary, ReplyOut } from "@/types/community";
 import { getPost } from "@/lib/api/community";
 
 export type ProfilePlan = {
@@ -98,17 +98,22 @@ export function ProfileHub({
       (async () => {
         try {
           const post = await getPost(item.communityPostId!);
-          const meta: any = {
+          const meta: {
+            courseCode: string | null;
+            professorName: string | null;
+            replyAuthor?: string | null;
+            replyBody?: string | null;
+          } = {
             courseCode: post.courseCode ?? null,
             professorName: post.professorName ?? null,
           };
           if (item.communityReplyId) {
-            const reply = post.replies?.find((r: any) => r.id === item.communityReplyId);
+            const reply = post.replies?.find((r: ReplyOut) => r.id === item.communityReplyId);
             meta.replyAuthor = reply?.authorDisplayName ?? null;
             meta.replyBody = reply?.body ?? null;
           }
           setPostMetaByItemId((s) => ({ ...s, [item.id]: meta }));
-        } catch (err) {
+        } catch {
           // ignore
         }
       })();
@@ -338,7 +343,7 @@ export function ProfileHub({
               </p>
               <p className="mt-2 max-w-sm text-xs leading-relaxed text-hub-text-muted">
                 When the degree planner ships, each proposed audit, diff against
-                the portal, and "complete later" items will be listed here.
+                the portal, and &quot;complete later&quot; items will be listed here.
               </p>
             </div>
           </div>

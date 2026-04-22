@@ -88,12 +88,12 @@ export function Header({ user }: HeaderProps) {
     <>
       <header className={`glass-panel sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-white/[0.07] pr-4 ${isSettingsPage ? "pl-6" : "pl-[72px]"}`}>
         {/* Brand — offset to clear sidebar rail */}
-        <a
+        <Link
           href="/"
           className="flex min-w-0 items-center gap-2.5 rounded-md outline-none ring-hub-cyan/40 focus-visible:ring-2"
         >
           <TritonMark size={42} />
-        </a>
+        </Link>
 
         {/* Cmd+K search trigger — absolutely centered in the full header */}
         <div className="pointer-events-none absolute inset-x-0 flex justify-center">

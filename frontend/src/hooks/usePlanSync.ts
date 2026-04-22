@@ -273,7 +273,7 @@ export function usePlanSync({
       setIsPlanLoading(false);
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [authed, activePlanId]); // remotePlans deliberately excluded — see comment above
 
   const quarterLabel = useMemo(() => {
@@ -496,7 +496,7 @@ export function usePlanSync({
       await loadHubData();
       return planId;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [viewClasses, viewEvaluation, loadHubData, workspaceRef]);
 
   const handleSaveOverwrite = useCallback(async () => {

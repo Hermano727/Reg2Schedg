@@ -148,7 +148,7 @@ type ReplyNodeProps = {
   postId: string;
   postTitle: string;
   depth: number;
-  children: ReplyOut[];
+  childReplies: ReplyOut[];
   allReplies: ReplyOut[];
   onRepliesUpdated: (replies: ReplyOut[]) => void;
   currentUserId: string | null;
@@ -160,7 +160,7 @@ export function ReplyNode({
   postId,
   postTitle,
   depth,
-  children,
+  childReplies,
   allReplies,
   onRepliesUpdated,
   currentUserId,
@@ -465,16 +465,16 @@ export function ReplyNode({
         )}
 
         {/* Child replies — no gap wrapper, just spacing via mt on each node */}
-        {children.length > 0 && (
+        {childReplies.length > 0 && (
           <div className="mt-1">
-            {children.map((child) => (
+            {childReplies.map((child) => (
               <ReplyNode
                 key={child.id}
                 reply={child}
                 postId={postId}
                 postTitle={postTitle}
                 depth={depth + 1}
-                children={allReplies.filter((r) => r.parentReplyId === child.id)}
+                childReplies={allReplies.filter((r) => r.parentReplyId === child.id)}
                 allReplies={allReplies}
                 onRepliesUpdated={onRepliesUpdated}
                 currentUserId={currentUserId}

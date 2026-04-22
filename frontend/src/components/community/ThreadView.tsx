@@ -368,7 +368,7 @@ export function ThreadView({ post }: ThreadViewProps) {
                 postId={post.id}
                 postTitle={post.title}
                 depth={0}
-                children={replies.filter((r) => r.parentReplyId === reply.id)}
+                childReplies={replies.filter((r) => r.parentReplyId === reply.id)}
                 allReplies={replies}
                 onRepliesUpdated={setReplies}
                 currentUserId={currentUserId}

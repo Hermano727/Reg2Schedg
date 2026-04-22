@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Paperclip, X, FileText, ImageIcon } from "lucide-react";
+import { Paperclip, X, FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/storage";
 import { createReply } from "@/lib/api/community";

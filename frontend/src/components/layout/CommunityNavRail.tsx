@@ -10,13 +10,13 @@ export function CommunityNavRail() {
       <div className="w-14 shrink-0" aria-hidden />
 
       <aside className="fixed left-0 top-0 z-50 flex h-dvh w-14 shrink-0 flex-col items-center gap-1 border-r border-white/[0.07] bg-[#091727]/90 py-3 backdrop-blur-xl">
-        <a
+        <Link
           href="/"
           aria-label="Home"
           className="mb-2 flex h-9 w-9 items-center justify-center rounded-md border border-white/[0.08] bg-hub-surface/80 text-hub-cyan transition hover:border-hub-cyan/30"
         >
           <Home className="h-4 w-4" aria-hidden />
-        </a>
+        </Link>
 
         <div className="flex-1" />
 

@@ -68,12 +68,28 @@ export default async function ThreadPage({ params }: Props) {
 
   const postAttachments: PostAttachment[] = signedAttachments
     .filter((row) => row.postId === postId && row.replyId === null)
-    .map(({ replyId: _replyId, postId: _postId, ...attachment }) => attachment);
+    .map((row) => ({
+      id: row.id,
+      storagePath: row.storagePath,
+      name: row.name,
+      mimeType: row.mimeType,
+      sizeBytes: row.sizeBytes,
+      signedUrl: row.signedUrl,
+    }));
 
   const replyAttachmentsByReplyId = new Map<string, PostAttachment[]>();
   signedAttachments
     .filter((row) => row.replyId)
-    .forEach(({ replyId, postId: _postId, ...attachment }) => {
+    .forEach((row) => {
+      const attachment: PostAttachment = {
+        id: row.id,
+        storagePath: row.storagePath,
+        name: row.name,
+        mimeType: row.mimeType,
+        sizeBytes: row.sizeBytes,
+        signedUrl: row.signedUrl,
+      };
+      const replyId = row.replyId;
       const rid = replyId as string;
       const existing = replyAttachmentsByReplyId.get(rid) ?? [];
       existing.push(attachment);

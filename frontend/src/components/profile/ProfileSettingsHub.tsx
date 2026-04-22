@@ -33,7 +33,7 @@ import { createClient } from "@/lib/supabase/client";
 import { deletePost, getPost } from "@/lib/api/community";
 import Link from "next/link";
 import type { VaultItem } from "@/types/dossier";
-import type { PostSummary } from "@/types/community";
+import type { PostSummary, ReplyOut } from "@/types/community";
 import type { ProfileData } from "@/components/profile/ProfileEditCard";
 
 export type ProfilePlan = {
@@ -556,17 +556,22 @@ function VaultSection({ userId, vaultItems }: Pick<Props, "userId" | "vaultItems
       (async () => {
         try {
           const post = await getPost(item.communityPostId!);
-          const meta: any = {
+          const meta: {
+            courseCode: string | null;
+            professorName: string | null;
+            replyAuthor?: string | null;
+            replyBody?: string | null;
+          } = {
             courseCode: post.courseCode ?? null,
             professorName: post.professorName ?? null,
           };
           if (item.communityReplyId) {
-            const reply = post.replies?.find((r: any) => r.id === item.communityReplyId);
+            const reply = post.replies?.find((r: ReplyOut) => r.id === item.communityReplyId);
             meta.replyAuthor = reply?.authorDisplayName ?? null;
             meta.replyBody = reply?.body ?? null;
           }
           setPostMetaByItemId((s) => ({ ...s, [item.id]: meta }));
-        } catch (err) {
+        } catch {
           // non-fatal
         }
       })();

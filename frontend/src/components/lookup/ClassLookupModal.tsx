@@ -11,7 +11,7 @@ import {
   type CourseLookupSearchResult,
 } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
-import { DashboardContent } from "@/components/dashboard/DossierDashboardModal";
+import { CourseJourneyPage } from "@/components/dashboard/DossierDashboardModal";
 import type { ClassDossier } from "@/types/dossier";
 
 type Phase = "search" | "results" | "dossier";
@@ -21,6 +21,7 @@ type Props = {
   onClose: () => void;
   initialQuery?: string;
   initialProfessorName?: string;
+  autoSearchOnOpen?: boolean;
 };
 
 export function ClassLookupModal({
@@ -28,6 +29,7 @@ export function ClassLookupModal({
   onClose,
   initialQuery = "",
   initialProfessorName = "",
+  autoSearchOnOpen = false,
 }: Props) {
   const router = useRouter();
   const [courseCode, setCourseCode] = useState(initialQuery);
@@ -42,6 +44,7 @@ export function ClassLookupModal({
   const [dossier, setDossier] = useState<ClassDossier | null>(null);
   const courseInputRef = useRef<HTMLInputElement>(null);
   const initialProfessorNameRef = useRef(initialProfessorName);
+  const autoSearchRunKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     initialProfessorNameRef.current = initialProfessorName;
@@ -58,6 +61,7 @@ export function ClassLookupModal({
       setError(null);
       setResults([]);
       setDossier(null);
+      autoSearchRunKeyRef.current = null;
       setTimeout(() => courseInputRef.current?.focus(), 60);
     }
   }, [open, initialQuery]);
@@ -75,14 +79,12 @@ export function ClassLookupModal({
     return () => window.removeEventListener("keydown", handler);
   }, [open, phase, onClose]);
 
-  async function handleSearch(e: { preventDefault(): void }) {
-    e.preventDefault();
-    const code = courseCode.trim();
+  async function runSearch(code: string, professor?: string) {
     if (!code) return;
     setSearching(true);
     setError(null);
     try {
-      const found = await searchCourseCache(code, professorName.trim() || undefined);
+      const found = await searchCourseCache(code, professor);
       setResults(found);
       setPhase("results");
     } catch (err) {
@@ -91,6 +93,22 @@ export function ClassLookupModal({
       setSearching(false);
     }
   }
+
+  async function handleSearch(e: { preventDefault(): void }) {
+    e.preventDefault();
+    await runSearch(courseCode.trim(), professorName.trim() || undefined);
+  }
+
+  useEffect(() => {
+    if (!open || !autoSearchOnOpen) return;
+    const course = initialQuery.trim();
+    if (!course) return;
+    const professor = initialProfessorNameRef.current.trim();
+    const key = `${course.toLowerCase()}::${professor.toLowerCase()}`;
+    if (autoSearchRunKeyRef.current === key) return;
+    autoSearchRunKeyRef.current = key;
+    void runSearch(course, professor || undefined);
+  }, [open, autoSearchOnOpen, initialQuery]);
 
   async function handleSelectResult(result: CourseLookupSearchResult) {
     setExpanding(true);
@@ -265,9 +283,9 @@ export function ClassLookupModal({
                   {!expanding && results.length > 0 && (
                     <>
                       <p className="mb-3 text-xs text-white/40">
-                        {results.length} cached {results.length === 1 ? "entry" : "entries"} for{" "}
+                        {results.length} {results.length === 1 ? "entry" : "entries"} for{" "}
                         <span className="text-white/70">{results[0].course_code}</span>
-                        {" — "}select a professor to view the full dossier
+                        {". "}Select a professor to view the full dossier
                       </p>
                       <div className="grid gap-2">
                         {results.map((r) => (
@@ -290,8 +308,7 @@ export function ClassLookupModal({
                                 {r.professor_name !== "TBA" ? r.professor_name : "Unknown professor"}
                               </span>
                               <span className="block text-xs text-white/40">
-                                {r.course_title ?? r.course_code} · cached{" "}
-                                {new Date(r.updated_at).toLocaleDateString()}
+                                {r.course_title ?? r.course_code}
                               </span>
                             </span>
                             <ChevronLeft className="h-4 w-4 shrink-0 rotate-180 text-white/20 transition group-hover:text-hub-cyan/60" />
@@ -306,13 +323,7 @@ export function ClassLookupModal({
 
               {/* Full dossier */}
               {phase === "dossier" && dossier && (
-                <DashboardContent
-                  dossier={dossier}
-                  index={0}
-                  total={1}
-                  onClose={onClose}
-                  onNavigate={() => {}}
-                />
+                <CourseJourneyPage dossier={dossier} />
               )}
             </div>
 

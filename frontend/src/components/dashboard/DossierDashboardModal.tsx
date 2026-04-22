@@ -21,6 +21,9 @@
  * All existing props, types, callbacks, and data flows are unchanged.
  */
 
+// `CourseJourneyPage` is now the primary workspace presentation. The modal
+// shell remains for legacy overlay flows that still use `DashboardContent`.
+
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
@@ -41,6 +44,7 @@ import type {
   EvidenceItem,
   GradeScheme,
 } from "@/types/dossier";
+import { ConflictBadge } from "@/components/dashboard/ConflictBadge";
 import { InlinePencilField } from "@/components/dashboard/InlinePencilField";
 import { getSunsetSummary } from "@/lib/mappers/courseEntryToDossier";
 import { isExamSection } from "@/lib/mappers/dossiersToScheduleItems";
@@ -110,12 +114,12 @@ function SectionLabel({
   className?: string;
 }) {
   return (
-    <div className={`mb-3 flex items-baseline justify-between gap-3 ${className}`}>
-      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">
+    <div className={`mb-[18px] flex items-baseline justify-between gap-4 ${className}`}>
+      <span className="font-[family-name:var(--font-outfit)] text-[22px] font-semibold tracking-[-0.01em] text-hub-text">
         {children}
       </span>
       {right != null && (
-        <span className="text-[11px] font-[family-name:var(--font-jetbrains-mono)] text-white/45">
+        <span className="text-[14px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-[0.12em] text-white/75">
           {right}
         </span>
       )}
@@ -208,16 +212,16 @@ function SchemeRows({ rows }: { rows: GradeRow[] }) {
       {rows.map((row, i) => (
         <div
           key={i}
-          className="grid grid-cols-[1fr_auto] items-center border-b border-white/[0.05] py-2 text-[13px] last:border-0"
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center border-b border-white/[0.05] py-[14px] text-[16px] last:border-0"
         >
-          <span className="text-hub-text-secondary">{row.component}</span>
-          <span className="font-[family-name:var(--font-jetbrains-mono)] tabular-nums text-hub-text">
+          <span className="pr-4 leading-7 text-hub-text">{row.component}</span>
+          <span className="font-[family-name:var(--font-jetbrains-mono)] text-[15px] tabular-nums text-hub-text-secondary">
             {row.weight || "—"}
           </span>
         </div>
       ))}
       {total > 0 && Math.abs(total - 100) < 0.5 && (
-        <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-white/35">
+        <div className="mt-[12px] flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-white/35">
           <span>Total</span>
           <span className="font-[family-name:var(--font-jetbrains-mono)] tabular-nums">100%</span>
         </div>
@@ -242,8 +246,8 @@ function GradingSection({
   if (editable && onEdit) {
     return (
       <textarea
-        className="w-full resize-y rounded-md border border-white/[0.1] bg-hub-bg/40 px-3 py-2 text-[13px] text-hub-text-secondary outline-none focus:border-hub-cyan/50"
-        rows={4}
+        className="w-full resize-y rounded-md border border-white/[0.1] bg-hub-bg/40 px-[16px] py-[14px] text-[15px] leading-7 text-hub-text-secondary outline-none focus:border-hub-cyan/50"
+        rows={5}
         value={breakdown ?? ""}
         placeholder="e.g. Homework 30%, Midterm 30%, Final 40%"
         onChange={(e) => onEdit(e.target.value || null)}
@@ -273,13 +277,13 @@ function GradingSection({
   return (
     <div>
       {isMulti && (
-        <div className="mb-3 flex items-center gap-0.5 rounded-md border border-white/[0.08] bg-white/[0.03] p-0.5 w-fit">
+        <div className="mb-[20px] flex w-fit items-center gap-0.5 rounded-md border border-white/[0.08] bg-white/[0.03] p-[3px]">
           {schemes.map((s, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setSchemeIdx(i)}
-              className={`rounded px-2.5 py-1 text-[11px] font-semibold transition ${schemeIdx === i
+              className={`rounded px-[12px] py-[6px] text-[12px] font-semibold transition ${schemeIdx === i
                   ? "bg-hub-cyan/15 text-hub-cyan"
                   : "text-white/45 hover:text-white/75"
                 }`}
@@ -325,7 +329,7 @@ function ProfStats({
     return (
       <div className="flex items-center gap-2 text-[12.5px] text-white/45">
         <span className="h-px w-3 bg-white/20" />
-        No RateMyProfessors data for this instructor.
+        No RateMyProf data for this instructor.
       </div>
     );
   }
@@ -515,7 +519,7 @@ function LogisticsDisplay({ logistics }: { logistics: CourseLogistics | undefine
   resolve("Podcasts", logistics?.podcasts_available, "Available", "Not recorded");
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid gap-4 sm:grid-cols-3">
       {rows.map((r) => (
         <div key={r.k} className="flex flex-col gap-1">
           <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
@@ -980,7 +984,6 @@ export function DashboardContent({
                       dossier.sunsetGradeDistribution?.term_label,
                       sampleSize > 0 ? `n=${sampleSize}` : null,
                     ]
-                      .filter(Boolean)
                       .join(" · ")
                     : "no prior data"
                 }
@@ -1209,6 +1212,485 @@ export function DashboardContent({
               )}
             </section>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function CourseJourneyPage({
+  dossier,
+  onUpdate,
+}: {
+  dossier: ClassDossier;
+  onUpdate?: (patch: DossierEditPatch) => void;
+}) {
+  const [editMode, setEditMode] = useState(false);
+
+  const log = dossier.logistics;
+  const rmp = log?.rate_my_professor ?? null;
+  const sunsetSummary = getSunsetSummary(dossier.sunsetGradeDistribution);
+  const sampleSize =
+    sunsetSummary?.sample_size ??
+    Object.values(sunsetSummary?.grade_counts ?? {}).reduce((sum, count) => sum + count, 0);
+  const hasGrades =
+    sunsetSummary?.average_gpa != null ||
+    (sampleSize > 0 && Object.keys(sunsetSummary?.grade_counts ?? {}).length > 0);
+  const allEvidence = [...(log?.evidence ?? [])].sort(
+    (a, b) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0),
+  );
+  const professorInfoFound = log?.professor_info_found !== false;
+  const isCrossCourse = dossier.sunsetGradeDistribution?.is_cross_course_fallback === true;
+  const isRemoteOnly = isDossierRemoteOnly(dossier);
+  const sunsetUrl = normalizeSunsetUrl(
+    dossier.sunsetGradeDistribution?.source_url,
+    isCrossCourse && dossier.sunsetGradeDistribution?.source_course_code
+      ? dossier.sunsetGradeDistribution.source_course_code
+      : dossier.courseCode,
+  );
+  const regularMeetings = dossier.meetings.filter((meeting) => !isExamSection(meeting.section_type));
+  const examMeetings = dossier.meetings.filter((meeting) => isExamSection(meeting.section_type));
+  const meetings = regularMeetings.length > 0 ? [...regularMeetings, ...examMeetings] : dossier.meetings;
+
+  const overviewLead =
+    log?.general_course_overview ??
+    dossier.tldr ??
+    dossier.condensedSummary.find(Boolean) ??
+    `${dossier.courseCode} is currently scheduled with ${dossier.professorName}.`;
+  const overviewSupport = [
+    ...dossier.condensedSummary,
+    log?.student_sentiment_summary,
+    !professorInfoFound ? log?.general_professor_overview : null,
+  ].filter(
+    (item, index, items): item is string =>
+      Boolean(item) && item !== overviewLead && items.indexOf(item) === index,
+  );
+  const sentimentLead = log?.student_sentiment_summary ?? dossier.tldr ?? null;
+  const summaryRows: Array<{ label?: string; value: string }> = [
+    {
+      value:
+        allEvidence.length > 0
+          ? `${allEvidence.length} source${allEvidence.length === 1 ? "" : "s"} found`
+          : "No sources found",
+    },
+    {
+      label: "Meetings",
+      value:
+        meetings.length > 0
+          ? `${meetings.length} scheduled block${meetings.length === 1 ? "" : "s"}`
+          : "Schedule pending",
+    },
+    {
+      label: "Grade data",
+      value: hasGrades
+        ? sunsetSummary?.average_gpa != null
+          ? `Avg GPA ${sunsetSummary.average_gpa}`
+          : sampleSize > 0
+            ? `${sampleSize} historical grades`
+            : "Historical data available"
+        : "No prior data",
+    },
+  ];
+
+  return (
+    <div className="relative overflow-hidden">
+      <div className="relative mx-auto w-full max-w-[1400px] px-5 py-[28px] sm:px-8 lg:px-10 lg:py-[40px]">
+        <header className="grid gap-[36px] border-b border-white/[0.06] pb-[36px] xl:grid-cols-[minmax(0,1.1fr)_280px] xl:gap-[56px]">
+          <div className="min-w-0 space-y-[18px]">
+            <div className="space-y-[12px]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-hub-cyan/72">
+                Course dossier
+              </p>
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                <h1 className="font-[family-name:var(--font-outfit)] text-[40px] font-semibold tracking-[-0.03em] text-hub-text sm:text-[48px]">
+                  {dossier.courseCode}
+                </h1>
+              </div>
+            </div>
+
+            <div className="space-y-[12px]">
+              <div className="flex flex-wrap items-center gap-3 text-sm text-hub-text-secondary">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-hub-cyan/30 bg-hub-cyan/10 text-[11px] font-semibold text-hub-cyan">
+                  {dossier.professorInitials}
+                </span>
+                <span className="text-[18px] font-medium text-hub-text-secondary">
+                  <InlinePencilField
+                    value={dossier.professorName ?? ""}
+                    placeholder="Professor name"
+                    onSave={(value) => onUpdate?.({ professorName: value })}
+                  />
+                </span>
+                {isRemoteOnly && (
+                  <span className="rounded-full border border-purple-400/35 bg-purple-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-purple-300">
+                    Remote
+                  </span>
+                )}
+                {!professorInfoFound && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-900/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                    <Info className="h-3 w-3" />
+                    General course context
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-x-[18px] gap-y-[10px]">
+                {rmp?.url && (
+                  <a
+                    href={rmp.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-hub-text transition hover:text-hub-cyan"
+                  >
+                    RateMyProf
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                {log?.course_webpage_url && (
+                  <a
+                    href={log.course_webpage_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-hub-text transition hover:text-hub-cyan"
+                  >
+                    Course page
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+                {sunsetUrl && (
+                  <a
+                    href={sunsetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-hub-text transition hover:text-hub-cyan"
+                  >
+                    SunSET
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {dossier.conflict ? <ConflictBadge conflict={dossier.conflict} /> : null}
+          </div>
+
+          <div className="border-t border-white/[0.06] pt-[24px] xl:border-l xl:border-t-0 xl:pt-0 xl:pl-[32px]">
+            <div className="grid gap-[16px] sm:grid-cols-2 xl:grid-cols-1">
+              {summaryRows.map((row, index) => (
+                <div key={`${row.label ?? row.value}-${index}`} className="border-t border-white/[0.12] pt-[12px]">
+                  {row.label ? (
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+                      {row.label}
+                    </p>
+                  ) : null}
+                  <p className={`font-[family-name:var(--font-jetbrains-mono)] tracking-[-0.02em] text-hub-text ${row.label ? "mt-[6px] text-[18px]" : "text-[22px]"}`}>
+                    {row.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </header>
+
+        {isCrossCourse && (
+          <div className="mt-[28px] flex items-start gap-3 border-t border-amber-500/18 pt-[20px]">
+            <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400/80" />
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-400/90">
+                Historical fallback
+              </p>
+              <p className="mt-2 text-sm leading-7 text-amber-200/80">
+                {dossier.professorName} has not taught {dossier.courseCode} before, so this view is
+                using grade history from{" "}
+                {dossier.sunsetGradeDistribution?.source_course_code ?? "a related course"} as a
+                reference point.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-[56px] space-y-[56px] lg:space-y-[72px]">
+          <section className="border-t border-white/[0.06] pt-[32px]">
+            <SectionLabel>General overview</SectionLabel>
+            <div className="max-w-5xl space-y-5">
+              <p className="text-lg leading-8 text-hub-text">
+                {sanitizeDashes(overviewLead)}
+              </p>
+
+              {overviewSupport.length > 0 && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {overviewSupport.map((item, index) => (
+                    <p
+                      key={`${item}-${index}`}
+                      className="border-t border-white/[0.07] pt-4 text-sm leading-7 text-hub-text-secondary"
+                    >
+                      {sanitizeDashes(item)}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="border-t border-white/[0.06] pt-[32px]">
+            <SectionLabel
+              right={
+                hasGrades
+                  ? [dossier.sunsetGradeDistribution?.term_label ?? undefined]
+                      .join(" · ")
+                  : "no prior data"
+              }
+            >
+              Grade distribution
+            </SectionLabel>
+
+            {hasGrades ? (
+              <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+                <div className="space-y-8">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {sunsetSummary?.average_gpa != null && (
+                      <div className="border-t border-white/[0.08] pt-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                          Avg GPA
+                        </p>
+                        <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-[30px] leading-none tracking-[-0.03em] text-hub-cyan">
+                          {sunsetSummary.average_gpa}
+                        </p>
+                      </div>
+                    )}
+                    {dossier.sunsetGradeDistribution?.recommend_professor_percent != null && (
+                      <div className="border-t border-white/[0.08] pt-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                          Recommend
+                        </p>
+                        <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-[30px] leading-none tracking-[-0.03em] text-emerald-400">
+                          {Math.round(dossier.sunsetGradeDistribution.recommend_professor_percent)}%
+                        </p>
+                      </div>
+                    )}
+                    {sampleSize > 0 && (
+                      <div className="border-t border-white/[0.08] pt-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                          Sample size
+                        </p>
+                        <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-[30px] leading-none tracking-[-0.03em] text-hub-text">
+                          {sampleSize}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {sampleSize > 0 && Object.keys(sunsetSummary?.grade_counts ?? {}).length > 0 && (
+                    <div className="space-y-6">
+                      <GradeHistogram
+                        gradeCounts={sunsetSummary?.grade_counts ?? {}}
+                        sampleSize={sampleSize}
+                      />
+                      <GradeGroupBars
+                        gradeCounts={sunsetSummary?.grade_counts ?? {}}
+                        sampleSize={sampleSize}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-sm leading-7 text-hub-text-secondary">
+                    Historical grade data helps anchor the course at a glance, but it should be
+                    read alongside the grading scheme and student sentiment instead of as a
+                    prediction for every offering.
+                  </p>
+                  {isCrossCourse && (
+                    <p className="text-sm leading-7 text-amber-300/75">
+                      This distribution is pulled from{" "}
+                      {dossier.sunsetGradeDistribution?.source_course_code ?? "another course"} to
+                      fill a gap for this exact offering.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="max-w-2xl">
+                <p className="text-sm leading-7 text-white/55">
+                  No SunSET grade distribution was found for this offering. If this professor has
+                  not taught the course recently, grade history may simply not exist yet.
+                </p>
+              </div>
+            )}
+          </section>
+
+          <section className="border-t border-white/[0.06] pt-[32px]">
+            <SectionLabel>Professor snapshot</SectionLabel>
+            <div className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+              <ProfStats rmp={rmp} />
+              <div className="max-w-3xl space-y-4">
+                {log?.general_professor_overview ? (
+                  <p className="text-sm leading-7 text-hub-text-secondary">
+                    {sanitizeDashes(log.general_professor_overview)}
+                  </p>
+                ) : (
+                  <p className="text-sm leading-7 text-white/55">
+                    {professorInfoFound
+                      ? "Professor-specific context is limited for this offering, so rely on the surrounding grade and evidence sections for the fuller picture."
+                      : "No professor-specific profile was found, so this view leans on general course context instead."}
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="border-t border-white/[0.06] pt-[40px]">
+            <SectionLabel
+              right={
+                onUpdate ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditMode((value) => !value)}
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] transition ${
+                      editMode
+                        ? "border-hub-cyan/40 bg-hub-cyan/10 text-hub-cyan"
+                        : "border-white/[0.1] text-white/55 hover:border-white/20 hover:text-white/80"
+                    }`}
+                  >
+                    <Pencil className="h-2.5 w-2.5" />
+                    {editMode ? "Done" : "Correct"}
+                  </button>
+                ) : undefined
+              }
+            >
+              Grading breakdown
+            </SectionLabel>
+
+            <div className="grid gap-[40px] xl:grid-cols-[minmax(0,1.35fr)_320px]">
+              <GradingSection
+                schemes={log?.grade_schemes}
+                breakdown={log?.grade_breakdown}
+                editable={editMode && !!onUpdate}
+                onEdit={onUpdate ? (value) => onUpdate({ logistics: { grade_breakdown: value } }) : undefined}
+              />
+              <p className="text-[15px] leading-8 text-hub-text-secondary">
+                This section captures how the class is assessed. When multiple grading paths exist,
+                you can switch between them and keep the page focused on one scheme at a time.
+              </p>
+            </div>
+          </section>
+
+          <section className="border-t border-white/[0.06] pt-[32px]">
+            <SectionLabel
+              right={
+                allEvidence.length > 0
+                  ? `${allEvidence.length} source${allEvidence.length === 1 ? "" : "s"}`
+                  : undefined
+              }
+            >
+              Student sentiment
+            </SectionLabel>
+
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)]">
+              <div className="max-w-2xl space-y-4">
+                <p className="text-base leading-8 text-hub-text">
+                  {sanitizeDashes(
+                    sentimentLead ??
+                      "Student commentary is still sparse for this course, so no clear consensus has surfaced yet.",
+                  )}
+                </p>
+                {!sentimentLead && log?.general_course_overview && (
+                  <p className="text-sm leading-7 text-hub-text-secondary">
+                    {sanitizeDashes(log.general_course_overview)}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                {allEvidence.length > 0 ? (
+                  allEvidence.map((item, index) => <EvidenceEntry key={`${item.source}-${index}`} item={item} />)
+                ) : (
+                  <p className="text-sm leading-7 text-white/55">
+                    No direct supporting quotes were attached to this dossier yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="border-t border-white/[0.06] pt-[32px]">
+            <SectionLabel right={log?.course_webpage_url ? "Research synthesis" : undefined}>
+              Course logistics
+            </SectionLabel>
+
+            {editMode && onUpdate ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <TristateToggle
+                  label="Textbook"
+                  value={log?.textbook_required ?? null}
+                  onChange={(value) => onUpdate({ logistics: { textbook_required: value } })}
+                  onLabel="Required"
+                  offLabel="None"
+                />
+                <TristateToggle
+                  label="Attendance"
+                  value={log?.attendance_required ?? null}
+                  onChange={(value) => onUpdate({ logistics: { attendance_required: value } })}
+                  onLabel="Required"
+                  offLabel="Optional"
+                />
+                <TristateToggle
+                  label="Podcasts"
+                  value={log?.podcasts_available ?? null}
+                  onChange={(value) => onUpdate({ logistics: { podcasts_available: value } })}
+                  onLabel="Available"
+                  offLabel="Not recorded"
+                />
+              </div>
+            ) : (
+              <div className="max-w-2xl">
+                <LogisticsDisplay logistics={log} />
+              </div>
+            )}
+          </section>
+
+          <section className="border-t border-white/[0.06] pt-[32px]">
+            <SectionLabel right={meetings.length > 0 ? `${meetings.length} entries` : undefined}>
+              Meeting times
+            </SectionLabel>
+
+            {meetings.length > 0 ? (
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {meetings.map((meeting, index) => {
+                  const statusLabel =
+                    meeting.geocode_status === "remote"
+                      ? "Remote"
+                      : meeting.geocode_status === "resolved"
+                        ? "Location resolved"
+                        : meeting.geocode_status === "ambiguous"
+                          ? "Location needs review"
+                          : "Location pending";
+
+                  return (
+                    <div key={`${meeting.section_type}-${meeting.days}-${index}`} className="border-t border-white/[0.08] pt-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+                        {meeting.section_type}
+                      </p>
+                      <p className="mt-2 text-[15px] font-medium text-hub-text">
+                        {[meeting.days || "TBA", meeting.start_time && meeting.end_time ? `${meeting.start_time}–${meeting.end_time}` : null]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      <p className="mt-1 text-sm leading-7 text-hub-text-secondary">
+                        {meeting.location || meeting.building_code || (meeting.geocode_status === "remote" ? "Remote" : "Location TBD")}
+                      </p>
+                      <p className="mt-2 text-[11px] uppercase tracking-[0.14em] text-white/35">
+                        {statusLabel}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm leading-7 text-white/55">
+                Meeting times have not been attached to this course yet.
+              </p>
+            )}
+          </section>
         </div>
       </div>
     </div>

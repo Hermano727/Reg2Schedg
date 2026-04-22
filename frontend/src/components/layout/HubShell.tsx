@@ -1,8 +1,14 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
-import { authorizeGoogleCalendar, GoogleCalendarAuthorizationError, syncGoogleCalendarEvents } from "@/lib/api/calendar";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  authorizeGoogleCalendar,
+  GOOGLE_CALENDAR_TOAST_EVENT,
+  GoogleCalendarAuthorizationError,
+  syncGoogleCalendarEvents,
+} from "@/lib/api/calendar";
 import { buildGoogleCalendarEvents } from "@/lib/mappers/googleCalendar";
+import { HubToast, type ToastPayload } from "@/components/ui/HubToast";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarSyncProvider, type CalendarSyncRequest } from "@/components/layout/calendar-sync-context";
 import { CalendarStateProvider } from "@/components/layout/calendar-state-context";
@@ -19,6 +25,20 @@ export function HubShell({ children, user }: HubShellProps) {
   const [onboardingDone, setOnboardingDone] = useState(
     !user?.needsOnboarding,
   );
+  const [toast, setToast] = useState<ToastPayload | null>(null);
+
+  useEffect(() => {
+    function handleCalendarToast(
+      event: Event,
+    ) {
+      const customEvent = event as CustomEvent<ToastPayload>;
+      if (!customEvent.detail?.message || !customEvent.detail?.variant) return;
+      setToast(customEvent.detail);
+    }
+
+    window.addEventListener(GOOGLE_CALENDAR_TOAST_EVENT, handleCalendarToast);
+    return () => window.removeEventListener(GOOGLE_CALENDAR_TOAST_EVENT, handleCalendarToast);
+  }, []);
 
   const handleSyncCalendar = useCallback(async (request: CalendarSyncRequest) => {
     try {
@@ -58,13 +78,22 @@ export function HubShell({ children, user }: HubShellProps) {
 
       const failed = result.failed ?? 0;
       if (failed > 0) {
-        alert(`Added ${result.count} Google Calendar events, but ${failed} item${failed === 1 ? "" : "s"} failed. You can try syncing again.`);
+        setToast({
+          variant: "error",
+          message: `Added ${result.count} events, but ${failed} item${failed === 1 ? "" : "s"} failed.`,
+        });
       } else {
-        alert(`Added ${result.count} Google Calendar event${result.count === 1 ? "" : "s"} to your account.`);
+        setToast({
+          variant: "success",
+          message: `Added ${result.count} Google Calendar event${result.count === 1 ? "" : "s"}.`,
+        });
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
-      alert(`Google Calendar sync error: ${msg}\n\nMake sure the API backend is running and GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set in services/api/.env.`);
+      setToast({
+        variant: "error",
+        message: `Google Calendar sync error: ${msg}`,
+      });
     }
   }, []);
 
@@ -81,6 +110,7 @@ export function HubShell({ children, user }: HubShellProps) {
             onComplete={() => setOnboardingDone(true)}
           />
         )}
+        <HubToast toast={toast} onDismiss={() => setToast(null)} />
       </CalendarSyncProvider>
     </CalendarStateProvider>
   );

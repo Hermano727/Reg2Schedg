@@ -44,6 +44,7 @@ class PostSummary(CamelModel):
     is_anonymous: bool = False
     general_tags: list[str] = Field(default_factory=list)
     author_display_name: str
+    author_avatar_url: Optional[str] = None
     created_at: str
     updated_at: str
     reply_count: int = 0
@@ -63,6 +64,7 @@ class ReplyOut(CamelModel):
     is_deleted: bool = False
     edited_at: Optional[str] = None
     author_display_name: str
+    author_avatar_url: Optional[str] = None
     created_at: str
     updated_at: str
     upvote_count: int = 0

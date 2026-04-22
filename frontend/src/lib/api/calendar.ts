@@ -10,6 +10,20 @@ type CalendarSyncResponse = {
 };
 
 const OAUTH_MESSAGE_TYPE = "reg2schedg-google-calendar-oauth";
+export const GOOGLE_CALENDAR_TOAST_EVENT = "reg2schedg-google-calendar-toast";
+
+type GoogleCalendarToastDetail = {
+  message: string;
+  variant: "success" | "error";
+};
+
+function dispatchGoogleCalendarToast(detail: GoogleCalendarToastDetail) {
+  window.dispatchEvent(
+    new CustomEvent<GoogleCalendarToastDetail>(GOOGLE_CALENDAR_TOAST_EVENT, {
+      detail,
+    }),
+  );
+}
 
 function getPopupFeatures(): string {
   const width = 560;
@@ -83,10 +97,18 @@ function waitForOAuthPopup(popup: Window): Promise<void> {
       cleanup();
 
       if (payload.status === "success") {
+        dispatchGoogleCalendarToast({
+          variant: "success",
+          message: payload.message || "Google Calendar connected.",
+        });
         resolve();
         return;
       }
 
+      dispatchGoogleCalendarToast({
+        variant: "error",
+        message: payload.message || "Google Calendar authorization failed.",
+      });
       reject(new Error(payload.message || "Google Calendar authorization failed."));
     }
 

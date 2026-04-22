@@ -12,12 +12,10 @@ import {
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, LayoutGrid, Maximize2, Map as MapIcon, BarChart2, Layers, Minimize2, Users, X } from "lucide-react";
+import { BookOpen, CalendarDays, LayoutGrid, Maximize2, Map as MapIcon, BarChart2, Layers, Minimize2, Users, X } from "lucide-react";
 import { isExamSection } from "@/lib/mappers/dossiersToScheduleItems";
-import { ClassCard } from "@/components/dashboard/ClassCard";
-import { DossierDashboardModal } from "@/components/dashboard/DossierDashboardModal";
+import { CourseJourneyPage } from "@/components/dashboard/DossierDashboardModal";
 import { CampusPathMap } from "@/components/dashboard/CampusPathMap";
-import { EvaluatorFooter } from "@/components/dashboard/EvaluatorFooter";
 import { DifficultyScoreHud } from "@/components/dashboard/DifficultyScoreHud";
 import { ExamsPanel } from "@/components/dashboard/ExamsPanel";
 import { ScheduleToolbar } from "@/components/dashboard/ScheduleToolbar";
@@ -102,7 +100,6 @@ function computeWalkAdvisories(classes: ClassDossier[]): WalkAdvisory[] {
       const start = parseMinutesFromAmPm(m.start_time);
       const end = parseMinutesFromAmPm(m.end_time);
       if (start === null || end === null) continue;
-      const days = m.days ? m.days.split("") : [];
       // Flatten by day so we can sort per-day
       const parsedDays: string[] = [];
       let i = 0;
@@ -159,14 +156,15 @@ function computeWalkAdvisories(classes: ClassDossier[]): WalkAdvisory[] {
 }
 
 type MainTab = "dossier" | "schedule";
-type WorkspacePhase = "overview" | "dossiers" | "logistics" | "review";
+type WorkspacePhase = "overview" | "logistics" | "review" | `course:${string}`;
 
-const PHASES: { id: WorkspacePhase; label: string; icon: typeof BarChart2; description: string }[] = [
-  { id: "overview", label: "Overview", icon: BarChart2, description: "Difficulty analysis" },
-  { id: "dossiers", label: "Courses", icon: LayoutGrid, description: "Deep dive" },
-  { id: "logistics", label: "Logistics", icon: MapIcon, description: "Map & schedule" },
-  { id: "review", label: "Review", icon: Layers, description: "Full dashboard" },
-];
+function coursePhaseId(dossierId: string): `course:${string}` {
+  return `course:${dossierId}`;
+}
+
+function isCoursePhase(phase: WorkspacePhase): phase is `course:${string}` {
+  return phase.startsWith("course:");
+}
 
 export type DossierScheduleWorkspaceHandle = {
   getCurrentClasses: () => ClassDossier[];
@@ -276,6 +274,8 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
 
   const [mainTab, setMainTab] = useState<MainTab>("dossier");
   const [currentPhase, setCurrentPhase] = useState<WorkspacePhase>("overview");
+  const firstCoursePhase = classes[0] ? coursePhaseId(classes[0].id) : "overview";
+  const openFirstCourse = useCallback(() => setCurrentPhase(firstCoursePhase), [firstCoursePhase]);
 
   // Reset UI state only on intentional plan switches (planSwitchKey), NOT on saves.
   // Saving a new plan changes hydrateKey (new activePlanId) but must not yank the user
@@ -283,17 +283,12 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
   useEffect(() => {
     setCurrentPhase("overview");
     setMainTab("dossier");
-    setExpandedCardId(null);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planSwitchKey]);
-  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const [communityOverlayOpen, setCommunityOverlayOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [hoveredClassId, setHoveredClassId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [dashboardOpenIndex, setDashboardOpenIndex] = useState<number | null>(null);
   const formId = useId();
 
   type PendingRename =
@@ -327,13 +322,39 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
     () => (transitProfile === "walking" ? computeWalkAdvisories(classes) : []),
     [transitProfile, classes],
   );
+  const workspaceTabs = useMemo(
+    () => [
+      { id: "overview" as WorkspacePhase, label: "Overview", icon: BarChart2 },
+      ...classes.map((course) => ({
+        id: coursePhaseId(course.id),
+        label: course.courseCode,
+        icon: BookOpen,
+      })),
+      { id: "logistics" as WorkspacePhase, label: "Logistics", icon: MapIcon },
+      { id: "review" as WorkspacePhase, label: "Review", icon: Layers },
+    ],
+    [classes],
+  );
+  const activeCourse = useMemo(
+    () =>
+      isCoursePhase(currentPhase)
+        ? classes.find((course) => coursePhaseId(course.id) === currentPhase) ?? null
+        : null,
+    [classes, currentPhase],
+  );
 
   useEffect(() => {
     registerOpenFullscreen(() => setFullscreenOpen(true));
   }, [registerOpenFullscreen]);
 
-  // Clear any stale card-selection when entering the Logistics phase.
-  // On this tab there are no ClassCards visible, so selection can only be driven by map clicks.
+  useEffect(() => {
+    if (!isCoursePhase(currentPhase)) return;
+    if (classes.some((course) => coursePhaseId(course.id) === currentPhase)) return;
+    setCurrentPhase(firstCoursePhase);
+  }, [classes, currentPhase, firstCoursePhase]);
+
+  // Clear any stale course selection when entering the Logistics phase.
+  // On this tab selection is only driven by map and schedule interactions.
   useEffect(() => {
     if (currentPhase === "logistics") setSelectedClassId(null);
   }, [currentPhase]);
@@ -575,6 +596,278 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
     </div>
   );
 
+  const walkAdvisoriesNode = walkAdvisories.length > 0 ? (
+    <div className="space-y-1.5 rounded-xl border border-hub-gold/20 bg-hub-gold/[0.06] px-4 py-3">
+      <p className="text-xs font-semibold text-hub-gold">Walk advisories</p>
+      {walkAdvisories.map((advisory) => (
+        <p key={advisory.key} className="text-xs text-white/60">
+          {advisory.message}
+        </p>
+      ))}
+    </div>
+  ) : null;
+
+  const splitMapAndCalendar = ({
+    mapHeight,
+    calendarPxPerHour = 52,
+  }: {
+    mapHeight: string;
+    calendarPxPerHour?: number;
+  }) => (
+    <div className="space-y-3">
+      {walkAdvisoriesNode}
+      <div className="flex flex-col overflow-hidden rounded-xl border border-white/[0.06] xl:h-[85vh] xl:min-h-[720px] xl:flex-row">
+        <div className="relative min-h-[360px] min-w-0 overflow-hidden xl:min-h-0 xl:flex-[3]">
+          {scheduleItems.length > 0 ? (
+            <CampusPathMap
+              scheduleItems={scheduleItems}
+              transitionInsights={transitionInsights}
+              highlightedDossierId={selectedClassId}
+              dossierMarkerMap={dossierMarkerMap}
+              mapHeight={mapHeight}
+              onMarkerClick={(id) => setSelectedClassId(id)}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-xl border border-white/[0.08] bg-hub-surface/70 text-sm text-white/40">
+              No on-campus courses to map
+            </div>
+          )}
+          {scheduleItems.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setMapFullscreen(true)}
+              className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md border border-white/[0.12] bg-hub-bg/80 px-3 py-1.5 text-xs font-medium text-white/70 backdrop-blur-sm transition hover:border-white/[0.2] hover:text-white/90 active:scale-[0.98]"
+            >
+              <Maximize2 className="h-3.5 w-3.5" aria-hidden />
+              Full screen
+            </button>
+          ) : null}
+        </div>
+
+        <div className="h-px w-full shrink-0 bg-white/[0.05] xl:h-auto xl:w-px" />
+
+        <div
+          ref={calendarRef}
+          className="min-w-0 bg-hub-surface/95 xl:flex-[2] xl:min-h-0 xl:self-stretch"
+        >
+          <div className="flex h-full flex-col p-5">
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-white/40">
+              Weekly schedule
+            </p>
+            {toolbar(true)}
+            <div className="mt-4 min-h-0 flex-1">
+              <WeeklyCalendar
+                classes={classes}
+                commitments={commitments}
+                courseLabels={courseLabels}
+                onApply={applyKeepingLabels}
+                pxPerHour={calendarPxPerHour}
+                className="h-full"
+                fillAvailableHeight
+                hideScheduleHeading
+                onBlockDoubleClick={openEditModal}
+                onBlockClick={(id) => setSelectedClassId((prev) => (prev === id ? null : id))}
+                highlightedDossierId={selectedClassId}
+              />
+            </div>
+            {commitments.length > 0 ? (
+              <div className="mt-4">
+                <CommitmentsPanel commitments={commitments} onRemove={removeCommitment} />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderScheduleJourneyPhase = ({
+    key,
+    heroDifficulty,
+    includeSavePrompt,
+  }: {
+    key: string;
+    heroDifficulty: boolean;
+    includeSavePrompt: boolean;
+  }) => (
+    <motion.div
+      key={key}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-8"
+    >
+      <AnimatePresence>
+        {includeSavePrompt && showSavePrompt && (
+          <motion.div
+            key="save-prompt"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="flex items-start justify-between gap-4 rounded-xl border border-hub-cyan/20 bg-hub-cyan/[0.07] px-5 py-4"
+          >
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold text-white/90">
+                Do you want to save this schedule?
+              </p>
+              <p className="text-xs text-white/50">
+                Note: You can save your schedule at any time using the Save plan button above.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void onSave?.();
+                  onSavePromptDismiss?.();
+                }}
+                className="rounded-lg bg-hub-cyan px-3 py-1.5 text-xs font-semibold text-hub-bg transition hover:bg-hub-cyan/85"
+              >
+                Save schedule
+              </button>
+              <button
+                type="button"
+                onClick={onSavePromptDismiss}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/50 transition hover:text-white/70"
+              >
+                Not now
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid items-start gap-8 xl:grid-cols-[3fr_2fr]">
+        <DifficultyScoreHud
+          evaluation={evaluation}
+          isHero={heroDifficulty}
+          onGoToCourses={openFirstCourse}
+          onOpenCalendar={openCalendar}
+        />
+        <ExamsPanel classes={classes} />
+      </div>
+
+      {splitMapAndCalendar({ mapHeight: "h-[360px] xl:h-full" })}
+
+      <section className="space-y-[40px] border-t border-white/[0.06] pt-[32px] xl:pt-[40px]">
+        <div>
+          <h2 className="font-[family-name:var(--font-outfit)] text-[24px] font-semibold tracking-[-0.03em] text-hub-text">
+            Course dossiers
+          </h2>
+          <p className="mt-2 text-sm leading-7 text-hub-text-secondary">
+            Detailed course pages for final review.
+          </p>
+        </div>
+        <div className="space-y-[40px] xl:space-y-[56px]">
+          {classes.map((course) => (
+            <section
+              key={course.id}
+              id={`review-dossier-${course.id}`}
+              className="scroll-mt-24 border-t border-white/[0.06] pt-[24px] first:border-t-0 first:pt-0"
+            >
+              <CourseJourneyPage
+                dossier={course}
+                onUpdate={(patch) => onUpdateDossier(course.id, patch)}
+              />
+            </section>
+          ))}
+        </div>
+      </section>
+    </motion.div>
+  );
+
+  const renderPhaseTabs = (underlineId: string, className = "") => (
+    <div className={`min-w-0 overflow-x-auto hub-scroll ${className}`}>
+      <div className="flex w-max items-center gap-1 pb-1">
+        {workspaceTabs.map((phase) => {
+          const Icon = phase.icon;
+          const isActive = currentPhase === phase.id;
+          return (
+            <button
+              key={phase.id}
+              type="button"
+              onClick={() => setCurrentPhase(phase.id)}
+              className={`relative flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 active:scale-[0.98] ${
+                isActive
+                  ? "font-semibold text-white/90"
+                  : "font-medium text-white/40 hover:text-white/70"
+              }`}
+            >
+              <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-hub-cyan" : ""}`} aria-hidden />
+              {phase.label}
+              {isActive && (
+                <motion.span
+                  layoutId={underlineId}
+                  className="absolute inset-x-2 -bottom-1 h-px rounded-full bg-hub-cyan"
+                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderWorkspacePhase = () => {
+    if (currentPhase === "overview") {
+      return (
+        <motion.div
+          key="phase-overview"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="grid items-start gap-8 xl:grid-cols-[3fr_2fr]"
+        >
+          <DifficultyScoreHud
+            evaluation={evaluation}
+            isHero
+            onGoToCourses={openFirstCourse}
+            onOpenCalendar={openCalendar}
+          />
+          <ExamsPanel classes={classes} />
+        </motion.div>
+      );
+    }
+
+    if (activeCourse) {
+      return (
+        <motion.div
+          key={`phase-${activeCourse.id}`}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <CourseJourneyPage
+            dossier={activeCourse}
+            onUpdate={(patch) => onUpdateDossier(activeCourse.id, patch)}
+          />
+        </motion.div>
+      );
+    }
+
+    if (currentPhase === "logistics") {
+      return (
+        <motion.div
+          key="phase-logistics"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-3"
+        >
+          {splitMapAndCalendar({ mapHeight: "h-[360px] xl:h-full" })}
+        </motion.div>
+      );
+    }
+
+    return renderScheduleJourneyPhase({
+      key: "phase-review",
+      heroDifficulty: false,
+      includeSavePrompt: true,
+    });
+  };
+
   return (
     <>
       {/* Mobile tab switcher */}
@@ -600,87 +893,39 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
         <div ref={calendarRef} className={mainTab === "dossier" ? "hidden" : ""}>
           {calendarNode(78, calendarHeaderActions ? <>{defaultCalendarActions}{calendarHeaderActions}</> : defaultCalendarActions)}
         </div>
-        <div className={`grid gap-4 sm:grid-cols-2 ${mainTab === "schedule" ? "hidden" : ""}`}>
-          {classes.map((c, idx) => (
-            <ClassCard
-              key={`${c.id}:${idx}`} dossier={c}
-              entryDelay={idx * 0.06}
-              isSelected={selectedClassId === c.id}
-              markerIndex={dossierMarkerMap.get(c.id)}
-              onSelect={() => setSelectedClassId((prev) => prev === c.id ? null : c.id)}
-              onHover={() => setHoveredClassId(c.id)}
-              onHoverEnd={() => setHoveredClassId(null)}
-              onOpenDashboard={() => setDashboardOpenIndex(idx)}
-              onUpdate={(patch) => onUpdateDossier(c.id, patch)}
-              isExpanded={expandedCardId === `mobile:${c.id}`}
-              onToggleExpand={() => setExpandedCardId((prev) => prev === `mobile:${c.id}` ? null : `mobile:${c.id}`)}
-            />
-          ))}
-        </div>
-        {scheduleItems.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className={mainTab === "schedule" ? "hidden" : ""}
-          >
-            <CampusPathMap scheduleItems={scheduleItems} transitionInsights={transitionInsights} dossierMarkerMap={dossierMarkerMap} />
-          </motion.div>
-        )}
-        <div className={mainTab === "schedule" ? "hidden" : ""}>
-          <ExamsPanel classes={classes} />
-        </div>
-        <div className={mainTab === "schedule" ? "hidden" : ""}>
-          <EvaluatorFooter evaluation={evaluation} />
+        <div className={`space-y-5 ${mainTab === "schedule" ? "hidden" : ""}`}>
+          <div className="overflow-x-auto border-b border-white/[0.06] pb-1 hub-scroll">
+            {renderPhaseTabs("mobile-phase-underline")}
+          </div>
+          {renderWorkspacePhase()}
         </div>
       </div>
 
       {/* Desktop: 4-phase guided workspace */}
-      <div className="hidden lg:block space-y-8 workspace-grid rounded-xl p-1">
+      <div className="hidden lg:block space-y-8 rounded-xl p-1">
 
         {/* Phase navigation — flat tab row, no surrounding border box */}
-        <nav className="flex items-center gap-1 border-b border-white/[0.06] pb-1" aria-label="Workspace phases">
-          {PHASES.map((phase) => {
-            const Icon = phase.icon;
-            const isActive = currentPhase === phase.id;
-            return (
-              <button
-                key={phase.id}
-                type="button"
-                onClick={() => setCurrentPhase(phase.id)}
-                className={`relative flex items-center gap-2.5 rounded-lg px-4 py-2.5 text-sm transition-all duration-200 active:scale-[0.98] ${
-                  isActive
-                    ? "font-semibold text-white/90"
-                    : "font-medium text-white/40 hover:text-white/70"
-                }`}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-hub-cyan" : ""}`} aria-hidden />
-                {phase.label}
-                {/* Active underline indicator */}
-                {isActive && (
-                  <motion.span
-                    layoutId="phase-underline"
-                    className="absolute inset-x-2 -bottom-1 h-px rounded-full bg-hub-cyan"
-                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                  />
-                )}
-              </button>
-            );
-          })}
+        <nav
+          className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-white/[0.06] pb-1 pt-[10px]"
+          aria-label="Workspace phases"
+        >
+          <div />
+          {renderPhaseTabs("desktop-phase-underline", "mt-[10px] ml-[10px] w-fit max-w-full justify-self-center")}
 
           {/* Tagged Posts — community overlay launcher */}
-          <div className="ml-2 h-4 w-px shrink-0 bg-white/[0.12]" />
-          <button
-            type="button"
-            onClick={() => setCommunityOverlayOpen(true)}
-            className="flex shrink-0 items-center gap-2 rounded-lg border border-hub-cyan/20 bg-hub-cyan/[0.06] px-3.5 py-2 text-sm font-medium text-hub-cyan/80 transition hover:border-hub-cyan/40 hover:bg-hub-cyan/[0.12] hover:text-hub-cyan"
-          >
-            <Users className="h-4 w-4 shrink-0" aria-hidden />
-            Tagged Posts
-          </button>
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCommunityOverlayOpen(true)}
+              className="flex shrink-0 items-center gap-2 rounded-lg border border-hub-cyan/20 bg-hub-cyan/[0.06] px-3.5 py-2 text-sm font-medium text-hub-cyan/80 transition hover:border-hub-cyan/40 hover:bg-hub-cyan/[0.12] hover:text-hub-cyan"
+            >
+              <Users className="h-4 w-4 shrink-0" aria-hidden />
+              Tagged Posts
+            </button>
 
           {/* Save plan — far right of phase nav */}
           {onSave && (
-            <div className="ml-auto flex items-center gap-3 pl-4">
+            <div className="flex items-center gap-3 pl-2">
               <AnimatePresence mode="wait">
                 {saveError ? (
                   <motion.span
@@ -718,245 +963,9 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
               </div>
             </div>
           )}
-        </nav>
-
-        {/* Phase 1: Overview — 60/40 hero layout */}
-        {currentPhase === "overview" && (
-          <motion.div
-            key="phase-overview"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="grid grid-cols-[3fr_2fr] gap-12 items-start"
-          >
-            <DifficultyScoreHud
-              evaluation={evaluation}
-              isHero
-              onGoToCourses={() => setCurrentPhase("dossiers")}
-              onOpenCalendar={openCalendar}
-            />
-            <ExamsPanel classes={classes} />
-          </motion.div>
-        )}
-
-        {/* Phase 2: Dossiers — hero-sized cards */}
-        {currentPhase === "dossiers" && (
-          <motion.div
-            key="phase-dossiers"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div
-              className={`grid gap-8 ${
-                classes.length <= 2 ? "grid-cols-2" :
-                classes.length === 3 ? "grid-cols-3" :
-                "grid-cols-2 xl:grid-cols-3"
-              }`}
-            >
-              {classes.map((c, idx) => (
-                <ClassCard
-                  key={`${c.id}:${idx}`} dossier={c}
-                  entryDelay={idx * 0.08}
-                  isSelected={selectedClassId === c.id}
-                  markerIndex={dossierMarkerMap.get(c.id)}
-                  onSelect={() => setSelectedClassId((prev) => prev === c.id ? null : c.id)}
-                  onHover={() => setHoveredClassId(c.id)}
-                  onHoverEnd={() => setHoveredClassId(null)}
-                  onOpenDashboard={() => setDashboardOpenIndex(idx)}
-                  onUpdate={(patch) => onUpdateDossier(c.id, patch)}
-                  isExpanded={expandedCardId === `dossiers:${c.id}`}
-                  onToggleExpand={() => setExpandedCardId((prev) => prev === `dossiers:${c.id}` ? null : `dossiers:${c.id}`)}
-                />
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Phase 3: Logistics — 60/40 dual-instrument split */}
-        {currentPhase === "logistics" && (
-          <motion.div
-            key="phase-logistics"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-3"
-          >
-            {/* Walk advisories — only shown when transit profile is walking */}
-            {walkAdvisories.length > 0 && (
-              <div className="rounded-xl border border-hub-gold/20 bg-hub-gold/[0.06] px-4 py-3 space-y-1.5">
-                <p className="text-xs font-semibold text-hub-gold">Walk advisories</p>
-                {walkAdvisories.map((a) => (
-                  <p key={a.key} className="text-xs text-white/60">{a.message}</p>
-                ))}
-              </div>
-            )}
-          <div className="flex h-[85vh] overflow-hidden rounded-xl border border-white/[0.06]"
-          >
-            {/* Left pane: Map — 60% */}
-            <div className="relative flex-[3] min-w-0 overflow-hidden">
-              {scheduleItems.length > 0 ? (
-                <CampusPathMap
-                  scheduleItems={scheduleItems} transitionInsights={transitionInsights}
-                  highlightedDossierId={selectedClassId} dossierMarkerMap={dossierMarkerMap}
-                  mapHeight="h-[85vh]"
-                  onMarkerClick={(id) => setSelectedClassId(id)}
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-white/40">
-                  No on-campus courses to map
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setMapFullscreen(true)}
-                className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md border border-white/[0.12] bg-hub-bg/80 px-3 py-1.5 text-xs font-medium text-white/70 backdrop-blur-sm transition hover:border-white/[0.2] hover:text-white/90 active:scale-[0.98]"
-              >
-                <Maximize2 className="h-3.5 w-3.5" aria-hidden />
-                Full screen
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px shrink-0 bg-white/[0.05]" />
-
-            {/* Right pane: Calendar — 40%, docked */}
-            <div
-              ref={calendarRef}
-              className="flex-[2] min-w-0 overflow-y-auto hub-scroll bg-hub-surface/95"
-            >
-              <div className="p-5">
-                <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-white/40">
-                  Weekly schedule
-                </p>
-                {toolbar(true)}
-                <div className="mt-4">
-                  <WeeklyCalendar
-                    classes={classes} commitments={commitments} courseLabels={courseLabels} onApply={applyKeepingLabels}
-                    pxPerHour={52} hideScheduleHeading
-                    onBlockDoubleClick={openEditModal}
-                    onBlockClick={(id) => setSelectedClassId((prev) => prev === id ? null : id)}
-
-                    highlightedDossierId={selectedClassId}
-                  />
-                </div>
-                <div className="mt-4">
-                  <CommitmentsPanel commitments={commitments} onRemove={removeCommitment} />
-                </div>
-              </div>
-            </div>
           </div>
-          </motion.div>
-        )}
-
-        {/* Phase 4: Review — Bento command center */}
-        {currentPhase === "review" && (
-          <motion.div
-            key="phase-review"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-6"
-          >
-            {/* One-time save prompt — shown on first visit to Review after a fresh upload */}
-            <AnimatePresence>
-              {showSavePrompt && (
-                <motion.div
-                  key="save-prompt"
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
-                  className="flex items-start justify-between gap-4 rounded-xl border border-hub-cyan/20 bg-hub-cyan/[0.07] px-5 py-4"
-                >
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-semibold text-white/90">
-                      Do you want to save this schedule?
-                    </p>
-                    <p className="text-xs text-white/50">
-                      Note: You can save your schedule at any time using the Save plan button above.
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { void onSave?.(); onSavePromptDismiss?.(); }}
-                      className="rounded-lg bg-hub-cyan px-3 py-1.5 text-xs font-semibold text-hub-bg transition hover:bg-hub-cyan/85"
-                    >
-                      Save schedule
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onSavePromptDismiss}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/50 transition hover:text-white/70"
-                    >
-                      Not now
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="grid grid-cols-3 gap-8 items-start">
-            {/* Left 2/3: HUD + Cards */}
-            <div className="col-span-2 space-y-8">
-              <DifficultyScoreHud
-                evaluation={evaluation}
-                onGoToCourses={() => setCurrentPhase("dossiers")}
-                onOpenCalendar={openCalendar}
-              />
-              <div className={`grid gap-6 ${classes.length <= 2 ? "grid-cols-2" : "grid-cols-2 xl:grid-cols-3"}`}>
-                {classes.map((c, idx) => (
-                  <ClassCard
-                    key={`${c.id}:${idx}`} dossier={c}
-                    entryDelay={idx * 0.07}
-                    isSelected={selectedClassId === c.id}
-                    markerIndex={dossierMarkerMap.get(c.id)}
-                    onSelect={() => setSelectedClassId((prev) => prev === c.id ? null : c.id)}
-                    onHover={() => setHoveredClassId(c.id)}
-                    onHoverEnd={() => setHoveredClassId(null)}
-                    onOpenDashboard={() => setDashboardOpenIndex(idx)}
-                    onUpdate={(patch) => onUpdateDossier(c.id, patch)}
-                    isExpanded={expandedCardId === `review:${c.id}`}
-                    onToggleExpand={() => setExpandedCardId((prev) => prev === `review:${c.id}` ? null : `review:${c.id}`)}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Right 1/3: Map + Calendar + Exams — sticky command panel */}
-            <div className="sticky top-4 space-y-6 overflow-y-auto hub-scroll" style={{ maxHeight: "calc(100vh - 5rem)" }}>
-              {scheduleItems.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <CampusPathMap
-                    scheduleItems={scheduleItems} transitionInsights={transitionInsights}
-                    highlightedDossierId={selectedClassId} dossierMarkerMap={dossierMarkerMap}
-                    mapHeight="h-[40vh]"
-                    onMarkerClick={(id) => setSelectedClassId(id)}
-                  />
-                </motion.div>
-              )}
-              <div ref={calendarRef} className="rounded-xl border border-white/[0.08] p-4">
-                {toolbar()}
-                <div className="mt-4">
-                  <WeeklyCalendar
-                    classes={classes} commitments={commitments} courseLabels={courseLabels} onApply={applyKeepingLabels}
-                    pxPerHour={52} hideScheduleHeading={false}
-                    headerActions={calendarHeaderActions ? <>{defaultCalendarActions}{calendarHeaderActions}</> : defaultCalendarActions}
-                    onBlockDoubleClick={openEditModal}
-                    onBlockClick={(id) => setSelectedClassId((prev) => prev === id ? null : id)}
-
-                    highlightedDossierId={selectedClassId}
-                  />
-                </div>
-                <div className="mt-4">
-                  <CommitmentsPanel commitments={commitments} onRemove={removeCommitment} />
-                </div>
-              </div>
-              <ExamsPanel classes={classes} />
-            </div>
-            </div>{/* end grid grid-cols-3 */}
-          </motion.div>
-        )}
+        </nav>
+        {renderWorkspacePhase()}
       </div>
 
       {/* Map fullscreen overlay — Phase 3 */}
@@ -1135,13 +1144,6 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
       </AnimatePresence>
 
       {/* ── Course Dashboard Modal ── */}
-      <DossierDashboardModal
-        dossiers={classes}
-        openIndex={dashboardOpenIndex}
-        onClose={() => setDashboardOpenIndex(null)}
-        onNavigate={setDashboardOpenIndex}
-        onUpdate={onUpdateDossier}
-      />
 
       {/* ── Tagged Posts overlay ── */}
       <AnimatePresence>

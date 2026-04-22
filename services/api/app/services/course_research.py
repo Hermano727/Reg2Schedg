@@ -410,7 +410,40 @@ async def research_courses(
                                 geocoded = enrich_meetings_with_geocode(list(entry.meetings))
                                 r = r.model_copy(update={"meetings": geocoded})
                             refreshed.append(r)
-                        cached_fit = known.get("fit_evaluation")
+                        # Prefer top-level fit_evaluation, but allow older snapshots
+                        # that stored it only inside assembled_payload.
+                        cached_fit = known.get("fit_evaluation") or cached_response.fit_evaluation
+
+                        # Backfill fit_evaluation on older known_schedules rows so
+                        # future hits are fully deterministic and skip /fit-analysis.
+                        if cached_fit is None:
+                            try:
+                                from app.services.fit_analysis import analyze_fit
+                                fit_result = analyze_fit(list(refreshed))
+                                cached_fit = fit_result.model_dump(mode="json")
+                                try:
+                                    upsert_known_schedule(
+                                        cache_client,
+                                        signature=signature,
+                                        assembled_payload=cached_response.model_dump(mode="json"),
+                                        fit_evaluation=cached_fit,
+                                    )
+                                    _log.info(
+                                        "[fast-path] backfilled fit evaluation for signature %s",
+                                        signature[:16],
+                                    )
+                                except Exception as write_exc:
+                                    _log.warning(
+                                        "[fast-path] fit backfill write failed for signature %s: %s",
+                                        signature[:16],
+                                        write_exc,
+                                    )
+                            except Exception as fit_exc:
+                                _log.warning(
+                                    "[fast-path] fit backfill failed for signature %s: %s",
+                                    signature[:16],
+                                    fit_exc,
+                                )
                         return cached_response.model_copy(update={
                             "results": refreshed,
                             "fit_evaluation": cached_fit,

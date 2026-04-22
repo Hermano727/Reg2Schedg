@@ -284,8 +284,19 @@ export function ReplyNode({
       <div className="min-w-0 flex-1">
         {/* Author row */}
         <div className="mb-1 flex items-center gap-2">
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-[9px] font-semibold text-hub-text-secondary">
-            {getInitials(reply.authorDisplayName)}
+          <div className="relative h-5 w-5 shrink-0 overflow-hidden rounded-full border border-white/[0.08] bg-white/[0.07]">
+            {reply.authorAvatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={reply.authorAvatarUrl}
+                alt={reply.authorDisplayName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-hub-text-secondary">
+                {getInitials(reply.authorDisplayName)}
+              </span>
+            )}
           </div>
           <span className="text-[11px] font-semibold text-hub-text-secondary tracking-wide">
             {reply.authorDisplayName}

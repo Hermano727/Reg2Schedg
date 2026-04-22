@@ -95,7 +95,7 @@ export function CampusPathMap({
   const hasUnresolved = plottedItems.some((i) => i.geocode_status === "unresolved");
 
   return (
-    <section className="glass-panel overflow-hidden rounded-xl border border-white/[0.08]">
+    <section className="glass-panel flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-white/[0.08]">
       <CampusPathLeafletMap
         plottedItems={plottedItems}
         highlightedDossierId={highlightedDossierId}

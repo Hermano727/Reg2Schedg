@@ -8,6 +8,7 @@ export interface PostSummary {
   isAnonymous: boolean;
   generalTags: string[];
   authorDisplayName: string;
+  authorAvatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   replyCount: number;
@@ -27,6 +28,7 @@ export interface ReplyOut {
   isDeleted: boolean;
   editedAt: string | null;
   authorDisplayName: string;
+  authorAvatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   upvoteCount: number;

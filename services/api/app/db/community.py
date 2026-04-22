@@ -18,6 +18,7 @@ from app.models.community import (
 )
 
 ATTACHMENT_SIGNED_URL_TTL = 3600  # seconds
+AVATAR_SIGNED_URL_TTL = 3600 * 24  # seconds
 COMMUNITY_RATE_LIMIT_WINDOW_MINUTES = 10
 COMMUNITY_RATE_LIMIT_COUNT = 3
 
@@ -77,6 +78,38 @@ def _insert_attachments(
             row["reply_id"] = reply_id
         rows.append(row)
     client.table("community_attachments").insert(rows).execute()
+
+
+def _sign_storage_path(service: Client, storage_path: str | None, ttl_seconds: int) -> str | None:
+    if not storage_path:
+        return None
+    try:
+        sign_resp = service.storage.from_("user-content").create_signed_url(
+            storage_path, ttl_seconds
+        )
+        return sign_resp.get("signedURL") or sign_resp.get("signed_url")
+    except Exception:
+        return None
+
+
+def _post_row_with_avatar(row: dict, service: Client) -> dict:
+    hydrated = dict(row)
+    hydrated["author_avatar_url"] = _sign_storage_path(
+        service,
+        row.get("author_avatar_path"),
+        AVATAR_SIGNED_URL_TTL,
+    )
+    return hydrated
+
+
+def _reply_row_with_avatar(row: dict, service: Client) -> dict:
+    hydrated = dict(row)
+    hydrated["author_avatar_url"] = _sign_storage_path(
+        service,
+        row.get("author_avatar_path"),
+        AVATAR_SIGNED_URL_TTL,
+    )
+    return hydrated
 
 
 def _guess_mime(filename: str) -> str:
@@ -207,6 +240,7 @@ def list_community_posts(
     page: int = 1,
     page_size: int = 20,
 ) -> PostListResponse:
+    service = get_supabase_client()
     offset = (page - 1) * page_size
     query = client.table("community_posts_with_author").select("*", count="exact")
 
@@ -237,7 +271,10 @@ def list_community_posts(
         query = query.order("created_at", desc=True)
 
     response = query.range(offset, offset + page_size - 1).execute()
-    posts = [PostSummary.model_validate(row) for row in (response.data or [])]
+    posts = [
+        PostSummary.model_validate(_post_row_with_avatar(row, service))
+        for row in (response.data or [])
+    ]
     total = response.count or 0
     return PostListResponse(posts=posts, total=total, page=page, page_size=page_size)
 
@@ -270,6 +307,7 @@ def create_community_post(
     general_tags: list[str] | None = None,
     attachment_paths: list[str] | None = None,
 ) -> PostSummary:
+    service = get_supabase_client()
     row: dict = {
         "user_id": user_id,
         "title": title,
@@ -291,10 +329,11 @@ def create_community_post(
         .single()
         .execute()
     )
-    return PostSummary.model_validate(fetch_resp.data)
+    return PostSummary.model_validate(_post_row_with_avatar(fetch_resp.data, service))
 
 
 def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail | None:
+    service = get_supabase_client()
     post_resp = (
         client.table("community_posts_with_author")
         .select("*")
@@ -344,11 +383,14 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
         }
 
     replies = [
-        ReplyOut.model_validate({**r, "attachments": reply_attachments_map.get(r["id"], [])})
+        ReplyOut.model_validate({
+            **_reply_row_with_avatar(r, service),
+            "attachments": reply_attachments_map.get(r["id"], []),
+        })
         for r in raw_replies
     ]
     return PostDetail(
-        **PostSummary.model_validate(post_resp.data[0]).model_dump(),
+        **PostSummary.model_validate(_post_row_with_avatar(post_resp.data[0], service)).model_dump(),
         replies=replies,
         attachments=post_attachments,
     )
@@ -624,6 +666,7 @@ def mark_notifications_read(client: Client, user_id: str) -> None:
 
 
 def get_user_posts(client: Client, user_id: str) -> list[PostSummary]:
+    service = get_supabase_client()
     resp = (
         client.table("community_posts_with_author")
         .select("*")
@@ -632,4 +675,7 @@ def get_user_posts(client: Client, user_id: str) -> list[PostSummary]:
         .limit(20)
         .execute()
     )
-    return [PostSummary.model_validate(row) for row in (resp.data or [])]
+    return [
+        PostSummary.model_validate(_post_row_with_avatar(row, service))
+        for row in (resp.data or [])
+    ]

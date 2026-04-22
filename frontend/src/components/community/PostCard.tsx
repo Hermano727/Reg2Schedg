@@ -248,8 +248,19 @@ export function PostCard({ post, currentUserId, onDeleted }: PostCardProps) {
 
       <div className="mt-3 flex items-center gap-2.5">
         {/* Author avatar */}
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-hub-cyan/20 text-[10px] font-semibold text-hub-cyan">
-          {getInitials(post.authorDisplayName)}
+        <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-white/[0.08] bg-hub-cyan/20">
+          {post.authorAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={post.authorAvatarUrl}
+              alt={post.authorDisplayName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-hub-cyan">
+              {getInitials(post.authorDisplayName)}
+            </span>
+          )}
         </div>
         <span className="text-xs text-hub-text-muted">{post.authorDisplayName}</span>
         <span className="text-xs text-hub-text-muted">·</span>

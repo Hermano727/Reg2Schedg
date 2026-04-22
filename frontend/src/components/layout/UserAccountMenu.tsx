@@ -2,8 +2,11 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
-import { LogOut, Settings, User } from "lucide-react";
+import { LogOut, Send, Settings, User } from "lucide-react";
 import { clientSignOut } from "@/lib/auth/client-sign-out";
+
+const USER_ACCOUNT_MENU_TRIGGER_ID = "user-account-menu-trigger";
+const USER_ACCOUNT_MENU_CONTENT_ID = "user-account-menu-content";
 
 type UserAccountMenuProps = {
   displayName?: string;
@@ -33,8 +36,10 @@ export function UserAccountMenu({
       <DropdownMenu.Trigger asChild>
         <button
           type="button"
+          id={USER_ACCOUNT_MENU_TRIGGER_ID}
           className="flex h-8 w-8 items-center justify-center rounded-full outline-none ring-hub-cyan/40 transition focus-visible:ring-2"
           aria-label="Open account menu"
+          aria-controls={USER_ACCOUNT_MENU_CONTENT_ID}
         >
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -53,6 +58,8 @@ export function UserAccountMenu({
 
       <DropdownMenu.Portal>
         <DropdownMenu.Content
+          id={USER_ACCOUNT_MENU_CONTENT_ID}
+          aria-labelledby={USER_ACCOUNT_MENU_TRIGGER_ID}
           className="glass-panel z-50 min-w-[220px] rounded-xl p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
           sideOffset={8}
           align="end"
@@ -86,6 +93,12 @@ export function UserAccountMenu({
                       aria-hidden
                     />
                     Settings
+                  </Link>
+                </DropdownMenu.Item>
+                <DropdownMenu.Item asChild className={menuItemClass}>
+                  <Link href="/profile?section=feedback">
+                    <Send className="h-4 w-4 text-hub-text-muted" aria-hidden />
+                    Feedback
                   </Link>
                 </DropdownMenu.Item>
               </>

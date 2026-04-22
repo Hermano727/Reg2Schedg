@@ -256,8 +256,19 @@ export function ThreadView({ post }: ThreadViewProps) {
 
         {/* Author row + votes */}
         <div className="mt-5 flex items-center gap-2.5">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-hub-cyan/20 text-xs font-semibold text-hub-cyan">
-            {getInitials(post.authorDisplayName)}
+          <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/[0.08] bg-hub-cyan/20">
+            {post.authorAvatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={post.authorAvatarUrl}
+                alt={post.authorDisplayName}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-hub-cyan">
+                {getInitials(post.authorDisplayName)}
+              </span>
+            )}
           </div>
           <span className="text-xs text-hub-text-muted">{post.authorDisplayName}</span>
           <span className="text-xs text-hub-text-muted">·</span>

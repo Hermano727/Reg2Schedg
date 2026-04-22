@@ -61,6 +61,10 @@ Do **not** use the old `quarters` / `class_dossiers` snippet. Apply the real mig
 
 This creates `profiles`, `saved_plans`, `vault_items`, RLS, the `auth.users` → `profiles` trigger, and Storage policies for the `user-content` bucket.
 
+For in-app feedback collection, also apply:
+
+**File:** [`../../supabase/migrations/0020_feedback_reports.sql`](../../supabase/migrations/0020_feedback_reports.sql)
+
 For shared course research caching, also create:
 
 ```sql
@@ -190,6 +194,7 @@ curl -X POST http://127.0.0.1:8000/plans ^
 | `GET` | `/docs` | Swagger UI |
 | `POST` | `/api/parse-screenshot` | Multipart image → Gemini structured `courses` |
 | `POST` | `/api/research-screenshot` | Multipart image → parse + Browser Use research + shared Supabase cache |
+| `POST` | `/api/feedback` | Authenticated feedback / bug report submission |
 | `POST` | `/plans` | Create `saved_plans` row (Bearer = Supabase user JWT) |
 
 ## 5. Pre-MVP Testing Commands

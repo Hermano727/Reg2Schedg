@@ -89,7 +89,11 @@ export function DropZone({ onFilesSelected, disabled }: DropZoneProps) {
         accept=".html,.htm,.pdf,image/*"
         multiple
         disabled={disabled}
-        onChange={(e) => handleFiles(e.target.files)}
+        onChange={(e) => {
+          handleFiles(e.target.files);
+          // Allow selecting the same file again to trigger onChange every time.
+          e.currentTarget.value = "";
+        }}
       />
       <div className="flex flex-col items-center text-center">
         <div className="mb-5 flex gap-3.5">

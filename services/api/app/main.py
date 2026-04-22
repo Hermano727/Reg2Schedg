@@ -17,6 +17,7 @@ from app.db.service import insert_saved_plan
 from app.models.plan import SavedPlanCreate
 from app.routers.calendar import router as calendar_router
 from app.routers.community import router as community_router
+from app.routers.feedback import router as feedback_router
 from app.routers.fit_analysis import router as fit_analysis_router
 from app.routers.parse import router as parse_router
 from app.routers.plans import router as plans_router
@@ -41,6 +42,7 @@ app.include_router(parse_router, prefix="/api")
 app.include_router(calendar_router, prefix="/api")
 app.include_router(fit_analysis_router, prefix="/api")
 app.include_router(community_router, prefix="/api")
+app.include_router(feedback_router, prefix="/api")
 app.include_router(plans_router)
 
 

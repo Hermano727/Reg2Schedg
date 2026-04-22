@@ -31,6 +31,11 @@ import { vaultKindLabel } from "@/lib/hub/vault-map";
 import { uploadFile } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
 import { deletePost, getPost } from "@/lib/api/community";
+import {
+  submitFeedback,
+  type FeedbackProductArea,
+  type FeedbackReportType,
+} from "@/lib/api/feedback";
 import Link from "next/link";
 import type { VaultItem } from "@/types/dossier";
 import type { PostSummary, ReplyOut } from "@/types/community";
@@ -59,6 +64,22 @@ const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: "posts", label: "My Posts", icon: MessageSquare },
   { id: "privacy", label: "Privacy", icon: Shield },
   { id: "feedback", label: "Submit Feedback", icon: Send },
+];
+
+const FEEDBACK_REPORT_TYPES: { value: FeedbackReportType; label: string; description: string }[] = [
+  { value: "bug", label: "Bug report", description: "Something broke or behaved incorrectly." },
+  { value: "feature", label: "Feature request", description: "A capability you want us to add." },
+  { value: "ux", label: "UX issue", description: "The flow is confusing or harder than it should be." },
+  { value: "general", label: "General feedback", description: "Ideas, praise, or anything else." },
+];
+
+const FEEDBACK_PRODUCT_AREAS: { value: FeedbackProductArea; label: string }[] = [
+  { value: "command_center", label: "Command Center / Home" },
+  { value: "profile", label: "Profile" },
+  { value: "community", label: "Community" },
+  { value: "calendar", label: "Calendar Sync" },
+  { value: "lookup", label: "Class Lookup" },
+  { value: "other", label: "Other" },
 ];
 
 type Props = {
@@ -893,15 +914,47 @@ function PrivacySection() {
 // ---------------------------------------------------------------------------
 
 function FeedbackSection() {
-  const [body, setBody] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [reportType, setReportType] = useState<FeedbackReportType>("bug");
+  const [productArea, setProductArea] = useState<FeedbackProductArea>("command_center");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [expectedBehavior, setExpectedBehavior] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const canSubmit = title.trim().length >= 3 && description.trim().length >= 10 && status !== "sending";
 
   async function handleSubmit() {
-    if (!body.trim()) return;
+    if (!canSubmit) return;
     setStatus("sending");
-    await new Promise((r) => setTimeout(r, 800));
-    setStatus("sent");
-    setBody("");
+    setErrorMessage("");
+
+    try {
+      await submitFeedback({
+        reportType,
+        productArea,
+        title: title.trim(),
+        description: description.trim(),
+        expectedBehavior: expectedBehavior.trim() || null,
+        pagePath: `${window.location.pathname}${window.location.search}`,
+        userAgent: navigator.userAgent,
+        metadata: {
+          source: "profile_feedback",
+          locale: navigator.language ?? null,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? null,
+        },
+      });
+
+      setStatus("sent");
+      setTitle("");
+      setDescription("");
+      setExpectedBehavior("");
+      setReportType("bug");
+      setProductArea("command_center");
+    } catch (error) {
+      setStatus("error");
+      setErrorMessage(error instanceof Error ? error.message : "Failed to send feedback.");
+    }
   }
 
   return (
@@ -927,32 +980,153 @@ function FeedbackSection() {
             <p className="font-medium text-hub-text">Thanks for the feedback!</p>
             <button
               type="button"
-              onClick={() => setStatus("idle")}
+              onClick={() => {
+                setStatus("idle");
+                setErrorMessage("");
+              }}
               className="text-xs text-hub-text-muted underline underline-offset-2 transition hover:text-hub-text"
             >
               Submit another
             </button>
           </motion.div>
         ) : (
-          <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-            <textarea
-              rows={6}
-              placeholder="Tell us what's on your mind…"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="w-full resize-none rounded-xl border border-white/[0.10] bg-white/[0.03] px-4 py-3 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
-            />
+          <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-hub-text-muted">
+                What are you reporting?
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {FEEDBACK_REPORT_TYPES.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => {
+                      setReportType(item.value);
+                      if (status === "error") {
+                        setStatus("idle");
+                        setErrorMessage("");
+                      }
+                    }}
+                    className={[
+                      "rounded-lg border px-3 py-2 text-left transition",
+                      reportType === item.value
+                        ? "border-hub-cyan/45 bg-hub-cyan/12 text-hub-text"
+                        : "border-white/[0.10] bg-white/[0.03] text-hub-text-secondary hover:border-white/[0.18] hover:text-hub-text",
+                    ].join(" ")}
+                  >
+                    <p className="text-sm font-medium">{item.label}</p>
+                    <p className="mt-0.5 text-xs text-hub-text-muted">{item.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-hub-text-muted">
+                Area
+              </span>
+              <select
+                value={productArea}
+                onChange={(e) => {
+                  setProductArea(e.target.value as FeedbackProductArea);
+                  if (status === "error") {
+                    setStatus("idle");
+                    setErrorMessage("");
+                  }
+                }}
+                className="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-4 py-2.5 text-sm text-hub-text outline-none transition focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20"
+              >
+                {FEEDBACK_PRODUCT_AREAS.map((item) => (
+                  <option key={item.value} value={item.value} className="bg-hub-surface-elevated">
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-hub-text-muted">
+                What went wrong?
+              </span>
+              <input
+                type="text"
+                maxLength={120}
+                placeholder="Short summary (e.g. Upload freezes at 80%)"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (status === "error") {
+                    setStatus("idle");
+                    setErrorMessage("");
+                  }
+                }}
+                className="w-full rounded-xl border border-white/[0.10] bg-white/[0.03] px-4 py-2.5 text-sm text-hub-text placeholder:text-hub-text-muted outline-none transition focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20"
+              />
+              <p className="mt-1 text-right font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-hub-text-muted">
+                {title.trim().length}/120
+              </p>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-hub-text-muted">
+                Description
+              </span>
+              <textarea
+                rows={6}
+                maxLength={4000}
+                placeholder="Open description: what happened, and how can we reproduce it?"
+                value={description}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (status === "error") {
+                    setStatus("idle");
+                    setErrorMessage("");
+                  }
+                }}
+                className="w-full resize-none rounded-xl border border-white/[0.10] bg-white/[0.03] px-4 py-3 text-sm text-hub-text placeholder:text-hub-text-muted outline-none focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20 transition"
+              />
+              <p className="mt-1 text-right font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-hub-text-muted">
+                {description.trim().length}/4000
+              </p>
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-hub-text-muted">
+                What did you expect? (optional)
+              </span>
+              <textarea
+                rows={3}
+                maxLength={2000}
+                placeholder="Expected result"
+                value={expectedBehavior}
+                onChange={(e) => {
+                  setExpectedBehavior(e.target.value);
+                  if (status === "error") {
+                    setStatus("idle");
+                    setErrorMessage("");
+                  }
+                }}
+                className="w-full resize-none rounded-xl border border-white/[0.10] bg-white/[0.03] px-4 py-3 text-sm text-hub-text placeholder:text-hub-text-muted outline-none transition focus:border-hub-cyan/40 focus:ring-1 focus:ring-hub-cyan/20"
+              />
+            </label>
+
+            {status === "error" && (
+              <div className="rounded-lg border border-hub-danger/30 bg-hub-danger/10 px-3 py-2 text-xs text-hub-danger">
+                {errorMessage || "Could not send feedback. Please try again."}
+              </div>
+            )}
+
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!body.trim() || status === "sending"}
+                disabled={!canSubmit}
                 className="inline-flex h-9 items-center gap-2 rounded-lg bg-hub-cyan/15 px-4 text-sm font-semibold text-hub-cyan ring-1 ring-hub-cyan/35 transition hover:bg-hub-cyan/25 disabled:opacity-40"
               >
                 {status === "sending" ? (
                   <>
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-hub-cyan/30 border-t-hub-cyan" />
-                    Sending…
+                    Sending...
                   </>
                 ) : (
                   <>
@@ -968,7 +1142,6 @@ function FeedbackSection() {
     </div>
   );
 }
-
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------

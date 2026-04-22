@@ -38,12 +38,14 @@ export function Header({ user }: HeaderProps) {
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupQuery, setLookupQuery] = useState("");
   const [lookupProfessorName, setLookupProfessorName] = useState("");
+  const [lookupAutoSearchOnOpen, setLookupAutoSearchOnOpen] = useState(false);
 
   useEffect(() => {
     function handleLookupOpen(event: Event) {
-      const customEvent = event as CustomEvent<{ query?: string; professorName?: string }>;
+      const customEvent = event as CustomEvent<{ query?: string; professorName?: string; autoSearch?: boolean }>;
       setLookupQuery(customEvent.detail?.query?.trim() ?? "");
       setLookupProfessorName(customEvent.detail?.professorName?.trim() ?? "");
+      setLookupAutoSearchOnOpen(customEvent.detail?.autoSearch === true);
       setLookupOpen(true);
     }
 
@@ -90,6 +92,9 @@ export function Header({ user }: HeaderProps) {
         {/* Brand — offset to clear sidebar rail */}
         <Link
           href="/"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("hub:go-home"));
+          }}
           className="flex min-w-0 items-center gap-2.5 rounded-md outline-none ring-hub-cyan/40 focus-visible:ring-2"
         >
           <TritonMark size={42} />
@@ -197,15 +202,20 @@ export function Header({ user }: HeaderProps) {
           setPaletteOpen(false);
           setLookupQuery(q);
           setLookupProfessorName("");
+          setLookupAutoSearchOnOpen(false);
           setLookupOpen(true);
         }}
       />
 
       <ClassLookupModal
         open={lookupOpen}
-        onClose={() => setLookupOpen(false)}
+        onClose={() => {
+          setLookupOpen(false);
+          setLookupAutoSearchOnOpen(false);
+        }}
         initialQuery={lookupQuery}
         initialProfessorName={lookupProfessorName}
+        autoSearchOnOpen={lookupAutoSearchOnOpen}
       />
     </>
   );

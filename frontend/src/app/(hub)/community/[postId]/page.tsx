@@ -48,6 +48,19 @@ export default async function ThreadPage({ params }: Props) {
 
   const { data: rawAttachments } = await attachmentsQuery.order("created_at", { ascending: true });
 
+  const signedAvatarByPath = new Map<string, string | null>();
+  async function signAvatarPath(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    const cached = signedAvatarByPath.get(path);
+    if (cached !== undefined) return cached;
+    const { data: signed } = await supabase.storage
+      .from("user-content")
+      .createSignedUrl(path, 60 * 60 * 24);
+    const signedUrl = signed?.signedUrl ?? null;
+    signedAvatarByPath.set(path, signedUrl);
+    return signedUrl;
+  }
+
   const signedAttachments = await Promise.all(
     (rawAttachments ?? []).map(async (row) => {
       const { data: signed } = await supabase.storage
@@ -96,24 +109,27 @@ export default async function ThreadPage({ params }: Props) {
       replyAttachmentsByReplyId.set(rid, existing);
     });
 
-  const replies: ReplyOut[] = (rawReplies ?? []).map((row) => ({
-    id: row.id as string,
-    postId: row.post_id as string,
-    userId: row.user_id as string,
-    body: row.body as string,
-    parentReplyId: (row.parent_reply_id as string | null) ?? null,
-    isAnonymous: (row.is_anonymous as boolean) ?? false,
-    isDeleted: (row.is_deleted as boolean) ?? false,
-    editedAt: (row.edited_at as string | null) ?? null,
-    authorDisplayName: (row.author_display_name as string) ?? "Anonymous",
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    upvoteCount: (row.upvote_count as number) ?? 0,
-    downvoteCount: (row.downvote_count as number) ?? 0,
-    userHasUpvoted: (row.user_has_upvoted as boolean) ?? false,
-    userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
-    attachments: replyAttachmentsByReplyId.get(row.id as string) ?? [],
-  }));
+  const replies: ReplyOut[] = await Promise.all(
+    (rawReplies ?? []).map(async (row) => ({
+      id: row.id as string,
+      postId: row.post_id as string,
+      userId: row.user_id as string,
+      body: row.body as string,
+      parentReplyId: (row.parent_reply_id as string | null) ?? null,
+      isAnonymous: (row.is_anonymous as boolean) ?? false,
+      isDeleted: (row.is_deleted as boolean) ?? false,
+      editedAt: (row.edited_at as string | null) ?? null,
+      authorDisplayName: (row.author_display_name as string) ?? "Anonymous",
+      authorAvatarUrl: await signAvatarPath((row.author_avatar_path as string | null) ?? null),
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+      upvoteCount: (row.upvote_count as number) ?? 0,
+      downvoteCount: (row.downvote_count as number) ?? 0,
+      userHasUpvoted: (row.user_has_upvoted as boolean) ?? false,
+      userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
+      attachments: replyAttachmentsByReplyId.get(row.id as string) ?? [],
+    })),
+  );
 
   const post: PostDetail = {
     id: rawPost.id as string,
@@ -125,6 +141,7 @@ export default async function ThreadPage({ params }: Props) {
     isAnonymous: (rawPost.is_anonymous as boolean) ?? false,
     generalTags: (rawPost.general_tags as string[]) ?? [],
     authorDisplayName: (rawPost.author_display_name as string) ?? "Anonymous",
+    authorAvatarUrl: await signAvatarPath((rawPost.author_avatar_path as string | null) ?? null),
     createdAt: rawPost.created_at as string,
     updatedAt: rawPost.updated_at as string,
     replyCount: (rawPost.reply_count as number) ?? 0,

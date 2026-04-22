@@ -19,6 +19,61 @@ import { dossiersToScheduleItems } from "@/lib/mappers/dossiersToScheduleItems";
 import type { ClassDossier, ScheduleEvaluation, UiPhase } from "@/types/dossier";
 
 const FINISH_PAD_MS = 650;
+const SCHEDULE_SUBMISSION_LIMIT = 3;
+const SCHEDULE_SUBMISSION_WINDOW_MS = 6 * 60 * 60 * 1000;
+
+type SubmissionQuotaStatus = {
+  allowed: boolean;
+  submissionsUsed: number;
+  submissionsRemaining: number;
+  limit: number;
+  windowSeconds: number;
+  windowStartedAt: string | null;
+  resetsAt: string | null;
+  retryAfterSeconds: number;
+};
+
+const DEFAULT_SUBMISSION_QUOTA_STATUS: SubmissionQuotaStatus = {
+  allowed: true,
+  submissionsUsed: 0,
+  submissionsRemaining: SCHEDULE_SUBMISSION_LIMIT,
+  limit: SCHEDULE_SUBMISSION_LIMIT,
+  windowSeconds: SCHEDULE_SUBMISSION_WINDOW_MS / 1000,
+  windowStartedAt: null,
+  resetsAt: null,
+  retryAfterSeconds: 0,
+};
+
+function _toInt(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.floor(n) : fallback;
+}
+
+function normalizeQuotaStatus(data: unknown): SubmissionQuotaStatus | null {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") return null;
+  const record = row as Record<string, unknown>;
+
+  const limit = Math.max(1, _toInt(record.limit, SCHEDULE_SUBMISSION_LIMIT));
+  const windowSeconds = Math.max(1, _toInt(record.window_seconds, SCHEDULE_SUBMISSION_WINDOW_MS / 1000));
+  const submissionsUsed = Math.max(0, _toInt(record.submissions_used, 0));
+  const submissionsRemaining = Math.max(0, _toInt(record.submissions_remaining, Math.max(0, limit - submissionsUsed)));
+
+  return {
+    allowed: record.allowed !== false,
+    submissionsUsed,
+    submissionsRemaining,
+    limit,
+    windowSeconds,
+    windowStartedAt: typeof record.window_started_at === "string" ? record.window_started_at : null,
+    resetsAt: typeof record.resets_at === "string" ? record.resets_at : null,
+    retryAfterSeconds: Math.max(0, _toInt(record.retry_after_seconds, 0)),
+  };
+}
+
+function formatQuotaResetTime(resetAtMs: number): string {
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(resetAtMs));
+}
 
 const WHAT_YOU_GET = [
   { label: "PROFESSOR RATINGS", detail: "RMP scores + teaching style pulled live for your section" },
@@ -393,7 +448,6 @@ export function CommandCenter() {
         if (prev <= 1) {
           window.clearInterval(countdownRef.current!);
           countdownRef.current = null;
-          setUploadError(null);
           return 0;
         }
         return prev - 1;
@@ -406,15 +460,10 @@ export function CommandCenter() {
       detail: {
         query: lookupCourseCode.trim(),
         professorName: lookupProfessorName.trim(),
+        autoSearch: true,
       },
     }));
   }, [lookupCourseCode, lookupProfessorName]);
-
-  useEffect(() => {
-    if (!uploadError) return;
-    const dismissId = window.setTimeout(() => setUploadError(null), 5000);
-    return () => window.clearTimeout(dismissId);
-  }, [uploadError]);
 
   const workspaceRef = useRef<DossierScheduleWorkspaceHandle | null>(null);
   const timeoutsRef = useRef<number[]>([]);
@@ -449,8 +498,9 @@ export function CommandCenter() {
   // Toast notification for save feedback
   const [toast, setToast] = useState<ToastPayload | null>(null);
 
-  // Last-plan delete warning: ID of plan pending deletion confirmation
+  // Delete warning: ID of plan pending deletion confirmation
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [submissionQuotaStatus, setSubmissionQuotaStatus] = useState<SubmissionQuotaStatus>(DEFAULT_SUBMISSION_QUOTA_STATUS);
 
   const {
     authed,
@@ -480,6 +530,71 @@ export function CommandCenter() {
     onActivePlanDeleted: resetDemo,
     onPlanFromUrl: () => setPhase("dashboard"),
   });
+
+  const handleGoHome = useCallback(() => {
+    if (countdownRef.current) {
+      window.clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setUploadError(null);
+    setPendingSwitchId(null);
+    setPendingDeleteId(null);
+    setRateLimitCountdown(0);
+    setActivePlanId("");
+    resetDemo();
+    router.replace("/");
+  }, [resetDemo, router, setActivePlanId]);
+
+  useEffect(() => {
+    const onGoHome = () => handleGoHome();
+    window.addEventListener("hub:go-home", onGoHome);
+    return () => window.removeEventListener("hub:go-home", onGoHome);
+  }, [handleGoHome]);
+
+  const refreshSubmissionQuotaStatus = useCallback(async (): Promise<SubmissionQuotaStatus | null> => {
+    if (!authed) {
+      setSubmissionQuotaStatus(DEFAULT_SUBMISSION_QUOTA_STATUS);
+      return DEFAULT_SUBMISSION_QUOTA_STATUS;
+    }
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("get_schedule_submission_quota_status");
+      if (error) throw error;
+      const normalized = normalizeQuotaStatus(data);
+      if (!normalized) return null;
+      setSubmissionQuotaStatus(normalized);
+      return normalized;
+    } catch (error) {
+      console.error("refreshSubmissionQuotaStatus failed:", error);
+      return null;
+    }
+  }, [authed]);
+
+  useEffect(() => {
+    void refreshSubmissionQuotaStatus();
+  }, [refreshSubmissionQuotaStatus]);
+
+  useEffect(() => {
+    if (!pendingDeleteId || !authed) return;
+    void refreshSubmissionQuotaStatus();
+  }, [pendingDeleteId, authed, refreshSubmissionQuotaStatus]);
+
+  const consumeSubmissionQuotaSlot = useCallback(async (): Promise<SubmissionQuotaStatus | null> => {
+    if (!authed) return DEFAULT_SUBMISSION_QUOTA_STATUS;
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("consume_schedule_submission_quota");
+      if (error) throw error;
+      const normalized = normalizeQuotaStatus(data);
+      if (!normalized) return null;
+      setSubmissionQuotaStatus(normalized);
+      return normalized;
+    } catch (error) {
+      console.error("consumeSubmissionQuotaSlot failed:", error);
+      return null;
+    }
+  }, [authed]);
 
   const switchToPlan = useCallback((id: string) => {
     setActivePlanId(id);
@@ -559,7 +674,36 @@ export function CommandCenter() {
       if (processingLockRef.current) return;
       processingLockRef.current = true;
 
-      const fitContext = await loadProfileFitContext();
+      if (_isScheduleFile(scheduleFile)) {
+        const quotaGate = await consumeSubmissionQuotaSlot();
+        if (!quotaGate) {
+          processingLockRef.current = false;
+          setUploadError({
+            kind: "rate_limited",
+            message: "Could not verify your submission quota right now. Please try again in a moment.",
+            retryAfterSeconds: 30,
+          });
+          startCountdown(30);
+          return;
+        }
+        if (!quotaGate.allowed) {
+          const fallbackResetMs = Date.now() + Math.max(1, quotaGate.retryAfterSeconds) * 1000;
+          const resetAtMs = quotaGate.resetsAt ? Date.parse(quotaGate.resetsAt) : fallbackResetMs;
+          const retryAfterSeconds = Math.max(
+            1,
+            quotaGate.retryAfterSeconds || Math.ceil(Math.max(0, resetAtMs - Date.now()) / 1000),
+          );
+          processingLockRef.current = false;
+          setUploadError({
+            kind: "rate_limited",
+            message: `You can submit up to ${quotaGate.limit} schedules every ${Math.ceil(quotaGate.windowSeconds / 3600)} hours. You can submit again at ${formatQuotaResetTime(resetAtMs)}.`,
+            retryAfterSeconds,
+          });
+          startCountdown(retryAfterSeconds);
+          setToast({ message: "Submission limit reached", variant: "error" });
+          return;
+        }
+      }
 
       clearRun();
       setPhase("processing");
@@ -583,17 +727,16 @@ export function CommandCenter() {
             const id = window.setTimeout(() => resolve(), remaining);
             timeoutsRef.current.push(id);
           });
-
-          // Use cached fit evaluation when the fast-path returned one —
-          // avoids a redundant Gemini call and keeps the score deterministic.
-          // If profile context exists, always re-run fit analysis so output is personalized.
-          const cachedFit = fitContext ? null : (response.fit_evaluation ?? null);
-          const [fitResult] = await Promise.all([
-            cachedFit
-              ? Promise.resolve(cachedFit)
-              : analyzeFit(response.results, fitContext ?? undefined).catch(() => null),
-            minWaitPromise,
-          ]);
+          // Always prefer backend-cached fit evaluation when available.
+          // This keeps repeated uploads deterministic and skips an unnecessary Gemini call.
+          const cachedFit = response.fit_evaluation ?? null;
+          const fitPromise = cachedFit
+            ? Promise.resolve(cachedFit)
+            : (async () => {
+                const fitContext = await loadProfileFitContext();
+                return analyzeFit(response.results, fitContext ?? undefined);
+              })().catch(() => null);
+          const [fitResult] = await Promise.all([fitPromise, minWaitPromise]);
 
           if (fitResult) {
             nextEvaluation = {
@@ -661,7 +804,7 @@ export function CommandCenter() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clearRun, authed, handleAutoSave, loadProfileFitContext],
+    [clearRun, authed, consumeSubmissionQuotaSlot, handleAutoSave, loadProfileFitContext, startCountdown],
   );
 
   const handleManualSave = useCallback(async () => {
@@ -681,14 +824,10 @@ export function CommandCenter() {
     }
   }, [handleSave, workspaceRef]);
 
-  // Guard against deleting the last plan: show a warning modal first.
+  // Always require confirmation before deleting a saved plan.
   const handleDeleteWithWarning = useCallback((id: string) => {
-    if (sidebarPlans.length === 1) {
-      setPendingDeleteId(id);
-    } else {
-      void handleDeletePlan(id);
-    }
-  }, [sidebarPlans.length, handleDeletePlan]);
+    setPendingDeleteId(id);
+  }, []);
 
   const handleSaveAndSwitch = useCallback(async () => {
     if (!pendingSwitchId) return;
@@ -728,6 +867,18 @@ export function CommandCenter() {
   );
 
   const classCount = phase === "dashboard" ? viewClasses.length : classes.length;
+  const nowMs = Date.now();
+  const quotaResetAtMsRaw = submissionQuotaStatus.resetsAt ? Date.parse(submissionQuotaStatus.resetsAt) : NaN;
+  const quotaResetAtMs = Number.isFinite(quotaResetAtMsRaw) ? quotaResetAtMsRaw : null;
+  const quotaLimit = Math.max(1, submissionQuotaStatus.limit);
+  const quotaWindowHours = Math.max(1, Math.ceil(submissionQuotaStatus.windowSeconds / 3600));
+  const isQuotaWindowActive = quotaResetAtMs !== null && quotaResetAtMs > nowMs;
+  const submissionCountRemaining = isQuotaWindowActive
+    ? Math.max(0, Math.min(quotaLimit, submissionQuotaStatus.submissionsRemaining))
+    : quotaLimit;
+  const deletionQuotaWarning = isQuotaWindowActive && quotaResetAtMs !== null
+    ? `You have ${submissionCountRemaining} more potential submission${submissionCountRemaining === 1 ? "" : "s"} until ${formatQuotaResetTime(quotaResetAtMs)}.`
+    : `You have ${submissionCountRemaining} potential submission${submissionCountRemaining === 1 ? "" : "s"} available. Your ${quotaWindowHours}-hour window starts with your first schedule submission.`;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1005,7 +1156,7 @@ export function CommandCenter() {
       <ProcessingModal open={phase === "processing"} />
 
       <AnimatePresence>
-        {phase === "idle" && uploadError && (
+        {phase !== "processing" && uploadError && (
           <motion.div
             key="upload-error-popup"
             initial={{ opacity: 0 }}
@@ -1053,7 +1204,7 @@ export function CommandCenter() {
                     </p>
                   )}
                   <p className="mt-2 text-[13px] text-hub-text-muted/80">
-                    This message will close automatically in about 5 seconds.
+                    Please review this warning and close it when you are ready.
                   </p>
                 </div>
               </div>
@@ -1123,7 +1274,7 @@ export function CommandCenter() {
         )}
       </AnimatePresence>
 
-      {/* ── Last-plan delete warning modal ── */}
+      {/* ── Delete warning modal ── */}
       <AnimatePresence>
         {pendingDeleteId && (
           <motion.div
@@ -1146,11 +1297,11 @@ export function CommandCenter() {
               <div className="flex items-center gap-2.5">
                 <Trash2 className="h-4 w-4 text-hub-danger" />
                 <p className="font-[family-name:var(--font-outfit)] text-base font-semibold text-hub-text">
-                  Delete your only saved plan?
+                  Delete this saved plan?
                 </p>
               </div>
               <p className="mt-2 text-sm leading-relaxed text-hub-text-muted">
-                This plan will be removed from your account. You can always research a new schedule and save it again.
+                Are you sure you want to delete this plan? {deletionQuotaWarning}
               </p>
               <div className="mt-5 flex flex-col gap-2">
                 <button
@@ -1187,3 +1338,4 @@ export function CommandCenter() {
     </div>
   );
 }
+

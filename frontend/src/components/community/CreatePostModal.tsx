@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Image as ImageIcon, Paperclip, X } from "lucide-react";
 import { createPost } from "@/lib/api/community";
@@ -52,6 +52,17 @@ export function CreatePostModal({
   const [error, setError] = useState<string | null>(null);
   const isControlled = open !== undefined;
   const isOpen = isControlled ? open : internalOpen;
+  const dialogIdBase = userId
+    ? `create-post-dialog-${userId}`
+    : "create-post-dialog";
+  const dialogTriggerId = `${dialogIdBase}-trigger`;
+  const dialogContentId = `${dialogIdBase}-content`;
+  const triggerElement = trigger && isValidElement(trigger)
+    ? cloneElement(trigger as React.ReactElement<Record<string, unknown>>, {
+        id: dialogTriggerId,
+        "aria-controls": dialogContentId,
+      })
+    : trigger;
 
   function setOpen(nextOpen: boolean) {
     if (!isControlled) {
@@ -183,11 +194,14 @@ export function CreatePostModal({
         setOpen(v);
       }}
     >
-      {trigger ? <Dialog.Trigger asChild>{trigger}</Dialog.Trigger> : null}
+      {triggerElement ? <Dialog.Trigger asChild>{triggerElement}</Dialog.Trigger> : null}
 
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-hub-surface shadow-[0_32px_80px_rgba(0,0,0,0.66)]">
+        <Dialog.Content
+          id={dialogContentId}
+          className="fixed left-1/2 top-1/2 z-50 flex w-full max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-hub-surface shadow-[0_32px_80px_rgba(0,0,0,0.66)]"
+        >
           <div className="flex items-start justify-between gap-6 border-b border-white/[0.06] px-6 py-5">
             <div className="min-w-0">
               <Dialog.Title className="font-[family-name:var(--font-outfit)] text-[18px] font-semibold tracking-tight text-hub-text">

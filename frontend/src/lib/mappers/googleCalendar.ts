@@ -110,19 +110,37 @@ function formatDaysLabel(cols: number[]): string {
 }
 
 function parseTimeToMinutes(time: string): number {
-  const match = time.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) {
-    throw new Error(`Unsupported time format: ${time}`);
+  const value = time.trim();
+
+  const ampmMatch = value.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    let hours = parseInt(ampmMatch[1], 10);
+    const minutes = ampmMatch[2] ? parseInt(ampmMatch[2], 10) : 0;
+    const period = ampmMatch[3].toUpperCase();
+
+    if (period === "AM" && hours === 12) hours = 0;
+    if (period === "PM" && hours !== 12) hours += 12;
+
+    return hours * 60 + minutes;
   }
 
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
+  const h24Match = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (h24Match) {
+    return parseInt(h24Match[1], 10) * 60 + parseInt(h24Match[2], 10);
+  }
 
-  if (period === "AM" && hours === 12) hours = 0;
-  if (period === "PM" && hours !== 12) hours += 12;
+  const hourOnlyMatch = value.match(/^(\d{1,2})\s*(AM|PM)$/i);
+  if (hourOnlyMatch) {
+    let hours = parseInt(hourOnlyMatch[1], 10);
+    const period = hourOnlyMatch[2].toUpperCase();
 
-  return hours * 60 + minutes;
+    if (period === "AM" && hours === 12) hours = 0;
+    if (period === "PM" && hours !== 12) hours += 12;
+
+    return hours * 60;
+  }
+
+  throw new Error(`Unsupported time format: ${time}`);
 }
 
 function getCurrentWeekOccurrence(dayCol: number): Date {

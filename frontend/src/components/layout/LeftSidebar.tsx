@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Plus,
   Settings,
+  Send,
   Search,
   Trash,
   Users,
@@ -398,6 +399,20 @@ export function LeftSidebar({
           </span>
         </Link>
         <div className="flex-1" />
+        <Link
+          href="/profile?section=feedback"
+          aria-label="Feedback"
+          title="Feedback"
+          className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-hub-text-muted transition hover:bg-white/[0.05] hover:text-hub-text"
+        >
+          <Send className="h-5 w-5" />
+          <span
+            className="pointer-events-none absolute left-full ml-2.5 whitespace-nowrap rounded-md border border-white/[0.1] bg-hub-surface-elevated px-2 py-1 text-xs text-hub-text opacity-0 shadow-lg transition-opacity delay-300 group-hover:opacity-100"
+            aria-hidden
+          >
+            Feedback
+          </span>
+        </Link>
         <Link
           href="/settings"
           aria-label="Settings"

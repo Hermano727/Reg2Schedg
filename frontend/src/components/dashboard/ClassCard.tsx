@@ -18,9 +18,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  BookOpen,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
   Info,
   Quote,
@@ -44,11 +42,9 @@ import { isExamSection } from "@/lib/mappers/dossiersToScheduleItems";
 type ClassCardProps = {
   dossier: ClassDossier;
   isSelected?: boolean;
-  markerIndex?: number;
   onSelect?: () => void;
   onHover?: () => void;
   onHoverEnd?: () => void;
-  onOpenDashboard?: () => void;
   /** Called when user manually corrects a field. */
   onUpdate?: (patch: DossierEditPatch) => void;
   /** When true, expanded view exposes inline editable fields. */
@@ -561,11 +557,9 @@ function SentimentBlock({
 export function ClassCard({
   dossier,
   isSelected,
-  markerIndex,
   onSelect,
   onHover,
   onHoverEnd,
-  onOpenDashboard,
   onUpdate,
   isEditable = false,
   entryDelay = 0,
@@ -638,11 +632,7 @@ export function ClassCard({
                   onSave={(v) => onUpdate?.({ courseTitle: v })}
                 />
               </span>
-              {markerIndex != null ? (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-hub-cyan/40 bg-hub-cyan/10 px-1 text-[9px] font-bold text-hub-cyan">
-                  {markerIndex}
-                </span>
-              ) : isRemoteOnly ? (
+              {isRemoteOnly ? (
                 <span className="inline-flex items-center rounded-full border border-purple-400/35 bg-purple-400/10 px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-purple-300">
                   Remote
                 </span>
@@ -675,17 +665,6 @@ export function ClassCard({
               RMP <ExternalLink className="h-3 w-3" />
             </a>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenDashboard?.();
-            }}
-            className="flex items-center gap-1 rounded-lg border border-hub-cyan/30 bg-hub-cyan/10 px-3 py-1.5 text-[12px] font-semibold text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/20"
-          >
-            Full view
-            <ChevronRight className="h-3 w-3" />
-          </button>
         </div>
       </header>
 
@@ -821,21 +800,7 @@ export function ClassCard({
               {/* Additional evidence */}
               {allEvidence.length > 1 && (
                 <section>
-                  <SectionLabel
-                    right={
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenDashboard?.();
-                        }}
-                        className="flex items-center gap-1 text-[10px] text-hub-cyan/70 hover:text-hub-cyan"
-                      >
-                        <BookOpen className="h-3 w-3" />
-                        View all in full dossier
-                      </button>
-                    }
-                  >
+                  <SectionLabel>
                     More sources
                   </SectionLabel>
                   <div className="space-y-2">

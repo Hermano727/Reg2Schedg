@@ -37,13 +37,35 @@ const PALETTE = [
 ] as const;
 
 export function parseTimeToMinutes(t: string): number {
-  const [timePart, period] = t.trim().split(" ");
-  const [hStr, mStr] = timePart.split(":");
-  let h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
-  if (period === "PM" && h !== 12) h += 12;
-  if (period === "AM" && h === 12) h = 0;
-  return h * 60 + m;
+  const value = t.trim();
+
+  // Accept the common WebReg style (`10:00 AM`) as well as compact variants
+  // (`10:00AM`, `10AM`) and 24-hour values (`14:00`).
+  const ampmMatch = value.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    let h = parseInt(ampmMatch[1], 10);
+    const m = ampmMatch[2] ? parseInt(ampmMatch[2], 10) : 0;
+    const period = ampmMatch[3].toUpperCase();
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+  }
+
+  const h24Match = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (h24Match) {
+    return parseInt(h24Match[1], 10) * 60 + parseInt(h24Match[2], 10);
+  }
+
+  const hourOnlyMatch = value.match(/^(\d{1,2})\s*(AM|PM)$/i);
+  if (hourOnlyMatch) {
+    let h = parseInt(hourOnlyMatch[1], 10);
+    const period = hourOnlyMatch[2].toUpperCase();
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60;
+  }
+
+  return NaN;
 }
 
 export function parseDaysToCols(days: string): number[] {
@@ -162,6 +184,8 @@ export interface WeeklyCalendarProps {
   onBlockClick?: (dossierId: string) => void;
   /** When set, course blocks matching this dossier ID will glow cyan. */
   highlightedDossierId?: string | null;
+  /** Stretch the grid to fill the parent's available height when room exists. */
+  fillAvailableHeight?: boolean;
 }
 
 export function WeeklyCalendar({
@@ -176,6 +200,7 @@ export function WeeklyCalendar({
   onBlockDoubleClick,
   onBlockClick,
   highlightedDossierId,
+  fillAvailableHeight = false,
 }: WeeklyCalendarProps) {
   const pxPerMin = pxPerHour / 60;
   const [dragKey, setDragKey] = useState<string | null>(null);
@@ -209,6 +234,7 @@ export function WeeklyCalendar({
       if (isExamSection(meeting.section_type)) return;
       const startMin = parseTimeToMinutes(meeting.start_time);
       const endMin = parseTimeToMinutes(meeting.end_time);
+      if (Number.isNaN(startMin) || Number.isNaN(endMin)) return;
       if (startMin < allStart) allStart = startMin;
       if (endMin > allEnd) allEnd = endMin;
       const labelKey = `${dossier.id}:${meetingIdx}`;
@@ -249,6 +275,7 @@ export function WeeklyCalendar({
   const rangeEnd = Math.min(22 * 60, Math.ceil((allEnd + 30) / 60) * 60);
   const totalHours = (rangeEnd - rangeStart) / 60;
   const totalHeight = totalHours * pxPerHour;
+  const gridHeightStyle = fillAvailableHeight ? `max(${totalHeight}px, 100%)` : `${totalHeight}px`;
 
   const hourLabels: number[] = [];
   for (let h = rangeStart / 60; h <= rangeEnd / 60; h++) hourLabels.push(h);
@@ -392,7 +419,7 @@ export function WeeklyCalendar({
 
   return (
     <div
-      className={`rounded-xl border border-white/[0.08] bg-hub-surface/90 p-4 backdrop-blur-sm ${className}`}
+      className={`flex flex-col rounded-xl border border-white/[0.08] bg-hub-surface/90 p-4 backdrop-blur-sm ${className}`}
     >
       {!hideScheduleHeading || headerActions ? (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3">
@@ -408,8 +435,8 @@ export function WeeklyCalendar({
           ) : null}
         </div>
       ) : null}
-      <div className="overflow-x-auto">
-        <div className="w-full min-w-0">
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="h-full w-full min-w-0">
           <div className="mb-1 flex">
             <div className="w-10 shrink-0" />
             {visibleCols.map((col) => (
@@ -425,7 +452,7 @@ export function WeeklyCalendar({
           </div>
 
           <div className="flex">
-            <div className="relative w-10 shrink-0" style={{ height: totalHeight }}>
+            <div className="relative w-10 shrink-0" style={{ height: gridHeightStyle }}>
               {hourLabels.map((h) => (
                 <div
                   key={h}
@@ -447,7 +474,7 @@ export function WeeklyCalendar({
               <div
                 key={col}
                 className={`relative flex-1 border-l ${col >= 5 ? "border-white/[0.04] bg-white/[0.01]" : "border-white/[0.06]"}`}
-                style={{ height: totalHeight }}
+                style={{ height: gridHeightStyle }}
                 onDragOver={(e) => handleDragOver(e, col)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, col)}

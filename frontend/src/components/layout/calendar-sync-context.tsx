@@ -1,14 +1,24 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import type { ClassDossier, ScheduleCommitment } from "@/types/dossier";
 
-const CalendarSyncContext = createContext<(() => void) | undefined>(undefined);
+export type CalendarSyncRequest = {
+  classes: ClassDossier[];
+  commitments: ScheduleCommitment[];
+  courseLabels?: Record<string, string>;
+  scheduleTitle?: string;
+};
+
+type CalendarSyncHandler = (request: CalendarSyncRequest) => Promise<void> | void;
+
+const CalendarSyncContext = createContext<CalendarSyncHandler | undefined>(undefined);
 
 export function CalendarSyncProvider({
   onSync,
   children,
 }: {
-  onSync: () => void;
+  onSync: CalendarSyncHandler;
   children: ReactNode;
 }) {
   return (
@@ -18,6 +28,6 @@ export function CalendarSyncProvider({
   );
 }
 
-export function useCalendarSyncHandler(): () => void {
+export function useCalendarSyncHandler(): CalendarSyncHandler {
   return useContext(CalendarSyncContext) ?? (() => {});
 }

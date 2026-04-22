@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useState, type ReactNode } from "react";
+import { authorizeGoogleCalendar, GoogleCalendarAuthorizationError, syncGoogleCalendarEvents } from "@/lib/api/calendar";
+import { buildGoogleCalendarEvents } from "@/lib/mappers/googleCalendar";
 import { createClient } from "@/lib/supabase/client";
-import { getApiBaseUrl } from "@/lib/api/client";
-import { CalendarSyncProvider } from "@/components/layout/calendar-sync-context";
+import { CalendarSyncProvider, type CalendarSyncRequest } from "@/components/layout/calendar-sync-context";
 import { CalendarStateProvider } from "@/components/layout/calendar-state-context";
 import { Header } from "@/components/layout/Header";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
@@ -19,41 +20,51 @@ export function HubShell({ children, user }: HubShellProps) {
     !user?.needsOnboarding,
   );
 
-  const handleSyncCalendar = useCallback(async () => {
+  const handleSyncCalendar = useCallback(async (request: CalendarSyncRequest) => {
     try {
       const supabase = createClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
       const token = session?.access_token;
-      console.log("supabase session", session);
-      console.log("access token", token);
 
-      const res = await fetch(`${getApiBaseUrl()}/api/calendar/authorize`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      console.log("calendar authorize response status", res.status);
-      console.log("calendar authorize response headers", Object.fromEntries(res.headers.entries()));
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        console.error("calendar authorize failed:", res.status, body);
-        const err = (() => {
-          try {
-            return JSON.parse(body);
-          } catch {
-            return {};
-          }
-        })();
-        throw new Error((err as { detail?: string }).detail ?? `Authorization failed (status ${res.status})`);
+      if (!token) {
+        throw new Error("Sign in to Reg2Schedg before syncing to Google Calendar.");
       }
 
-      const { url } = (await res.json()) as { url: string };
-      window.open(url, "_blank", "noopener,noreferrer");
+      const events = buildGoogleCalendarEvents({
+        classes: request.classes,
+        commitments: request.commitments,
+        courseLabels: request.courseLabels,
+        scheduleTitle: request.scheduleTitle,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Los_Angeles",
+      });
+
+      if (events.length === 0) {
+        throw new Error("There are no calendar entries to sync yet.");
+      }
+
+      let result;
+      try {
+        result = await syncGoogleCalendarEvents(token, events);
+      } catch (error) {
+        if (!(error instanceof GoogleCalendarAuthorizationError)) {
+          throw error;
+        }
+
+        await authorizeGoogleCalendar(token);
+        result = await syncGoogleCalendarEvents(token, events);
+      }
+
+      const failed = result.failed ?? 0;
+      if (failed > 0) {
+        alert(`Added ${result.count} Google Calendar events, but ${failed} item${failed === 1 ? "" : "s"} failed. You can try syncing again.`);
+      } else {
+        alert(`Added ${result.count} Google Calendar event${result.count === 1 ? "" : "s"} to your account.`);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
-      alert(`Google Calendar sync error: ${msg}\n\nMake sure the API backend is running and GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set in services/api/.env`);
+      alert(`Google Calendar sync error: ${msg}\n\nMake sure the API backend is running and GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are set in services/api/.env.`);
     }
   }, []);
 

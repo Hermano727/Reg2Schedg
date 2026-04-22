@@ -982,6 +982,7 @@ export function CommandCenter() {
                       evaluation={viewEvaluation}
                       hydrateKey={`${activePlanId}:${authed}`}
                       planSwitchKey={planSwitchKey}
+                      calendarSyncTitle={activePlanTitle || quarterLabel || "Reg2Schedg Schedule"}
                       scheduleItems={dossiersToScheduleItems(viewClasses)}
                       transitionInsights={[]}
                       initialCommitments={viewCommitments}

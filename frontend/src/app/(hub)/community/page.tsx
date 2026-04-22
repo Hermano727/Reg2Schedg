@@ -4,13 +4,19 @@ import { CommunityHub } from "@/components/community/CommunityHub";
 import type { PostSummary } from "@/types/community";
 
 type CommunityPageProps = {
-  searchParams?: {
-    composeCourse?: string;
-    composeProfessor?: string;
-  };
+  searchParams?:
+    | {
+        composeCourse?: string;
+        composeProfessor?: string;
+      }
+    | Promise<{
+        composeCourse?: string;
+        composeProfessor?: string;
+      }>;
 };
 
 export default async function CommunityPage({ searchParams }: CommunityPageProps) {
+  const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -55,8 +61,8 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
       initialPosts={posts}
       initialTotal={count ?? 0}
       userId={user.id}
-      initialComposeCourseCode={searchParams?.composeCourse ?? ""}
-      initialComposeProfessorName={searchParams?.composeProfessor ?? ""}
+      initialComposeCourseCode={resolvedSearchParams?.composeCourse ?? ""}
+      initialComposeProfessorName={resolvedSearchParams?.composeProfessor ?? ""}
     />
   );
 }

@@ -201,6 +201,11 @@ cd services/api
 python -m app.scripts.precache_courses --prefix CSE,MATH --dry-run
 ```
 
+Cache one exact course code (space-friendly argument)
+```
+python -m app.scripts.precache_courses --course MAE 143A --dry-run
+```
+
 Cache high-traffic departments before launch
 ```
 python -m app.scripts.precache_courses --prefix CSE,MATH,COGS,ECE,BIOL,PSYC,MGT --delay 2.0
@@ -211,9 +216,15 @@ Enrich / update professors that were not populated professor
 python -m app.scripts.browser_use_enrich --course "CSE 123" --professor "SHALEV, AARON D" --dry-run
 ```
 
+Cache one exact class directly with Browser Use
+```
+python -m app.scripts.browser_use_enrich --single-course --course "CSE 123" --professor "SHALEV, AARON D"
+```
+
 Or, re-run the tiered pipeline without Browser Use via precache:
 ```
   python -m app.scripts.precache_courses --prefix CSE --force --limit 0 --delay 2.0
+  python -m app.scripts.precache_courses --threshold 2 --prefix CSE --delay 2.0
 ```
 
 See what professor / class entries are currently poor
@@ -223,6 +234,7 @@ See what professor / class entries are currently poor
 
 Enrich poor entries with Browser Use
 ```
+  python -m app.scripts.browser_use_enrich --department CSE --threshold 2 --yes
   python -m app.scripts.browser_use_enrich --threshold 2 --limit 20 --dry-run
   python -m app.scripts.browser_use_enrich --threshold 2 --limit 20 --yes
 ```

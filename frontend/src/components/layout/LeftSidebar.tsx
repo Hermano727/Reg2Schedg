@@ -10,12 +10,14 @@ import {
   MessageSquare,
   Plus,
   Settings,
+  Search,
   Trash,
-  User,
+  Users,
   X,
 } from "lucide-react";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
 import type { VaultItem } from "@/types/dossier";
+import { ClassLookupModal } from "@/components/lookup/ClassLookupModal";
 
 export type SidebarPlanRow = {
   id: string;
@@ -111,6 +113,7 @@ export function LeftSidebar({
   const [activePanel, setActivePanel] = useState<ActivePanel | null>(null);
   // Tracks the last opened panel so content stays visible during slide-out
   const [shownPanel, setShownPanel] = useState<ActivePanel>("plans");
+  const [lookupOpen, setLookupOpen] = useState(false);
   const railRef = useRef<HTMLElement>(null);
   const flyoutRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -375,13 +378,18 @@ export function LeftSidebar({
           active={activePanel === "vault"}
           onClick={() => openPanel("vault")}
         />
+        <IconButton
+          icon={Search}
+          label="Class lookup"
+          onClick={() => setLookupOpen(true)}
+        />
         <Link
           href="/community"
           aria-label="Community"
           title="Community"
           className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-hub-text-muted transition hover:bg-white/[0.05] hover:text-hub-text"
         >
-          <User className="h-5 w-5" />
+          <Users className="h-5 w-5" />
           <span
             className="pointer-events-none absolute left-full ml-2.5 whitespace-nowrap rounded-md border border-white/[0.1] bg-hub-surface-elevated px-2 py-1 text-xs text-hub-text opacity-0 shadow-lg transition-opacity delay-300 group-hover:opacity-100"
             aria-hidden
@@ -405,6 +413,7 @@ export function LeftSidebar({
           </span>
         </Link>
       </aside>
+      <ClassLookupModal open={lookupOpen} onClose={() => setLookupOpen(false)} />
     </>
   );
 }

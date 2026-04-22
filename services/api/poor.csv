@@ -5,8 +5,8 @@ CSE 185,"GYMREK, MELISSA ANN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-
 CSE 190,"OUSTERHOUT, AMY",3,FAIR,"thin_evidence(2),no_grade_breakdown",prepopulate_job,2026-04-15
 MATH 109,"XIAO, MING",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-16
 CSE 132A,"Deutsch, Alin Bernard",4,GOOD,no_grade_breakdown,tiered_pipeline,2026-04-16
-CSE 190,"Politiz, Joseph Gibbs",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",tiered_pipeline,2026-04-16
 MATH 109,"XU, ZHOULI",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-16
+CSE 190,"Politiz, Joseph Gibbs",5,GOOD,,browser_use_enrichment,2026-04-21
 ECON 100B,"Levkoff, Steven B.",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
 MATH 103B,"Wesley, William J",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
 HILD 2C,"Hendrickson, Gerald M.",3,FAIR,"no_evidence,thin_evidence(0)",browser_use,2026-04-05
@@ -329,7 +329,7 @@ MATH 109,"SAVVAS, MICHAIL",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_
 MATH 140A,"PASQUALOTTO, FEDERICO",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-16
 MATH 18,"CARFAGNINI, MARCO",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-16
 MATH 180C,"ANG, MORRIS",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-16
-CSE 190,"Politz, Joseph Gibbs",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",tiered_pipeline,2026-04-16
+CSE 190,"Politz, Joseph Gibbs",5,GOOD,,browser_use_enrichment,2026-04-21
 MATH 109,"SCHWEINSBERG, JASON",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-16
 CSE 290,"TULLSEN, DEAN MICHAEL",3,FAIR,"thin_evidence(2),no_grade_breakdown",prepopulate_job,2026-04-15
 MATH 140A,"SANCHEZ, ANTHONY",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-16
@@ -983,3 +983,112 @@ ECE 65,"SAAD, ANDREW S",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_gr
 ECE 99H,"BHARADIA, DINESH",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-17
 ECE 99H,"GONZALEZ PRELCIC, NURIA",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-17
 ECE 99H,"TOURI, BEHROUZ",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-17
+MAE 153,"GHAZINEJAD, MAZIAR",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+CSE 100,"Politz, Joseph Gibbs",3,FAIR,"no_prof_info,no_grade_breakdown",tiered_pipeline,2026-04-20
+MATH 20D,,3,FAIR,"no_prof_info,no_grade_breakdown",tiered_pipeline,2026-04-21
+ece,,4,GOOD,no_grade_breakdown,tiered_pipeline,2026-04-21
+MAE 101A,"BAHADORI, MOHAMMAD YOUSEF",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 160,"EVDOKIMENKO, EKATERINA",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101A,"NOMURA, KEIKO K.",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101A,"SADEGHIZADEH, ZAHRA",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101A,"SARKAR, SUTANU",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 101B,"BILGIN, EYLUL",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101B,"LLEWELLYN SMITH, STEFAN G.",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101B,"NOMURA, KEIKO K.",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101B,"PHAM, HIEU TAN",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101C,"POULIKAKOS, LISA VOULA",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 185,"SCHMIDT, OLIVER",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 101C,"SADEGHIZADEH, ZAHRA",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 104,"PHAM, HIEU TAN",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 104,"SANCHEZ, ANTONIO LUIS",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 105,"BANDARU, PRABHAKAR",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 11,"SADEGHIZADEH, ZAHRA",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 105,"BECKER, JANET MARIA",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 105,"SAINTILLAN, DAVID",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 105,"SCHMIDT, OLIVER",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 107,"DAVIDSON, MICHAEL R",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 152,"LLEWELLYN SMITH, STEFAN G.",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 107,"LINDSEY, STEPHANIE",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 107,"MCENEANEY, WILLIAM MICHAEL",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 107,"TOLLEY, MICHAEL THOMAS",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 108,"HAO, XUANTING",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 152,"TYNAN, GEORGE ROBERT",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 108,"PHAM, HIEU TAN",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 11,"BAHADORI, MOHAMMAD YOUSEF",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 143A,"DIAGNE, MAMADOU LAMINE",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 8,"AREFIEV, ALEXEY",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 11,"NOMURA, KEIKO K.",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 11,"RANGAMANI, PADMINI",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 143A,"KRAMER, BORIS",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 8,"LYNCH, JAMES EDMUND",0,POOR,"no_prof_info,no_evidence,thin_evidence(0),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 11,"SAHA, ABHISHEK",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 113,"SANCHEZ, ANTONIO LUIS",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 113,"SESHADRI, KALYANASUNDARAM",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 119,"HIDALGO-GONZALEZ, PATRICIA",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 125,"KLEISSL, JAN",2,FAIR,"thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 131A,"GHAZINEJAD, MAZIAR",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 131A,"LUAN, HAIWEN",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 131A,"LUBARDA, MARKO",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 131A,"QI, HUIHUI",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 131B,"FRAZIER, MICHAEL",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 131B,"SCHOLTES ACEVEDO, CLAIRE",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 142,"ANDERSON, MARK RONALD",2,FAIR,"no_prof_info,thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 143A,"BITMEAD, ROBERT R.",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 143A,"HERBERT, SYLVIA LEE",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 143B,"BITMEAD, ROBERT R.",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 143B,"DIAGNE, MAMADOU LAMINE",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 143B,"HERBERT, SYLVIA LEE",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 143B,"KRAMER, BORIS",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 143B,"MORIMOTO, TANIA",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 145,"MARTINEZ, SONIA",2,FAIR,"thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 148,"SILBERMAN, JACK",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 150,"FRIEND, JAMES ROBERT",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 150,"PHAM, HIEU TAN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 150,"TRUONG, PHUONG THI NGOC",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 154,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 155A,"ANDERSON, MARK RONALD",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 156A,"GRAVISH, NICHOLAS G",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 156B,"PAWLAK, GENO RONALD",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 170,"DIAGNE, MAMADOU LAMINE",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 170,"EVDOKIMENKO, EKATERINA",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 170,"LUBARDA, MARKO",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 171A,"BOECHLER, NICHOLAS SEBASTIA",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 171A,"MARINONI, ALESSANDRO",3,FAIR,"thin_evidence(1),no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 175A,"SADEGHIZADEH, ZAHRA",1,POOR,"no_prof_info,thin_evidence(1),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 180,"MCENEANEY, WILLIAM MICHAEL",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 180,"ROSENGREN, AARON",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 180A,"BAHADORI, MOHAMMAD YOUSEF",3,FAIR,"no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 190,"ANDERSON, MARK RONALD",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 191,"QI, HUIHUI",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 198,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 2,"ANDERSON, MARK RONALD",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 20,"BANDARU, PRABHAKAR",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 20,"EVDOKIMENKO, EKATERINA",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 20,"GRAEVE, OLIVIA A",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 21,"CAI, SHENGQIANG",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 3,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 3,"LUBARDA, MARKO",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 3,"MULLIN, JENNIFER S",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 3,"QI, HUIHUI",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 30A,"BAHADORI, MOHAMMAD YOUSEF",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 30A,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 30A,"LAL, RATNESH",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 30A,"LUBARDA, MARKO",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 30A,"QI, HUIHUI",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 30A,"WANG, CHONGAN",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 30B,"BAHADORI, MOHAMMAD YOUSEF",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 30B,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 30B,"GHAZINEJAD, MAZIAR",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 30B,"LUBARDA, MARKO",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 40,"BITMEAD, ROBERT R.",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 40,"CORTES, JORGE",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 40,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 40,"MARTINEZ, SONIA",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 8,"LUBARDA, MARKO",3,FAIR,"no_prof_info,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 8,"PHAM, HIEU TAN",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 8,"TRUONG, PHUONG THI NGOC",2,FAIR,"no_prof_info,no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 87,"DELSON, NATHAN JOSEPH",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 93,"GHAZINEJAD, MAZIAR",4,GOOD,no_grade_breakdown,prepopulate_job,2026-04-21
+MAE 94,"SAHA, ABHISHEK",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 99H,"HWANG, JOHN T",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21
+MAE 99H,"MARTINEZ, SONIA",1,POOR,"no_prof_info,thin_evidence(2),no_sentiment,no_grade_breakdown",prepopulate_job,2026-04-21

@@ -102,6 +102,7 @@ function computeWalkAdvisories(classes: ClassDossier[]): WalkAdvisory[] {
       const start = parseMinutesFromAmPm(m.start_time);
       const end = parseMinutesFromAmPm(m.end_time);
       if (start === null || end === null) continue;
+      const days = m.days ? m.days.split("") : [];
       // Flatten by day so we can sort per-day
       const parsedDays: string[] = [];
       let i = 0;
@@ -117,7 +118,7 @@ function computeWalkAdvisories(classes: ClassDossier[]): WalkAdvisory[] {
       for (const day of parsedDays) {
         meetings.push({
           courseCode: c.courseCode,
-          locationName: m.buildingDisplayName ?? m.location ?? m.building_code ?? "Unknown",
+          locationName: m.location ?? m.building_code ?? "Unknown",
           day,
           startMin: start,
           endMin: end,
@@ -283,12 +284,14 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
     setCurrentPhase("overview");
     setMainTab("dossier");
     setExpandedCardId(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planSwitchKey]);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const [communityOverlayOpen, setCommunityOverlayOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [hoveredClassId, setHoveredClassId] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [dashboardOpenIndex, setDashboardOpenIndex] = useState<number | null>(null);
   const formId = useId();
@@ -516,14 +519,14 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
   const syncBtn = (size: "sm" | "lg") => (
     <button
       type="button"
-      onClick={() =>
-        onSyncCalendar({
+      onClick={() => {
+        void onSyncCalendar({
           classes,
           commitments,
           courseLabels,
           scheduleTitle: calendarSyncTitle,
-        })
-      }
+        });
+      }}
       className={
         size === "lg"
           ? "inline-flex items-center gap-2 rounded-lg border border-hub-cyan/35 bg-hub-cyan/12 px-3 py-2 text-xs font-semibold text-hub-cyan transition hover:bg-hub-cyan/20"
@@ -597,7 +600,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
         <div ref={calendarRef} className={mainTab === "dossier" ? "hidden" : ""}>
           {calendarNode(78, calendarHeaderActions ? <>{defaultCalendarActions}{calendarHeaderActions}</> : defaultCalendarActions)}
         </div>
-        <div className={`grid gap-4 items-start sm:grid-cols-2 ${mainTab === "schedule" ? "hidden" : ""}`}>
+        <div className={`grid gap-4 sm:grid-cols-2 ${mainTab === "schedule" ? "hidden" : ""}`}>
           {classes.map((c, idx) => (
             <ClassCard
               key={`${c.id}:${idx}`} dossier={c}
@@ -605,6 +608,8 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
               isSelected={selectedClassId === c.id}
               markerIndex={dossierMarkerMap.get(c.id)}
               onSelect={() => setSelectedClassId((prev) => prev === c.id ? null : c.id)}
+              onHover={() => setHoveredClassId(c.id)}
+              onHoverEnd={() => setHoveredClassId(null)}
               onOpenDashboard={() => setDashboardOpenIndex(idx)}
               onUpdate={(patch) => onUpdateDossier(c.id, patch)}
               isExpanded={expandedCardId === `mobile:${c.id}`}
@@ -740,7 +745,13 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="mx-auto w-full max-w-[1040px] flex flex-col gap-5">
+            <div
+              className={`grid gap-8 ${
+                classes.length <= 2 ? "grid-cols-2" :
+                classes.length === 3 ? "grid-cols-3" :
+                "grid-cols-2 xl:grid-cols-3"
+              }`}
+            >
               {classes.map((c, idx) => (
                 <ClassCard
                   key={`${c.id}:${idx}`} dossier={c}
@@ -748,6 +759,8 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                   isSelected={selectedClassId === c.id}
                   markerIndex={dossierMarkerMap.get(c.id)}
                   onSelect={() => setSelectedClassId((prev) => prev === c.id ? null : c.id)}
+                  onHover={() => setHoveredClassId(c.id)}
+                  onHoverEnd={() => setHoveredClassId(null)}
                   onOpenDashboard={() => setDashboardOpenIndex(idx)}
                   onUpdate={(patch) => onUpdateDossier(c.id, patch)}
                   isExpanded={expandedCardId === `dossiers:${c.id}`}
@@ -888,7 +901,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                 onGoToCourses={() => setCurrentPhase("dossiers")}
                 onOpenCalendar={openCalendar}
               />
-              <div className="flex flex-col gap-5">
+              <div className={`grid gap-6 ${classes.length <= 2 ? "grid-cols-2" : "grid-cols-2 xl:grid-cols-3"}`}>
                 {classes.map((c, idx) => (
                   <ClassCard
                     key={`${c.id}:${idx}`} dossier={c}
@@ -896,6 +909,8 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                     isSelected={selectedClassId === c.id}
                     markerIndex={dossierMarkerMap.get(c.id)}
                     onSelect={() => setSelectedClassId((prev) => prev === c.id ? null : c.id)}
+                    onHover={() => setHoveredClassId(c.id)}
+                    onHoverEnd={() => setHoveredClassId(null)}
                     onOpenDashboard={() => setDashboardOpenIndex(idx)}
                     onUpdate={(patch) => onUpdateDossier(c.id, patch)}
                     isExpanded={expandedCardId === `review:${c.id}`}

@@ -404,15 +404,42 @@ async def research_courses(
                             for e in unique_entries
                         }
                         refreshed: list[CourseResearchResult] = []
+                        snapshot_changed = False
                         for r in cached_response.results:
                             entry = entry_by_code.get(normalize_course_code(r.course_code))
                             if entry is not None:
                                 geocoded = enrich_meetings_with_geocode(list(entry.meetings))
                                 r = r.model_copy(update={"meetings": geocoded})
+                                latest_row = get_course_research_cache(
+                                    cache_client,
+                                    course_code=entry.course_code,
+                                    professor_name=entry.professor_name or None,
+                                )
+                                if latest_row is not None and latest_row.id != r.cache_id:
+                                    try:
+                                        latest_logistics = CourseLogistics.model_validate(latest_row.logistics)
+                                        r = r.model_copy(update={
+                                            "course_title": latest_row.course_title or r.course_title,
+                                            "professor_name": latest_row.professor_name or r.professor_name,
+                                            "logistics": latest_logistics,
+                                            "cached_at": latest_row.updated_at,
+                                            "cache_id": latest_row.id,
+                                            "cache_hit": True,
+                                            "error": None,
+                                        })
+                                        snapshot_changed = True
+                                    except ValidationError as exc:
+                                        _log.warning(
+                                            "[fast-path] cache refresh validation failed for %s: %s",
+                                            r.course_code,
+                                            exc,
+                                        )
                             refreshed.append(r)
                         # Prefer top-level fit_evaluation, but allow older snapshots
                         # that stored it only inside assembled_payload.
                         cached_fit = known.get("fit_evaluation") or cached_response.fit_evaluation
+                        if snapshot_changed:
+                            cached_fit = None
 
                         # Backfill fit_evaluation on older known_schedules rows so
                         # future hits are fully deterministic and skip /fit-analysis.
@@ -444,10 +471,29 @@ async def research_courses(
                                     signature[:16],
                                     fit_exc,
                                 )
-                        return cached_response.model_copy(update={
+                        refreshed_response = cached_response.model_copy(update={
                             "results": refreshed,
                             "fit_evaluation": cached_fit,
                         })
+                        if snapshot_changed:
+                            try:
+                                upsert_known_schedule(
+                                    cache_client,
+                                    signature=signature,
+                                    assembled_payload=refreshed_response.model_dump(mode="json"),
+                                    fit_evaluation=cached_fit,
+                                )
+                                _log.info(
+                                    "[fast-path] refreshed stale cache references for signature %s",
+                                    signature[:16],
+                                )
+                            except Exception as write_exc:
+                                _log.warning(
+                                    "[fast-path] snapshot refresh write failed for signature %s: %s",
+                                    signature[:16],
+                                    write_exc,
+                                )
+                        return refreshed_response
                     else:
                         stale = [
                             r.course_code for r in cached_response.results

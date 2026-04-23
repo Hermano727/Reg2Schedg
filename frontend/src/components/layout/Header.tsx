@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, HelpCircle, Users } from "lucide-react";
+import { Bell, Eye, EyeOff, HelpCircle, Users } from "lucide-react";
 import { UserAccountMenu } from "@/components/layout/UserAccountMenu";
 import { TritonMark } from "@/components/ui/TritonMark";
 import { CommandPalette, CommandPaletteTrigger, useCommandPalette } from "@/components/layout/CommandPalette";
 import { ClassLookupModal } from "@/components/lookup/ClassLookupModal";
 import { getNotifications, markNotificationsRead } from "@/lib/api/community";
+import { createClient } from "@/lib/supabase/client";
 import { timeAgo } from "@/lib/community/utils";
 import type { NotificationOut } from "@/types/community";
 import type { HubUser } from "@/types/hub-user";
@@ -39,6 +40,11 @@ export function Header({ user }: HeaderProps) {
   const [lookupQuery, setLookupQuery] = useState("");
   const [lookupProfessorName, setLookupProfessorName] = useState("");
   const [lookupAutoSearchOnOpen, setLookupAutoSearchOnOpen] = useState(false);
+  const [showSubmissionQuota, setShowSubmissionQuota] = useState(user?.submissionQuota?.showInHeader ?? true);
+  const [submissionQuotaSaving, setSubmissionQuotaSaving] = useState(false);
+  const hasSubmissionQuota = !!user?.submissionQuota;
+  const submissionQuota = user?.submissionQuota ?? null;
+  const submissionLabel = submissionQuota?.submissionsRemaining === 1 ? "submission" : "submissions";
 
   useEffect(() => {
     function handleLookupOpen(event: Event) {
@@ -64,6 +70,21 @@ export function Header({ user }: HeaderProps) {
   }, [user]);
 
   useEffect(() => {
+    setShowSubmissionQuota(user?.submissionQuota?.showInHeader ?? true);
+  }, [user?.submissionQuota?.showInHeader, user?.id]);
+
+  useEffect(() => {
+    const onPreferencesUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<{ showSubmissionQuotaInHeader?: boolean }>;
+      if (typeof customEvent.detail?.showSubmissionQuotaInHeader === "boolean") {
+        setShowSubmissionQuota(customEvent.detail.showSubmissionQuotaInHeader);
+      }
+    };
+    window.addEventListener("hub:profile-preferences-updated", onPreferencesUpdated as EventListener);
+    return () => window.removeEventListener("hub:profile-preferences-updated", onPreferencesUpdated as EventListener);
+  }, []);
+
+  useEffect(() => {
     if (!dropdownOpen) return;
     function handleMouseDown(e: MouseEvent) {
       const target = e.target as Node;
@@ -84,6 +105,29 @@ export function Header({ user }: HeaderProps) {
       markNotificationsRead().catch(() => {});
     }
     setDropdownOpen((v) => !v);
+  }
+
+  async function handleToggleSubmissionQuota(next: boolean) {
+    if (!user?.id || submissionQuotaSaving) return;
+    const previous = showSubmissionQuota;
+    setShowSubmissionQuota(next);
+    setSubmissionQuotaSaving(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .update({ show_submission_quota_in_header: next })
+        .eq("id", user.id);
+      if (error) throw error;
+      window.dispatchEvent(new CustomEvent("hub:profile-preferences-updated", {
+        detail: { showSubmissionQuotaInHeader: next },
+      }));
+    } catch {
+      setShowSubmissionQuota(previous);
+    } finally {
+      setSubmissionQuotaSaving(false);
+    }
   }
 
   return (
@@ -109,6 +153,35 @@ export function Header({ user }: HeaderProps) {
 
         {/* Right actions */}
         <div className="ml-auto flex items-center gap-1">
+          {hasSubmissionQuota && showSubmissionQuota && submissionQuota && (
+            <div className="hidden items-center gap-1.5 rounded-md border border-white/[0.10] bg-white/[0.03] px-2.5 py-1 md:flex">
+              <span className="text-[11px] text-hub-text-secondary">
+                {submissionQuota.submissionsRemaining} {submissionLabel} left until {submissionQuota.resetsAtLabel}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleToggleSubmissionQuota(false)}
+                disabled={submissionQuotaSaving}
+                className="rounded p-0.5 text-hub-text-muted transition hover:text-hub-text disabled:opacity-50"
+                aria-label="Hide submission quota"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          {hasSubmissionQuota && !showSubmissionQuota && (
+            <button
+              type="button"
+              onClick={() => void handleToggleSubmissionQuota(true)}
+              disabled={submissionQuotaSaving}
+              className="hidden items-center gap-1.5 rounded-md border border-white/[0.10] px-2 py-1 text-[11px] text-hub-text-muted transition hover:text-hub-text disabled:opacity-50 md:inline-flex"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Show submissions
+            </button>
+          )}
+
           <Link
             href="/community"
             aria-current={isCommunityPage ? "page" : undefined}
@@ -191,6 +264,7 @@ export function Header({ user }: HeaderProps) {
             email={user?.email}
             signedIn={!!user}
             avatarUrl={user?.avatarUrl}
+            submissionQuota={user?.submissionQuota ?? null}
           />
         </div>
       </header>

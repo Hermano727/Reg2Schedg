@@ -11,6 +11,7 @@ Returns (None, None) on any error — callers must tolerate absence.
 from __future__ import annotations
 
 import logging
+import re
 
 import httpx
 
@@ -57,14 +58,23 @@ _HEADERS = {
 
 
 def _last_name(full_name: str) -> str:
-    parts = full_name.strip().split()
+    normalized = full_name.strip()
+    if not normalized:
+        return full_name
+    if "," in normalized:
+        return normalized.split(",", 1)[0].strip()
+    parts = normalized.replace(".", " ").split()
     return parts[-1] if parts else full_name
+
+
+def _name_tokens(value: str) -> set[str]:
+    return {token for token in re.split(r"[\s,\.]+", value.upper()) if token}
 
 
 def _name_overlap_score(requested: str, candidate_first: str, candidate_last: str) -> int:
     """Score token overlap between requested name and candidate."""
-    req_tokens = set(requested.upper().split())
-    cand_tokens = set(f"{candidate_first} {candidate_last}".upper().split())
+    req_tokens = _name_tokens(requested)
+    cand_tokens = _name_tokens(f"{candidate_first} {candidate_last}")
     return len(req_tokens & cand_tokens)
 
 

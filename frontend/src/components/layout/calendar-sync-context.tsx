@@ -8,6 +8,7 @@ export type CalendarSyncRequest = {
   commitments: ScheduleCommitment[];
   courseLabels?: Record<string, string>;
   scheduleTitle?: string;
+  includeExamTimes?: boolean;
 };
 
 type CalendarSyncHandler = (request: CalendarSyncRequest) => Promise<void> | void;

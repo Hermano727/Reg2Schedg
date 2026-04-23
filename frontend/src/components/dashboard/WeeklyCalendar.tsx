@@ -6,6 +6,8 @@ import type { ClassDossier, ScheduleCommitment, SectionMeeting } from "@/types/d
 import { isExamSection } from "@/lib/mappers/dossiersToScheduleItems";
 
 const DEFAULT_PX_PER_HOUR = 64;
+const DEFAULT_VISIBLE_START_MIN = 8 * 60;
+const DEFAULT_VISIBLE_END_MIN = 23 * 60;
 
 const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -271,8 +273,8 @@ export function WeeklyCalendar({
 
   if (blocks.length === 0) return null;
 
-  const rangeStart = Math.max(8 * 60, Math.floor((allStart - 30) / 60) * 60);
-  const rangeEnd = Math.min(22 * 60, Math.ceil((allEnd + 30) / 60) * 60);
+  const rangeStart = DEFAULT_VISIBLE_START_MIN;
+  const rangeEnd = DEFAULT_VISIBLE_END_MIN;
   const totalHours = (rangeEnd - rangeStart) / 60;
   const totalHeight = totalHours * pxPerHour;
   const gridHeightStyle = fillAvailableHeight ? `max(${totalHeight}px, 100%)` : `${totalHeight}px`;

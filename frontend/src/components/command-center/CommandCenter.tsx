@@ -11,12 +11,14 @@ import { DossierScheduleWorkspace, type DossierScheduleWorkspaceHandle } from "@
 import { HubToast, type ToastPayload } from "@/components/ui/HubToast";
 import { IdleWatermark } from "@/components/ui/IdleWatermark";
 import { usePlanSync } from "@/hooks/usePlanSync";
+import { fetchPublicDemoPlan } from "@/lib/api/plans";
 import { createClient } from "@/lib/supabase/client";
 import { mockDossier } from "@/lib/mock/dossier";
 import { analyzeFit, researchScreenshot, InvalidScheduleError, RateLimitedError } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import { dossiersToScheduleItems } from "@/lib/mappers/dossiersToScheduleItems";
-import type { ClassDossier, ScheduleEvaluation, UiPhase } from "@/types/dossier";
+import { getScheduleDifficultyLabel } from "@/lib/hub/scheduleDifficulty";
+import type { ClassDossier, ScheduleCommitment, ScheduleEvaluation, UiPhase } from "@/types/dossier";
 
 const FINISH_PAD_MS = 650;
 const SCHEDULE_SUBMISSION_LIMIT = 3;
@@ -342,11 +344,13 @@ function BreadcrumbNav({
   quarterLabel,
   activePlanTitle,
   onRename,
+  editable = true,
 }: {
   phase: string;
   quarterLabel: string;
   activePlanTitle: string;
   onRename: (newTitle: string) => void;
+  editable?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -380,7 +384,7 @@ function BreadcrumbNav({
       {phase === "dashboard" && (
         <>
           <ChevronRight className="h-3 w-3 shrink-0" aria-hidden />
-          {editing ? (
+          {editable && editing ? (
             <span className="flex items-center gap-1.5">
               <input
                 ref={inputRef}
@@ -398,7 +402,7 @@ function BreadcrumbNav({
                 </span>
               )}
             </span>
-          ) : (
+          ) : editable ? (
             <button
               type="button"
               onClick={open}
@@ -410,6 +414,10 @@ function BreadcrumbNav({
                 Rename
               </span>
             </button>
+          ) : (
+            <span className="px-1 py-0.5 text-sm font-semibold text-hub-cyan">
+              {planName}
+            </span>
           )}
         </>
       )}
@@ -422,6 +430,10 @@ export function CommandCenter() {
   const [ingestionCollapsed, setIngestionCollapsed] = useState(false);
   const [classes, setClasses] = useState<ClassDossier[]>(mockDossier.classes);
   const [evaluation, setEvaluation] = useState<ScheduleEvaluation>(mockDossier.evaluation);
+  const [localCommitments, setLocalCommitments] = useState<ScheduleCommitment[]>([]);
+  const [localCourseLabels, setLocalCourseLabels] = useState<Record<string, string>>({});
+  const [demoPlanMeta, setDemoPlanMeta] = useState<{ title: string; quarterLabel: string | null } | null>(null);
+  const [isExampleLoading, setIsExampleLoading] = useState(false);
 
   // Save flow state
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -476,14 +488,25 @@ export function CommandCenter() {
 
   useEffect(() => () => clearRun(), [clearRun]);
 
+  const clearExampleState = useCallback(() => {
+    setLocalCommitments([]);
+    setLocalCourseLabels({});
+    setDemoPlanMeta(null);
+  }, []);
+
   const resetDemo = useCallback(() => {
     clearRun();
     processingLockRef.current = false;
+    setIsExampleLoading(false);
+    clearExampleState();
+    setLastSavedAt(null);
+    setIsSaving(false);
+    setSaveError(null);
     setPhase("idle");
     setIngestionCollapsed(false);
     setClasses(mockDossier.classes);
     setEvaluation(mockDossier.evaluation);
-  }, [clearRun]);
+  }, [clearExampleState, clearRun]);
 
   const router = useRouter();
 
@@ -501,6 +524,7 @@ export function CommandCenter() {
   // Delete warning: ID of plan pending deletion confirmation
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [submissionQuotaStatus, setSubmissionQuotaStatus] = useState<SubmissionQuotaStatus>(DEFAULT_SUBMISSION_QUOTA_STATUS);
+  const [skipUploadConfirmation, setSkipUploadConfirmation] = useState(false);
 
   const {
     authed,
@@ -525,10 +549,15 @@ export function CommandCenter() {
     phase,
     classes,
     evaluation,
+    commitments: localCommitments,
+    courseLabels: localCourseLabels,
     workspaceRef,
     onPlanCreated: resetDemo,
     onActivePlanDeleted: resetDemo,
-    onPlanFromUrl: () => setPhase("dashboard"),
+    onPlanFromUrl: () => {
+      clearExampleState();
+      setPhase("dashboard");
+    },
   });
 
   const handleGoHome = useCallback(() => {
@@ -575,10 +604,69 @@ export function CommandCenter() {
     void refreshSubmissionQuotaStatus();
   }, [refreshSubmissionQuotaStatus]);
 
+  const refreshUploadPreferences = useCallback(async () => {
+    if (!authed) {
+      setSkipUploadConfirmation(false);
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("skip_upload_confirmation")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      setSkipUploadConfirmation((data as { skip_upload_confirmation?: boolean } | null)?.skip_upload_confirmation ?? false);
+    } catch (error) {
+      console.error("refreshUploadPreferences failed:", error);
+    }
+  }, [authed]);
+
+  useEffect(() => {
+    void refreshUploadPreferences();
+  }, [refreshUploadPreferences]);
+
   useEffect(() => {
     if (!pendingDeleteId || !authed) return;
     void refreshSubmissionQuotaStatus();
   }, [pendingDeleteId, authed, refreshSubmissionQuotaStatus]);
+
+  const handleSkipUploadConfirmationChange = useCallback(async (next: boolean) => {
+    if (!authed) {
+      setSkipUploadConfirmation(next);
+      return;
+    }
+
+    const previous = skipUploadConfirmation;
+    setSkipUploadConfirmation(next);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) throw new Error("User not found");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ skip_upload_confirmation: next })
+        .eq("id", user.id);
+      if (error) throw error;
+
+      window.dispatchEvent(new CustomEvent("hub:profile-preferences-updated", {
+        detail: { skipUploadConfirmation: next },
+      }));
+    } catch (error) {
+      console.error("handleSkipUploadConfirmationChange failed:", error);
+      setSkipUploadConfirmation(previous);
+      setToast({ message: "Couldn't save upload preference", variant: "error" });
+    }
+  }, [authed, skipUploadConfirmation]);
 
   const consumeSubmissionQuotaSlot = useCallback(async (): Promise<SubmissionQuotaStatus | null> => {
     if (!authed) return DEFAULT_SUBMISSION_QUOTA_STATUS;
@@ -597,10 +685,11 @@ export function CommandCenter() {
   }, [authed]);
 
   const switchToPlan = useCallback((id: string) => {
+    if (authed) clearExampleState();
     setActivePlanId(id);
     setPhase("dashboard");
     setPlanSwitchKey((k) => k + 1);
-  }, [setActivePlanId]);
+  }, [authed, clearExampleState, setActivePlanId]);
 
   // Sync the active plan ID into the URL so refreshing the page restores the same plan.
   useEffect(() => {
@@ -705,6 +794,7 @@ export function CommandCenter() {
         }
       }
 
+      clearExampleState();
       clearRun();
       setPhase("processing");
 
@@ -742,7 +832,7 @@ export function CommandCenter() {
             nextEvaluation = {
               fitnessScore: fitResult.fitness_score,
               fitnessMax: fitResult.fitness_max,
-              trendLabel: fitResult.trend_label,
+              trendLabel: getScheduleDifficultyLabel(fitResult.fitness_score),
               categories: fitResult.categories ?? undefined,
               alerts: fitResult.alerts,
               recommendation: fitResult.recommendation,
@@ -804,8 +894,44 @@ export function CommandCenter() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clearRun, authed, consumeSubmissionQuotaSlot, handleAutoSave, loadProfileFitContext, startCountdown],
+    [clearExampleState, clearRun, authed, consumeSubmissionQuotaSlot, handleAutoSave, loadProfileFitContext, startCountdown],
   );
+
+  const handleViewExampleOutput = useCallback(async () => {
+    clearRun();
+    processingLockRef.current = false;
+    setUploadError(null);
+    setPendingSwitchId(null);
+    setPendingDeleteId(null);
+    setRateLimitCountdown(0);
+    setLastSavedAt(null);
+    setIsSaving(false);
+    setSaveError(null);
+    clearExampleState();
+    setIsExampleLoading(true);
+
+    try {
+      const examplePlan = await fetchPublicDemoPlan();
+      if (!examplePlan) throw new Error("Example plan unavailable");
+
+      setClasses(examplePlan.classes);
+      setEvaluation(examplePlan.evaluation);
+      setLocalCommitments(examplePlan.commitments);
+      setLocalCourseLabels(examplePlan.courseLabels);
+      setDemoPlanMeta({
+        title: examplePlan.title ?? "Example researched schedule",
+        quarterLabel: examplePlan.quarterLabel,
+      });
+      setActivePlanId("");
+      setPhase("dashboard");
+      setIngestionCollapsed(true);
+      router.replace("/");
+    } catch {
+      setToast({ message: "Couldn't load the example schedule", variant: "error" });
+    } finally {
+      setIsExampleLoading(false);
+    }
+  }, [clearExampleState, clearRun, router, setActivePlanId]);
 
   const handleManualSave = useCallback(async () => {
     setIsSaving(true);
@@ -867,6 +993,9 @@ export function CommandCenter() {
   );
 
   const classCount = phase === "dashboard" ? viewClasses.length : classes.length;
+  const isDemoView = demoPlanMeta !== null;
+  const displayedQuarterLabel = demoPlanMeta?.quarterLabel ?? quarterLabel;
+  const displayedActivePlanTitle = demoPlanMeta?.title ?? activePlanTitle;
   const nowMs = Date.now();
   const quotaResetAtMsRaw = submissionQuotaStatus.resetsAt ? Date.parse(submissionQuotaStatus.resetsAt) : NaN;
   const quotaResetAtMs = Number.isFinite(quotaResetAtMsRaw) ? quotaResetAtMsRaw : null;
@@ -876,6 +1005,9 @@ export function CommandCenter() {
   const submissionCountRemaining = isQuotaWindowActive
     ? Math.max(0, Math.min(quotaLimit, submissionQuotaStatus.submissionsRemaining))
     : quotaLimit;
+  const submissionResetAtLabel = isQuotaWindowActive && quotaResetAtMs !== null
+    ? formatQuotaResetTime(quotaResetAtMs)
+    : `${quotaWindowHours} hours after your first submission`;
   const deletionQuotaWarning = isQuotaWindowActive && quotaResetAtMs !== null
     ? `You have ${submissionCountRemaining} more potential submission${submissionCountRemaining === 1 ? "" : "s"} until ${formatQuotaResetTime(quotaResetAtMs)}.`
     : `You have ${submissionCountRemaining} potential submission${submissionCountRemaining === 1 ? "" : "s"} available. Your ${quotaWindowHours}-hour window starts with your first schedule submission.`;
@@ -921,8 +1053,9 @@ export function CommandCenter() {
           >
             <BreadcrumbNav
               phase={phase}
-              quarterLabel={quarterLabel}
-              activePlanTitle={activePlanTitle}
+              quarterLabel={displayedQuarterLabel}
+              activePlanTitle={displayedActivePlanTitle}
+              editable={!isDemoView && !!activePlanId && authed}
               onRename={(newTitle) => {
                 if (activePlanId && authed) {
                   void handleRenamePlan(activePlanId, newTitle);
@@ -986,10 +1119,17 @@ export function CommandCenter() {
                       collapsed={ingestionCollapsed}
                       onToggleCollapse={() => setIngestionCollapsed((c) => !c)}
                       onFilesSelected={handleFilesSelected}
+                      onOpenUploadFormatModal={() => setShowExampleModal(true)}
+                      submissionUsesLeft={submissionCountRemaining}
+                      submissionResetsAtLabel={submissionResetAtLabel}
+                      skipUploadConfirmation={skipUploadConfirmation}
+                      onSkipUploadConfirmationChange={handleSkipUploadConfirmationChange}
                       onManualSubmit={handleManualSubmit}
                       classCount={classCount}
-                      quarterLabel={quarterLabel}
+                      quarterLabel={displayedQuarterLabel}
                       isLocked={!authed || !isUcsdUser}
+                      onViewExampleOutput={handleViewExampleOutput}
+                      isExampleLoading={isExampleLoading}
                     />
 
                   </div>
@@ -1107,6 +1247,14 @@ export function CommandCenter() {
                   transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                   className="space-y-4"
                 >
+                  {isDemoView && (
+                    <div className="rounded-xl border border-hub-cyan/20 bg-hub-cyan/[0.06] px-4 py-3 text-sm text-hub-text-secondary">
+                      <p className="font-semibold text-hub-text">Example researched schedule</p>
+                      <p className="mt-1">
+                        This is a read-only sample for visitors without a UCSD email. Sign in with your UCSD account to analyze and save your own schedule.
+                      </p>
+                    </div>
+                  )}
                   {isPlanLoading ? (
                     <motion.div
                       key="plan-loading"
@@ -1133,13 +1281,13 @@ export function CommandCenter() {
                       evaluation={viewEvaluation}
                       hydrateKey={`${activePlanId}:${authed}`}
                       planSwitchKey={planSwitchKey}
-                      calendarSyncTitle={activePlanTitle || quarterLabel || "Reg2Schedg Schedule"}
+                      calendarSyncTitle={displayedActivePlanTitle || displayedQuarterLabel || "Reg2Schedg Schedule"}
                       scheduleItems={dossiersToScheduleItems(viewClasses)}
                       transitionInsights={[]}
                       initialCommitments={viewCommitments}
                       initialCourseLabels={viewCourseLabels}
                       ref={workspaceRef}
-                      onSave={authed ? handleManualSave : undefined}
+                      onSave={authed && !isDemoView ? handleManualSave : undefined}
                       isSaving={isSaving}
                       lastSavedAt={lastSavedAt}
                       saveError={saveError}

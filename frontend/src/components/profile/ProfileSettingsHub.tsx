@@ -95,6 +95,10 @@ type Props = {
   userPosts?: PostSummary[];
   profileData: ProfileData | null;
   linkedEmails?: string[];
+  skipUploadConfirmation: boolean;
+  showSubmissionQuotaInHeader: boolean;
+  submissionCountRemaining: number;
+  submissionResetAtLabel: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -346,7 +350,11 @@ function ProfileSection({
   expectedGrad,
   avatarUrl,
   profileData,
-}: Pick<Props, "userId" | "displayName" | "email" | "college" | "expectedGrad" | "avatarUrl" | "profileData">) {
+  submissionCountRemaining,
+  submissionResetAtLabel,
+}: Pick<Props, "userId" | "displayName" | "email" | "college" | "expectedGrad" | "avatarUrl" | "profileData" | "submissionCountRemaining" | "submissionResetAtLabel">) {
+  const submissionLabel = submissionCountRemaining === 1 ? "submission" : "submissions";
+
   return (
     <div className="space-y-8">
       {/* Header card */}
@@ -372,7 +380,20 @@ function ProfileSection({
             )}
           </div>
         </div>
-        <SignOutButton variant="danger" className="shrink-0" />
+        <div className="shrink-0 space-y-2">
+          <SignOutButton variant="danger" className="w-full" />
+          <div className="rounded-lg border border-white/[0.10] bg-white/[0.03] px-3 py-2.5">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-hub-text-muted">
+              Submission quota
+            </p>
+            <p className="mt-1 text-sm font-medium text-hub-text">
+              {submissionCountRemaining} {submissionLabel} left
+            </p>
+            <p className="mt-0.5 text-xs text-hub-text-muted">
+              Resets at {submissionResetAtLabel}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="border-t border-white/[0.06]" />
@@ -407,9 +428,63 @@ function ProfileSection({
 // Section: Settings
 // ---------------------------------------------------------------------------
 
-function SettingsSection() {
+function SettingsSection({
+  skipUploadConfirmation,
+  showSubmissionQuotaInHeader,
+  savingPreference,
+  onPreferenceChange,
+}: {
+  skipUploadConfirmation: boolean;
+  showSubmissionQuotaInHeader: boolean;
+  savingPreference: boolean;
+  onPreferenceChange: (patch: { skipUploadConfirmation?: boolean; showSubmissionQuotaInHeader?: boolean }) => void;
+}) {
   return (
     <div className="space-y-8">
+      <div>
+        <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
+          Upload preferences
+        </h2>
+        <p className="mt-1 text-sm text-hub-text-muted">
+          Control confirmation behavior and quota visibility in the header.
+        </p>
+        <div className="mt-4 space-y-3">
+          <label className="flex items-start justify-between gap-4 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-hub-text">Skip upload confirmation modal</p>
+              <p className="mt-0.5 text-xs text-hub-text-muted">
+                When enabled, schedule files submit immediately without the final confirmation prompt.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={skipUploadConfirmation}
+              disabled={savingPreference}
+              onChange={(e) => onPreferenceChange({ skipUploadConfirmation: e.target.checked })}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/[0.25] bg-transparent text-hub-cyan focus:ring-hub-cyan/50 disabled:opacity-60"
+            />
+          </label>
+
+          <label className="flex items-start justify-between gap-4 rounded-lg border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-hub-text">Show submissions left in header</p>
+              <p className="mt-0.5 text-xs text-hub-text-muted">
+                Displays the remaining submission count and reset time in the top navigation bar.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={showSubmissionQuotaInHeader}
+              disabled={savingPreference}
+              onChange={(e) => onPreferenceChange({ showSubmissionQuotaInHeader: e.target.checked })}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/[0.25] bg-transparent text-hub-cyan focus:ring-hub-cyan/50 disabled:opacity-60"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="border-t border-white/[0.06]" />
+
       <div>
         <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
           Notifications
@@ -1150,9 +1225,53 @@ export function ProfileSettingsHub(props: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const section = (searchParams.get("section") ?? "profile") as Section;
+  const [skipUploadConfirmation, setSkipUploadConfirmation] = useState(props.skipUploadConfirmation);
+  const [showSubmissionQuotaInHeader, setShowSubmissionQuotaInHeader] = useState(props.showSubmissionQuotaInHeader);
+  const [savingPreference, setSavingPreference] = useState(false);
 
   function navigate(s: Section) {
     router.push(`/profile?section=${s}`);
+  }
+
+  async function handlePreferenceChange(patch: {
+    skipUploadConfirmation?: boolean;
+    showSubmissionQuotaInHeader?: boolean;
+  }) {
+    if (savingPreference) return;
+
+    const nextSkip = patch.skipUploadConfirmation ?? skipUploadConfirmation;
+    const nextShowQuota = patch.showSubmissionQuotaInHeader ?? showSubmissionQuotaInHeader;
+    const previousSkip = skipUploadConfirmation;
+    const previousShowQuota = showSubmissionQuotaInHeader;
+
+    setSkipUploadConfirmation(nextSkip);
+    setShowSubmissionQuotaInHeader(nextShowQuota);
+    setSavingPreference(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          skip_upload_confirmation: nextSkip,
+          show_submission_quota_in_header: nextShowQuota,
+        })
+        .eq("id", props.userId);
+      if (error) throw error;
+
+      window.dispatchEvent(new CustomEvent("hub:profile-preferences-updated", {
+        detail: {
+          skipUploadConfirmation: nextSkip,
+          showSubmissionQuotaInHeader: nextShowQuota,
+        },
+      }));
+    } catch (error) {
+      console.error("handlePreferenceChange failed:", error);
+      setSkipUploadConfirmation(previousSkip);
+      setShowSubmissionQuotaInHeader(previousShowQuota);
+    } finally {
+      setSavingPreference(false);
+    }
   }
 
   return (
@@ -1219,9 +1338,18 @@ export function ProfileSettingsHub(props: Props) {
                   expectedGrad={props.expectedGrad}
                   avatarUrl={props.avatarUrl}
                   profileData={props.profileData}
+                  submissionCountRemaining={props.submissionCountRemaining}
+                  submissionResetAtLabel={props.submissionResetAtLabel}
                 />
               )}
-              {section === "settings" && <SettingsSection />}
+              {section === "settings" && (
+                <SettingsSection
+                  skipUploadConfirmation={skipUploadConfirmation}
+                  showSubmissionQuotaInHeader={showSubmissionQuotaInHeader}
+                  savingPreference={savingPreference}
+                  onPreferenceChange={(patch) => void handlePreferenceChange(patch)}
+                />
+              )}
               {section === "plans" && <PlansSection plans={props.plans} quarters={props.quarters} />}
               {section === "vault" && <VaultSection userId={props.userId} vaultItems={props.vaultItems} />}
               {section === "posts" && <PostsSection userPosts={props.userPosts ?? []} />}

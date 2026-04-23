@@ -52,13 +52,15 @@ export function HubShell({ children, user }: HubShellProps) {
         throw new Error("Sign in to Reg2Schedg before syncing to Google Calendar.");
       }
 
-      const events = buildGoogleCalendarEvents({
+      const buildResult = buildGoogleCalendarEvents({
         classes: request.classes,
         commitments: request.commitments,
         courseLabels: request.courseLabels,
         scheduleTitle: request.scheduleTitle,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Los_Angeles",
+        includeExamTimes: request.includeExamTimes,
       });
+      const { events, skippedExamCount } = buildResult;
 
       if (events.length === 0) {
         throw new Error("There are no calendar entries to sync yet.");
@@ -77,15 +79,19 @@ export function HubShell({ children, user }: HubShellProps) {
       }
 
       const failed = result.failed ?? 0;
+      const examNote =
+        request.includeExamTimes && skippedExamCount > 0
+          ? ` ${skippedExamCount} exam time${skippedExamCount === 1 ? " was" : "s were"} skipped because the date could not be parsed.`
+          : "";
       if (failed > 0) {
         setToast({
           variant: "error",
-          message: `Added ${result.count} events, but ${failed} item${failed === 1 ? "" : "s"} failed.`,
+          message: `Added ${result.count} events, but ${failed} item${failed === 1 ? "" : "s"} failed.${examNote}`,
         });
       } else {
         setToast({
           variant: "success",
-          message: `Added ${result.count} Google Calendar event${result.count === 1 ? "" : "s"}.`,
+          message: `Added ${result.count} Google Calendar event${result.count === 1 ? "" : "s"}.${examNote}`,
         });
       }
     } catch (e) {

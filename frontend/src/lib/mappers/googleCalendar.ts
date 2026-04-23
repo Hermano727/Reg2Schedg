@@ -16,12 +16,19 @@ export type GoogleCalendarEvent = {
   recurrence?: string[];
 };
 
+export type GoogleCalendarBuildResult = {
+  events: GoogleCalendarEvent[];
+  includedExamCount: number;
+  skippedExamCount: number;
+};
+
 type BuildGoogleCalendarEventsInput = {
   classes: ClassDossier[];
   commitments: ScheduleCommitment[];
   courseLabels?: Record<string, string>;
   scheduleTitle?: string;
   timeZone?: string;
+  includeExamTimes?: boolean;
 };
 
 const RECURRENCE_COUNT = 10;
@@ -167,14 +174,121 @@ function buildDescription(lines: Array<string | null | undefined>): string | und
   return content.length > 0 ? content.join("\n") : undefined;
 }
 
+function buildUtcSafeDate(year: number, monthIndex: number, day: number): Date | null {
+  const candidate = new Date(year, monthIndex, day);
+  if (
+    candidate.getFullYear() !== year ||
+    candidate.getMonth() !== monthIndex ||
+    candidate.getDate() !== day
+  ) {
+    return null;
+  }
+  candidate.setHours(0, 0, 0, 0);
+  return candidate;
+}
+
+function normalizeTwoDigitYear(year: number): number {
+  return year >= 100 ? year : 2000 + year;
+}
+
+function inferExamYear(monthIndex: number, day: number, referenceDate: Date): number | null {
+  const currentYear = referenceDate.getFullYear();
+  const currentYearCandidate = buildUtcSafeDate(currentYear, monthIndex, day);
+  if (!currentYearCandidate) return null;
+
+  const diffMs = currentYearCandidate.getTime() - referenceDate.getTime();
+  const pastThresholdMs = 180 * 24 * 60 * 60 * 1000;
+
+  if (diffMs < -pastThresholdMs) {
+    return currentYear + 1;
+  }
+
+  return currentYear;
+}
+
+function parseExamDateFromDays(days: string, referenceDate = new Date()): Date | null {
+  const value = days.trim();
+  if (!value) return null;
+
+  const isoMatch = value.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+  if (isoMatch) {
+    return buildUtcSafeDate(
+      parseInt(isoMatch[1], 10),
+      parseInt(isoMatch[2], 10) - 1,
+      parseInt(isoMatch[3], 10),
+    );
+  }
+
+  const slashMatch = value.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+  if (slashMatch) {
+    const monthIndex = parseInt(slashMatch[1], 10) - 1;
+    const day = parseInt(slashMatch[2], 10);
+    const parsedYear = slashMatch[3]
+      ? normalizeTwoDigitYear(parseInt(slashMatch[3], 10))
+      : inferExamYear(monthIndex, day, referenceDate);
+    return parsedYear == null ? null : buildUtcSafeDate(parsedYear, monthIndex, day);
+  }
+
+  const monthNameMatch = value.match(
+    /\b(Jan|January|Feb|February|Mar|March|Apr|April|May|Jun|June|Jul|July|Aug|August|Sep|Sept|September|Oct|October|Nov|November|Dec|December)\b\.?,?\s+(\d{1,2})(?:,?\s+(\d{2,4}))?/i,
+  );
+  if (monthNameMatch) {
+    const monthToken = monthNameMatch[1].toLowerCase();
+    const monthMap: Record<string, number> = {
+      jan: 0,
+      january: 0,
+      feb: 1,
+      february: 1,
+      mar: 2,
+      march: 2,
+      apr: 3,
+      april: 3,
+      may: 4,
+      jun: 5,
+      june: 5,
+      jul: 6,
+      july: 6,
+      aug: 7,
+      august: 7,
+      sep: 8,
+      sept: 8,
+      september: 8,
+      oct: 9,
+      october: 9,
+      nov: 10,
+      november: 10,
+      dec: 11,
+      december: 11,
+    };
+    const monthIndex = monthMap[monthToken];
+    const day = parseInt(monthNameMatch[2], 10);
+    const parsedYear = monthNameMatch[3]
+      ? normalizeTwoDigitYear(parseInt(monthNameMatch[3], 10))
+      : inferExamYear(monthIndex, day, referenceDate);
+    return parsedYear == null ? null : buildUtcSafeDate(parsedYear, monthIndex, day);
+  }
+
+  return null;
+}
+
+function examSectionLabel(sectionType: string): string {
+  const normalized = sectionType.trim().toUpperCase();
+  if (normalized === "FI") return "Final Exam";
+  if (normalized === "MI") return "Midterm";
+  return normalized || "Exam";
+}
+
 export function buildGoogleCalendarEvents({
   classes,
   commitments,
   courseLabels = {},
   scheduleTitle,
   timeZone = "America/Los_Angeles",
-}: BuildGoogleCalendarEventsInput): GoogleCalendarEvent[] {
+  includeExamTimes = false,
+}: BuildGoogleCalendarEventsInput): GoogleCalendarBuildResult {
   const events: GoogleCalendarEvent[] = [];
+  let includedExamCount = 0;
+  let skippedExamCount = 0;
 
   classes.forEach((dossier) => {
     dossier.meetings.forEach((meeting, meetingIdx) => {
@@ -218,6 +332,46 @@ export function buildGoogleCalendarEvents({
     });
   });
 
+  if (includeExamTimes) {
+    classes.forEach((dossier) => {
+      dossier.meetings.forEach((meeting) => {
+        if (!isExamSection(meeting.section_type)) return;
+
+        const examDate = parseExamDateFromDays(meeting.days);
+        if (!examDate) {
+          skippedExamCount += 1;
+          return;
+        }
+
+        const startMin = parseTimeToMinutes(meeting.start_time);
+        const endMin = parseTimeToMinutes(meeting.end_time);
+        const examLabel = examSectionLabel(meeting.section_type);
+
+        events.push({
+          summary: `${dossier.courseCode} ${examLabel}`.trim(),
+          location: cleanLocation(meeting.location),
+          description: buildDescription([
+            "Created by Reg2Schedg.",
+            scheduleTitle ? `Schedule: ${scheduleTitle}` : null,
+            `Professor: ${dossier.professorName}`,
+            `Exam slot from WebReg: ${meeting.days} ${meeting.start_time} - ${meeting.end_time}`,
+            "Warning: exam times often change due to department scheduling conflicts. Verify before the exam.",
+            meeting.location ? `Location: ${meeting.location}` : null,
+          ]),
+          start: {
+            dateTime: formatLocalDateTime(examDate, startMin),
+            timeZone,
+          },
+          end: {
+            dateTime: formatLocalDateTime(examDate, endMin),
+            timeZone,
+          },
+        });
+        includedExamCount += 1;
+      });
+    });
+  }
+
   commitments.forEach((commitment) => {
     const firstDate = getCurrentWeekOccurrence(commitment.dayCol);
 
@@ -240,5 +394,9 @@ export function buildGoogleCalendarEvents({
     });
   });
 
-  return events;
+  return {
+    events,
+    includedExamCount,
+    skippedExamCount,
+  };
 }

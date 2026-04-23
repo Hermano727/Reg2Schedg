@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   BookmarkCheck,
   FileText,
@@ -16,6 +17,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { getScheduleDifficultyLabel } from "@/lib/hub/scheduleDifficulty";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
 import type { VaultItem } from "@/types/dossier";
 import { ClassLookupModal } from "@/components/lookup/ClassLookupModal";
@@ -111,6 +113,7 @@ export function LeftSidebar({
   vaultItems,
   vaultSynced,
 }: LeftSidebarProps) {
+  const pathname = usePathname();
   const [activePanel, setActivePanel] = useState<ActivePanel | null>(null);
   // Tracks the last opened panel so content stays visible during slide-out
   const [shownPanel, setShownPanel] = useState<ActivePanel>("plans");
@@ -205,11 +208,13 @@ export function LeftSidebar({
                               {p.subtitle}
                             </span>
                           )}
-                          {(p.trendLabel || p.updatedAt) && (
+                          {(p.fitnessScore != null || p.trendLabel || p.updatedAt) && (
                             <span className="mt-2 flex flex-col gap-0.5">
-                              {p.trendLabel && (
+                              {(p.fitnessScore != null || p.trendLabel) && (
                                 <span className={`text-[12px] font-medium ${trendColor(p.fitnessScore)}`}>
-                                  {p.trendLabel}
+                                  {p.fitnessScore != null
+                                    ? getScheduleDifficultyLabel(p.fitnessScore)
+                                    : p.trendLabel}
                                 </span>
                               )}
                               {p.updatedAt && (
@@ -361,6 +366,14 @@ export function LeftSidebar({
         {/* Brand mark fills the header-height slot at the top of the rail */}
         <Link
           href="/"
+          onClick={(event) => {
+            if (pathname === "/") {
+              // On the workspace route, reset the in-page state instead of
+              // relying on same-route link navigation.
+              event.preventDefault();
+              window.dispatchEvent(new CustomEvent("hub:go-home"));
+            }
+          }}
           className="mb-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-hub-surface/80 text-hub-cyan transition hover:border-hub-cyan/30"
           aria-label="Home"
         >

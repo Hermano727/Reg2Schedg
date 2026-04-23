@@ -6,28 +6,7 @@ import { Check, ChevronDown, MapPin, Briefcase, Search, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getLearningStyles } from "@/lib/onboarding/learning-styles";
 import { getConcernOptions } from "@/lib/onboarding/concerns";
-
-// ---------------------------------------------------------------------------
-// Same static lists as OnboardingFlow (kept in sync here)
-// ---------------------------------------------------------------------------
-
-const UCSD_MAJORS = [
-  "Aerospace Engineering", "Bioengineering", "Chemical Engineering",
-  "Computer Engineering", "Computer Science", "Computer Science (Bioinformatics)",
-  "Data Science", "Electrical Engineering", "Environmental Engineering",
-  "Mechanical Engineering", "Nanoengineering", "Structural Engineering",
-  "Biology", "Biochemistry", "Bioinformatics", "Biophysics", "Chemistry",
-  "Cognitive Science", "Ecology, Behavior & Evolution", "Environmental Science",
-  "Human Biology", "Mathematics", "Mathematics-Computer Science", "Microbiology",
-  "Molecular Biology", "Neuroscience", "Pharmacological Chemistry", "Physics",
-  "Physiology & Neuroscience", "Anthropology", "Communication", "Economics",
-  "Education Sciences", "Ethnic Studies", "Global Health", "International Studies",
-  "Linguistics", "Political Science", "Psychology", "Public Health", "Sociology",
-  "Urban Studies and Planning", "African American Studies", "Critical Gender Studies",
-  "History", "Jewish Studies", "Latin American Studies", "Literature",
-  "Middle Eastern Studies", "Music", "Philosophy", "Theatre", "Visual Arts",
-  "Undeclared", "Other",
-];
+import { useUcsdMajors } from "@/hooks/useUcsdMajors";
 
 const CAREER_OPTIONS = [
   "Software Engineering", "Cybersecurity", "Research / Academia", "Product Management",
@@ -102,9 +81,11 @@ function ChipToggle({
 }
 
 function MajorCombobox({
+  majors,
   value,
   onChange,
 }: {
+  majors: string[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -112,7 +93,7 @@ function MajorCombobox({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = UCSD_MAJORS.filter((m) =>
+  const filtered = majors.filter((m) =>
     m.toLowerCase().includes(query.toLowerCase()),
   ).slice(0, 7);
 
@@ -232,6 +213,7 @@ function validateProfile(form: ProfileData): string | null {
 }
 
 export function ProfileEditCard({ userId, initial }: Props) {
+  const { majors: ucsdMajors } = useUcsdMajors();
   const [form, setForm] = useState<ProfileData>(initial);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -288,7 +270,11 @@ export function ProfileEditCard({ userId, initial }: Props) {
       {/* Major */}
       <div>
         <FieldLabel>Declared Major</FieldLabel>
-        <MajorCombobox value={form.major ?? ""} onChange={(v) => patch({ major: v || null })} />
+        <MajorCombobox
+          majors={ucsdMajors}
+          value={form.major ?? ""}
+          onChange={(v) => patch({ major: v || null })}
+        />
       </div>
 
       {/* Career path */}

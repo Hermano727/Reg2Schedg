@@ -19,6 +19,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ScheduleEvaluation, UserInputFeedback } from "@/types/dossier";
+import { getScheduleDifficultyLabel } from "@/lib/hub/scheduleDifficulty";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -252,7 +253,7 @@ export function DifficultyScoreHud({ evaluation, isHero = false, onGoToCourses, 
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${trendBadgeClass(evaluation.fitnessScore, evaluation.fitnessMax)}`}
           >
-            {evaluation.trendLabel}
+            {getScheduleDifficultyLabel(evaluation.fitnessScore)}
           </span>
         </div>
       </div>

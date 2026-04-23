@@ -2,8 +2,9 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import Link from "next/link";
-import { LogOut, Send, Settings, User } from "lucide-react";
+import { Clock3, LogOut, Send, Settings, User } from "lucide-react";
 import { clientSignOut } from "@/lib/auth/client-sign-out";
+import type { HubUserSubmissionQuota } from "@/types/hub-user";
 
 const USER_ACCOUNT_MENU_TRIGGER_ID = "user-account-menu-trigger";
 const USER_ACCOUNT_MENU_CONTENT_ID = "user-account-menu-content";
@@ -13,6 +14,7 @@ type UserAccountMenuProps = {
   email?: string;
   signedIn?: boolean;
   avatarUrl?: string | null;
+  submissionQuota?: HubUserSubmissionQuota | null;
 };
 
 const menuItemClass =
@@ -22,6 +24,7 @@ export function UserAccountMenu({
   displayName = "Guest",
   signedIn = false,
   avatarUrl,
+  submissionQuota,
 }: UserAccountMenuProps) {
   const initials =
     displayName
@@ -30,6 +33,8 @@ export function UserAccountMenu({
       .slice(0, 2)
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?";
+
+  const submissionLabel = submissionQuota?.submissionsRemaining === 1 ? "submission" : "submissions";
 
   return (
     <DropdownMenu.Root>
@@ -80,6 +85,18 @@ export function UserAccountMenu({
               </DropdownMenu.Item>
             ) : (
               <>
+                {submissionQuota && (
+                  <div className="mx-2 mb-1 rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-2">
+                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-hub-text-secondary">
+                      <Clock3 className="h-3.5 w-3.5 text-hub-text-muted" />
+                      {submissionQuota.submissionsRemaining} {submissionLabel} left
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-hub-text-muted">
+                      Resets at {submissionQuota.resetsAtLabel}
+                    </p>
+                  </div>
+                )}
+
                 <DropdownMenu.Item asChild className={menuItemClass}>
                   <Link href="/profile">
                     <User className="h-4 w-4 text-hub-text-muted" aria-hidden />

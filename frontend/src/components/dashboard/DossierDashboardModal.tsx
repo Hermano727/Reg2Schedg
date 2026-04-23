@@ -335,26 +335,43 @@ function ProfStats({
   }
 
   return (
-    <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}>
-      {items.map((it) => (
-        <div key={it.k} className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
-            {it.k}
-          </span>
-          <div className="flex items-baseline gap-1">
-            <span
-              className={`font-[family-name:var(--font-jetbrains-mono)] text-[28px] leading-none tabular-nums ${it.tone === "teal" ? "text-hub-cyan" : "text-hub-text"
-                }`}
-              style={{ letterSpacing: "-0.02em" }}
-            >
-              {it.v}
+    <div className="space-y-3">
+      <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}>
+        {items.map((it) => (
+          <div key={it.k} className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60">
+              {it.k}
             </span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-white/40">
-              {it.sub}
-            </span>
+            <div className="flex items-baseline gap-1">
+              <span
+                className={`font-[family-name:var(--font-jetbrains-mono)] text-[28px] leading-none tabular-nums ${it.tone === "teal" ? "text-hub-cyan" : "text-hub-text"
+                  }`}
+                style={{ letterSpacing: "-0.02em" }}
+              >
+                {it.v}
+              </span>
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-white/40">
+                {it.sub}
+              </span>
+            </div>
           </div>
+        ))}
+      </div>
+
+      {rmp?.url && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.14em] text-white/45">
+          <span>RateMyProfessors</span>
+          <a
+            href={rmp.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-hub-cyan/85 transition hover:text-hub-cyan"
+          >
+            View source
+            <ExternalLink className="h-2.5 w-2.5" />
+          </a>
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -949,16 +966,6 @@ export function DashboardContent({
                 Professor
               </SectionLabel>
               <ProfStats rmp={rmp} />
-              {rmp?.url && (
-                <a
-                  href={rmp.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-1 text-[11px] text-hub-cyan/85 transition hover:text-hub-cyan"
-                >
-                  View full profile <ExternalLink className="h-2.5 w-2.5" />
-                </a>
-              )}
             </section>
 
             {dossier.tldr && (

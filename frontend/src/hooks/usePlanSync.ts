@@ -24,8 +24,9 @@ import type {
 import type { DossierScheduleWorkspaceHandle } from "@/components/dashboard/DossierScheduleWorkspace";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import type { CourseResearchResult } from "@/lib/api/parse";
+import { getApiBaseUrl } from "@/lib/api/client";
 
-const API_BASE = "http://localhost:8000";
+const API_BASE = getApiBaseUrl();
 
 /**
  * Ensure every ClassDossier has a non-empty `id`.
@@ -82,6 +83,8 @@ type Params = {
   phase: UiPhase;
   classes: ClassDossier[];
   evaluation: ScheduleEvaluation;
+  commitments?: ScheduleCommitment[];
+  courseLabels?: Record<string, string>;
   workspaceRef: RefObject<DossierScheduleWorkspaceHandle | null>;
   onPlanCreated?: () => void;
   /** Called when the currently active plan is deleted. CommandCenter uses this to reset to idle. */
@@ -134,6 +137,8 @@ export function usePlanSync({
   phase,
   classes,
   evaluation,
+  commitments = [],
+  courseLabels = {},
   workspaceRef,
   onPlanCreated,
   onActivePlanDeleted,
@@ -351,10 +356,16 @@ export function usePlanSync({
   }, [authed, remoteVault, activePlanId]);
 
   const { viewClasses, viewEvaluation, viewCommitments, viewCourseLabels } = useMemo(() => {
+    const localView = {
+      viewClasses: classes,
+      viewEvaluation: evaluation,
+      viewCommitments: commitments,
+      viewCourseLabels: courseLabels,
+    };
     const empty = { viewClasses: [] as ClassDossier[], viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[], viewCourseLabels: {} as Record<string, string> };
 
     if (phase !== "dashboard" || !authed) {
-      return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[], viewCourseLabels: {} as Record<string, string> };
+      return localView;
     }
 
     // While a plan is loading, return nothing so stale data from a previous plan never shows.
@@ -383,8 +394,8 @@ export function usePlanSync({
         };
       }
     }
-    return { viewClasses: classes, viewEvaluation: evaluation, viewCommitments: [] as ScheduleCommitment[], viewCourseLabels: {} as Record<string, string> };
-  }, [phase, authed, activePlanId, remotePlans, classes, evaluation, expandedClasses, expandedEvaluation, expandedCommitments, expandedCourseLabels, isPlanLoading]);
+    return localView;
+  }, [phase, authed, activePlanId, remotePlans, classes, evaluation, commitments, courseLabels, expandedClasses, expandedEvaluation, expandedCommitments, expandedCourseLabels, isPlanLoading]);
 
   // ---------------------------------------------------------------------------
   // Persist helpers

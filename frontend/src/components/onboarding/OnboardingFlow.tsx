@@ -33,28 +33,11 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { getLearningStyles } from "@/lib/onboarding/learning-styles";
 import { getConcernOptions } from "@/lib/onboarding/concerns";
+import { useUcsdMajors } from "@/hooks/useUcsdMajors";
 
 // ---------------------------------------------------------------------------
 // Static data
 // ---------------------------------------------------------------------------
-
-const UCSD_MAJORS = [
-  "Aerospace Engineering", "Bioengineering", "Chemical Engineering",
-  "Computer Engineering", "Computer Science", "Computer Science (Bioinformatics)",
-  "Data Science", "Electrical Engineering", "Environmental Engineering",
-  "Mechanical Engineering", "Nanoengineering", "Structural Engineering",
-  "Biology", "Biochemistry", "Bioinformatics", "Biophysics", "Chemistry",
-  "Cognitive Science", "Ecology, Behavior & Evolution", "Environmental Science",
-  "Human Biology", "Mathematics", "Mathematics-Computer Science", "Microbiology",
-  "Molecular Biology", "Neuroscience", "Pharmacological Chemistry", "Physics",
-  "Physiology & Neuroscience", "Anthropology", "Communication", "Economics",
-  "Education Sciences", "Ethnic Studies", "Global Health", "International Studies",
-  "Linguistics", "Political Science", "Psychology", "Public Health", "Sociology",
-  "Urban Studies and Planning", "African American Studies", "Critical Gender Studies",
-  "History", "Jewish Studies", "Latin American Studies", "Literature",
-  "Middle Eastern Studies", "Music", "Philosophy", "Theatre", "Visual Arts",
-  "Undeclared", "Other",
-];
 
 const CAREER_PATHS: Record<string, string[]> = {
   "Computer Science": ["Software Engineering", "Cybersecurity", "Research / Academia", "Product Management", "Other"],
@@ -104,7 +87,29 @@ const TRANSIT_OPTIONS: { id: string; label: string; icon: React.ReactNode }[] = 
   { id: "car",     label: "Car",     icon: <Car className="h-5 w-5" /> },
 ];
 
-const SLIDE_COUNT = 4;
+type ShowcaseSlide = {
+  imageSrc: string;
+  imageAlt: string;
+};
+
+const SHOWCASE_SLIDES: ShowcaseSlide[] = [
+  {
+    imageSrc: "/images/onboarding/quick_link_new.png",
+    imageAlt: "Quick access links for source verification in Reg2Schedg.",
+  },
+  {
+    imageSrc: "/images/onboarding/general_overview.png",
+    imageAlt: "General overview section in Reg2Schedg.",
+  },
+  {
+    imageSrc: "/images/onboarding/professor_snapshot.png",
+    imageAlt: "Professor snapshot with grading breakdown and RateMyProfessors data.",
+  },
+  {
+    imageSrc: "/images/onboarding/student_sentiment.png",
+    imageAlt: "Student sentiment and course logistics in Reg2Schedg.",
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,9 +204,11 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 
 function MajorSelect({
+  majors,
   value,
   onChange,
 }: {
+  majors: string[];
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -209,7 +216,7 @@ function MajorSelect({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = UCSD_MAJORS.filter((m) =>
+  const filtered = majors.filter((m) =>
     m.toLowerCase().includes(query.toLowerCase()),
   ).slice(0, 8);
 
@@ -346,10 +353,57 @@ function PreviewRadar({ data }: { data: OnboardingData }) {
 // Slides
 // ---------------------------------------------------------------------------
 
+function WelcomeSlide() {
+  return (
+    <div className="flex min-h-[320px] items-center justify-center">
+      <div className="max-w-xl rounded-[28px] border border-white/[0.08] bg-white/[0.035] px-7 py-7 text-center shadow-[0_22px_50px_rgba(0,0,0,0.22)]">
+        <p className="text-sm leading-7 text-hub-text-secondary">
+          You can update these details later from your profile, but setting them now gives your first evaluation a much better starting point.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ExamplesIntroSlide() {
+  return (
+    <div className="flex min-h-[360px] items-center justify-center">
+      <div className="max-w-2xl rounded-[30px] border border-hub-cyan/18 bg-white/[0.04] px-8 py-8 shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
+        <p className="text-[15px] leading-8 text-hub-text-secondary">
+          Make sure you use all of the resources we provide! The screenshots will come directly from the app.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseImageSlide({ imageSrc, imageAlt }: ShowcaseSlide) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,#f2f6ff_0%,#dbe7fb_100%)] p-4 shadow-[0_28px_70px_rgba(0,0,0,0.24)]">
+        <div className="overflow-hidden rounded-[22px] border border-slate-900/10 bg-[#0d1f38] shadow-[0_18px_35px_rgba(15,23,42,0.22)]">
+          <Image
+            src={imageSrc}
+            alt={imageAlt}
+            width={1600}
+            height={1000}
+            className="h-auto w-full object-contain"
+          />
+        </div>
+      </div>
+      <p className="text-center text-sm text-hub-text-muted">
+        These screenshots come directly from the app so you know exactly what to look for.
+      </p>
+    </div>
+  );
+}
+
 function Slide1({
+  majors,
   data,
   onChange,
 }: {
+  majors: string[];
   data: OnboardingData;
   onChange: (patch: Partial<OnboardingData>) => void;
 }) {
@@ -360,6 +414,7 @@ function Slide1({
       <div>
         <SectionLabel>Declared Major</SectionLabel>
         <MajorSelect
+          majors={majors}
           value={data.major}
           onChange={(major) => onChange({ major, careerPath: "" })}
         />
@@ -674,9 +729,9 @@ function Slide4({ data }: { data: OnboardingData }) {
 // ---------------------------------------------------------------------------
 
 function canAdvance(slide: number, data: OnboardingData): boolean {
-  if (slide === 0) return !!data.major && !!data.careerPath && !!data.skillPreference;
-  if (slide === 1) return data.concerns.length > 0 && !!data.transitMode && !!data.livingSituation;
-  return true; // slides 2 & 3 have no blocking requirements
+  if (slide === 1) return !!data.major && !!data.careerPath && !!data.skillPreference;
+  if (slide === 2) return data.concerns.length > 0 && !!data.transitMode && !!data.livingSituation;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -684,20 +739,35 @@ function canAdvance(slide: number, data: OnboardingData): boolean {
 // ---------------------------------------------------------------------------
 
 const SLIDE_TITLES = [
+  "Welcome to Reg2Schedg!",
   "Academic Identity",
   "Your Constraints",
+  "What R2S shows you",
+  "Example Schedule Submission Results",
+  "Ensuring you get the most out of R2S",
+  "Ensuring you get the most out of R2S",
+  "Ensuring you get the most out of R2S",
   "What to Upload",
   "Results Preview",
 ];
 
 const SLIDE_SUBTITLES = [
+  "We will first set up your academic profile to ensure the best evaluation for your needs.",
   "Help us personalize every schedule analysis to your goals.",
   "These details shape your workload fitness score and commute warnings.",
+  "The next few slides will give examples of what R2S provides after you submit your schedule.",
+  "Make sure to take note of these quick access links for source verification! Each course found in your schedule will be at the top.",
+  "The general overview section is a great way to see what you are getting into at a glance.",
+  "Make sure to take note of the professors grading breakdown and RateMyProf scores.",
+  "Lastly, we have direct quotes from sources and logistics such as attendance and podcasts. Note that our app can only find what is available.",
   "Ensure your first upload is successful.",
   "Here's how your profile will influence your results.",
 ];
 
+const SLIDE_COUNT = SLIDE_TITLES.length;
+
 export function OnboardingFlow({ userId, onComplete }: Props) {
+  const { majors: ucsdMajors } = useUcsdMajors();
   const [slide, setSlide] = useState(0);
   const [dir, setDir] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -758,6 +828,9 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
 
   const isLast = slide === SLIDE_COUNT - 1;
   const canGoNext = canAdvance(slide, data);
+  const isWideSlide = slide >= 4 && slide <= 8;
+  const cardMaxWidth = slide === 0 ? "560px" : isWideSlide ? "980px" : "600px";
+  const cardMinHeight = isWideSlide ? 620 : 520;
 
   return (
     <div
@@ -766,16 +839,19 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     >
       {/* Card — widens on the image-comparison slide */}
       <motion.div
-        animate={{ maxWidth: slide === 2 ? "900px" : "600px" }}
+        animate={{ maxWidth: cardMaxWidth }}
         transition={{ type: "tween" as const, ease: [0.22, 1, 0.36, 1] as const, duration: 0.35 }}
         className="relative w-full mx-4 rounded-2xl border border-white/[0.08] overflow-hidden"
-        style={{ background: "#0d1f38", boxShadow: "0 32px 80px rgba(0,0,0,0.6)" }}
+        style={{
+          background: "linear-gradient(180deg, #112746 0%, #0b1d36 100%)",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+        }}
       >
         {/* Progress bar */}
         <ProgressBar current={slide} total={SLIDE_COUNT} />
 
         {/* Content area */}
-        <div className="px-8 pb-8 pt-10 min-h-[520px] flex flex-col">
+        <div className="flex flex-col px-8 pb-8 pt-10" style={{ minHeight: `${cardMinHeight}px` }}>
           {/* Header */}
           <div className="mb-7">
             <motion.h2
@@ -810,10 +886,18 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
                 exit="exit"
                 transition={transition}
               >
-                {slide === 0 && <Slide1 data={data} onChange={patch} />}
-                {slide === 1 && <Slide2 data={data} onChange={patch} />}
-                {slide === 2 && <Slide3 />}
-                {slide === 3 && <Slide4 data={data} />}
+                {slide === 0 && <WelcomeSlide />}
+                {slide === 1 && <Slide1 majors={ucsdMajors} data={data} onChange={patch} />}
+                {slide === 2 && <Slide2 data={data} onChange={patch} />}
+                {slide === 3 && <ExamplesIntroSlide />}
+                {slide >= 4 && slide <= 7 && (
+                  <ShowcaseImageSlide
+                    imageSrc={SHOWCASE_SLIDES[slide - 4].imageSrc}
+                    imageAlt={SHOWCASE_SLIDES[slide - 4].imageAlt}
+                  />
+                )}
+                {slide === 8 && <Slide3 />}
+                {slide === 9 && <Slide4 data={data} />}
               </motion.div>
             </AnimatePresence>
           </div>

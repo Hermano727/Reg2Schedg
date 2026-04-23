@@ -2,6 +2,7 @@
 
 import { TrendingUp } from "lucide-react";
 import type { ScheduleEvaluation } from "@/types/dossier";
+import { getScheduleDifficultyLabel } from "@/lib/hub/scheduleDifficulty";
 
 type FitnessDialProps = {
   evaluation: ScheduleEvaluation;
@@ -199,7 +200,7 @@ export function FitnessDial({ evaluation }: FitnessDialProps) {
         }}
       >
         <TrendingUp className="h-3 w-3" aria-hidden />
-        {evaluation.trendLabel}
+        {getScheduleDifficultyLabel(evaluation.fitnessScore)}
       </div>
     </div>
   );

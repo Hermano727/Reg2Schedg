@@ -287,6 +287,8 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
   const [communityOverlayOpen, setCommunityOverlayOpen] = useState(false);
+  const [calendarExportPromptOpen, setCalendarExportPromptOpen] = useState(false);
+  const [includeExamTimesInExport, setIncludeExamTimesInExport] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const formId = useId();
@@ -371,17 +373,33 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
   }, [reportCalendarVisible]);
 
   useEffect(() => {
-    if (!addOpen && !fullscreenOpen && !editingBlock && !pendingRename) return;
+    if (!addOpen && !fullscreenOpen && !editingBlock && !pendingRename && !calendarExportPromptOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (addOpen) setAddOpen(false);
       else if (editingBlock) setEditingBlock(null);
       else if (pendingRename) setPendingRename(null);
+      else if (calendarExportPromptOpen) setCalendarExportPromptOpen(false);
       else setFullscreenOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [addOpen, fullscreenOpen, editingBlock, pendingRename]);
+  }, [addOpen, fullscreenOpen, editingBlock, pendingRename, calendarExportPromptOpen]);
+
+  useEffect(() => {
+    if (!fullscreenOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [fullscreenOpen]);
 
   const openAddModal = useCallback(() => { setBlockError(null); setAddOpen(true); }, []);
 
@@ -537,17 +555,21 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
     [apply, courseLabels],
   );
 
+  const submitCalendarExport = useCallback(() => {
+    void onSyncCalendar({
+      classes,
+      commitments,
+      courseLabels,
+      scheduleTitle: calendarSyncTitle,
+      includeExamTimes: includeExamTimesInExport,
+    });
+    setCalendarExportPromptOpen(false);
+  }, [onSyncCalendar, classes, commitments, courseLabels, calendarSyncTitle, includeExamTimesInExport]);
+
   const syncBtn = (size: "sm" | "lg") => (
     <button
       type="button"
-      onClick={() => {
-        void onSyncCalendar({
-          classes,
-          commitments,
-          courseLabels,
-          scheduleTitle: calendarSyncTitle,
-        });
-      }}
+      onClick={() => setCalendarExportPromptOpen(true)}
       className={
         size === "lg"
           ? "inline-flex items-center gap-2 rounded-lg border border-hub-cyan/35 bg-hub-cyan/12 px-3 py-2 text-xs font-semibold text-hub-cyan transition hover:bg-hub-cyan/20"
@@ -651,10 +673,24 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
           className="min-w-0 bg-hub-surface/95 xl:flex-[2] xl:min-h-0 xl:self-stretch"
         >
           <div className="flex h-full flex-col p-5">
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-white/40">
-              Weekly schedule
-            </p>
-            {toolbar(true)}
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-white/40">
+                Weekly schedule
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {syncBtn("sm")}
+                <button
+                  type="button"
+                  onClick={() => setFullscreenOpen(true)}
+                  title="Expand schedule to full screen"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.12] bg-hub-bg/55 px-2.5 py-1.5 text-[11px] font-medium text-hub-text-secondary transition hover:border-hub-cyan/25 hover:text-hub-text"
+                >
+                  <Maximize2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="hidden sm:inline">Full screen</span>
+                </button>
+              </div>
+            </div>
+            {toolbar()}
             <div className="mt-4 min-h-0 flex-1">
               <WeeklyCalendar
                 classes={classes}
@@ -1002,7 +1038,7 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
             key="fs-cal"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 flex flex-col bg-[color-mix(in_srgb,var(--hub-bg)_96%,transparent)] p-4 backdrop-blur-md md:p-6"
+            className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-[color-mix(in_srgb,var(--hub-bg)_96%,transparent)] p-4 backdrop-blur-md md:p-6"
             role="dialog" aria-modal="true" aria-label="Full screen schedule"
             onClick={() => setFullscreenOpen(false)}
           >
@@ -1025,10 +1061,14 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
                 </div>
               </div>
               {toolbar()}
-              <div className="min-h-0 flex-1 overflow-auto rounded-xl">
+              <div className="min-h-0 flex-1 overflow-hidden rounded-xl">
                 <WeeklyCalendar
                   classes={classes} commitments={commitments} courseLabels={courseLabels} onApply={applyKeepingLabels}
-                  pxPerHour={96} hideScheduleHeading onBlockDoubleClick={openEditModal}
+                  pxPerHour={72}
+                  className="h-full"
+                  fillAvailableHeight
+                  hideScheduleHeading
+                  onBlockDoubleClick={openEditModal}
                 />
               </div>
             </div>
@@ -1080,6 +1120,70 @@ export const DossierScheduleWorkspace = forwardRef(function DossierScheduleWorks
           if (editingBlock?.kind === "course") deleteMeeting(editingBlock);
         }}
       />
+
+      <AnimatePresence>
+        {calendarExportPromptOpen && (
+          <motion.div
+            key="calendar-export-prompt"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 backdrop-blur-sm"
+            onClick={() => setCalendarExportPromptOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-md rounded-2xl border border-white/[0.10] bg-hub-surface-elevated p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="font-[family-name:var(--font-outfit)] text-sm font-semibold text-hub-text">
+                Export to Google Calendar
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-hub-text-muted">
+                Choose whether you want Reg2Schedg to include one-time exam slots along with your weekly classes and custom blocks.
+              </p>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={includeExamTimesInExport}
+                  onChange={(e) => setIncludeExamTimesInExport(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-white/20 bg-transparent text-hub-cyan focus:ring-hub-cyan/30"
+                />
+                <span className="space-y-1">
+                  <span className="block text-sm font-medium text-hub-text">
+                    Add exam times as well?
+                  </span>
+                  <span className="block text-xs leading-relaxed text-hub-text-muted">
+                    Warning: these often change due to department scheduling conflicts, you may have to change them in the future.
+                  </span>
+                </span>
+              </label>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCalendarExportPromptOpen(false)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-white/50 transition hover:text-white/75"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitCalendarExport}
+                  className="rounded-lg bg-hub-cyan px-3 py-1.5 text-xs font-semibold text-hub-bg transition hover:bg-hub-cyan/85"
+                >
+                  Export
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Rename-all confirmation ── */}
       <AnimatePresence>

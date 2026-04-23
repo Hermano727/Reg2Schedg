@@ -7,6 +7,40 @@ import type { SavedPlanRow } from "@/types/saved-plan";
 import type { PostSummary } from "@/types/community";
 import type { ProfileData } from "@/components/profile/ProfileEditCard";
 
+type SubmissionQuotaStatus = {
+  submissionsRemaining: number;
+  limit: number;
+  windowSeconds: number;
+  resetsAt: string | null;
+};
+
+function toInt(value: unknown, fallback: number): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.floor(n) : fallback;
+}
+
+function normalizeQuotaStatus(data: unknown): SubmissionQuotaStatus | null {
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") return null;
+  const record = row as Record<string, unknown>;
+
+  const limit = Math.max(1, toInt(record.limit, 3));
+  const windowSeconds = Math.max(1, toInt(record.window_seconds, 6 * 60 * 60));
+  const submissionsUsed = Math.max(0, toInt(record.submissions_used, 0));
+  const submissionsRemaining = Math.max(0, toInt(record.submissions_remaining, Math.max(0, limit - submissionsUsed)));
+
+  return {
+    submissionsRemaining,
+    limit,
+    windowSeconds,
+    resetsAt: typeof record.resets_at === "string" ? record.resets_at : null,
+  };
+}
+
+function formatQuotaResetTime(resetAtMs: number): string {
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(resetAtMs));
+}
+
 function buildQuarterRollup(
   plans: Pick<SavedPlanRow, "id" | "quarter_label">[],
 ) {
@@ -35,11 +69,12 @@ export default async function ProfilePage() {
     { data: plansRaw },
     { data: vaultRaw },
     { data: rawUserPosts },
+    { data: quotaData },
   ] = await Promise.all([
     supabase
       .from("profiles")
       .select(
-        "display_name, college, expected_grad_term, avatar_url, major, career_path, skill_preference, biggest_concerns, transit_mode, living_situation, commute_minutes, external_commitment_hours",
+        "display_name, college, expected_grad_term, avatar_url, major, career_path, skill_preference, biggest_concerns, transit_mode, living_situation, commute_minutes, external_commitment_hours, skip_upload_confirmation, show_submission_quota_in_header",
       )
       .eq("id", user.id)
       .maybeSingle(),
@@ -59,7 +94,22 @@ export default async function ProfilePage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase.rpc("get_schedule_submission_quota_status"),
   ]);
+
+  const quotaStatus = normalizeQuotaStatus(quotaData);
+  const nowMs = Date.now();
+  const quotaResetAtMsRaw = quotaStatus?.resetsAt ? Date.parse(quotaStatus.resetsAt) : NaN;
+  const quotaResetAtMs = Number.isFinite(quotaResetAtMsRaw) ? quotaResetAtMsRaw : null;
+  const isQuotaWindowActive = quotaResetAtMs !== null && quotaResetAtMs > nowMs;
+  const quotaLimit = Math.max(1, quotaStatus?.limit ?? 3);
+  const quotaWindowHours = Math.max(1, Math.ceil((quotaStatus?.windowSeconds ?? 6 * 60 * 60) / 3600));
+  const submissionCountRemaining = isQuotaWindowActive
+    ? Math.max(0, Math.min(quotaLimit, quotaStatus?.submissionsRemaining ?? quotaLimit))
+    : quotaLimit;
+  const submissionResetAtLabel = isQuotaWindowActive && quotaResetAtMs !== null
+    ? formatQuotaResetTime(quotaResetAtMs)
+    : `${quotaWindowHours} hours after your first submission`;
 
   const plans =
     (plansRaw as Pick<
@@ -170,6 +220,10 @@ export default async function ProfilePage() {
       vaultItems={vaultItems}
       userPosts={userPosts}
       profileData={profileData}
+      skipUploadConfirmation={(profile as { skip_upload_confirmation?: boolean } | null)?.skip_upload_confirmation ?? false}
+      showSubmissionQuotaInHeader={(profile as { show_submission_quota_in_header?: boolean } | null)?.show_submission_quota_in_header ?? true}
+      submissionCountRemaining={submissionCountRemaining}
+      submissionResetAtLabel={submissionResetAtLabel}
     />
   );
 }

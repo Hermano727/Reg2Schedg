@@ -4,15 +4,10 @@ import { CommunityHub } from "@/components/community/CommunityHub";
 import type { PostSummary } from "@/types/community";
 
 type CommunityPageProps = {
-  searchParams?:
-    | {
-        composeCourse?: string;
-        composeProfessor?: string;
-      }
-    | Promise<{
-        composeCourse?: string;
-        composeProfessor?: string;
-      }>;
+  searchParams?: Promise<{
+    composeCourse?: string;
+    composeProfessor?: string;
+  }>;
 };
 
 export default async function CommunityPage({ searchParams }: CommunityPageProps) {

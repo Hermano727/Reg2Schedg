@@ -1,4 +1,5 @@
 import type { CourseResearchResult } from "@/lib/api/parse";
+import { getApiBaseUrl } from "@/lib/api/client";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
 import { mockDossier } from "@/lib/mock/dossier";
 import type {
@@ -6,8 +7,6 @@ import type {
   ScheduleCommitment,
   ScheduleEvaluation,
 } from "@/types/dossier";
-
-const API_BASE = "http://localhost:8000";
 
 type ExpandedPlanResponse = {
   plan_id: string;
@@ -54,7 +53,7 @@ export async function fetchExpandedPlan(
   accessToken: string,
 ): Promise<ExpandedPlanData | null> {
   try {
-    const res = await fetch(`${API_BASE}/plans/${planId}/expanded`, {
+    const res = await fetch(`${getApiBaseUrl()}/plans/${planId}/expanded`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) return null;
@@ -67,7 +66,7 @@ export async function fetchExpandedPlan(
 
 export async function fetchPublicDemoPlan(): Promise<ExpandedPlanData | null> {
   try {
-    const res = await fetch(`${API_BASE}/demo-plan/expanded`);
+    const res = await fetch(`${getApiBaseUrl()}/demo-plan/expanded`);
     if (!res.ok) return null;
     const data = await res.json() as ExpandedPlanResponse;
     return mapExpandedPlanResponse(data);

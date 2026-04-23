@@ -1,3 +1,4 @@
+import { getApiBaseUrl } from "@/lib/api/client";
 import { createClient } from "@/lib/supabase/client";
 import type { CourseLogistics, FitnessCategory, ScheduleBriefing } from "@/types/dossier";
 
@@ -50,7 +51,7 @@ export async function parseScreenshot(
   const form = new FormData();
   form.append("file", file);
 
-  const res = await fetch("http://localhost:8000/api/parse-screenshot", {
+  const res = await fetch(`${getApiBaseUrl()}/api/parse-screenshot`, {
     method: "POST",
     body: form,
   });
@@ -104,7 +105,7 @@ export async function analyzeFit(
   results: CourseResearchResult[],
   context?: ScheduleBriefing | Record<string, unknown>,
 ): Promise<FitAnalysisResult> {
-  const res = await fetch("http://localhost:8000/api/fit-analysis", {
+  const res = await fetch(`${getApiBaseUrl()}/api/fit-analysis`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ results, user_context: context ?? null }),
@@ -156,13 +157,13 @@ export async function searchCourseCache(
 ): Promise<CourseLookupSearchResult[]> {
   const params = new URLSearchParams({ course_code: courseCode });
   if (professorName) params.set("professor_name", professorName);
-  const res = await fetch(`http://localhost:8000/api/lookup-course/search?${params}`);
+  const res = await fetch(`${getApiBaseUrl()}/api/lookup-course/search?${params}`);
   if (!res.ok) throw new Error(`Search failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<CourseLookupSearchResult[]>;
 }
 
 export async function expandCacheEntry(cacheId: string): Promise<CourseResearchResult> {
-  const res = await fetch(`http://localhost:8000/api/lookup-course/${cacheId}`);
+  const res = await fetch(`${getApiBaseUrl()}/api/lookup-course/${cacheId}`);
   if (!res.ok) throw new Error(`Expand failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<CourseResearchResult>;
 }
@@ -171,7 +172,7 @@ export async function researchCourseByText(
   courseCode: string,
   professorName?: string,
 ): Promise<CourseResearchResult> {
-  const res = await fetch("http://localhost:8000/api/lookup-course/research", {
+  const res = await fetch(`${getApiBaseUrl()}/api/lookup-course/research`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ course_code: courseCode, professor_name: professorName || null }),
@@ -188,8 +189,8 @@ export async function researchScreenshot(
   form.append("file", file);
 
   const url = forceRefresh
-    ? "http://localhost:8000/api/research-screenshot?force_refresh=true"
-    : "http://localhost:8000/api/research-screenshot";
+    ? `${getApiBaseUrl()}/api/research-screenshot?force_refresh=true`
+    : `${getApiBaseUrl()}/api/research-screenshot`;
 
   const authHeaders = await _getAuthHeaders();
 

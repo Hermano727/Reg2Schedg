@@ -40,7 +40,14 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://127.0.0.1:8000/api/calendar/callback"
-    frontend_origin: str = "http://localhost:3000"
+    frontend_origin: str = Field(
+        default="http://localhost:3000",
+        validation_alias=AliasChoices("FRONTEND_ORIGIN"),
+    )
+    frontend_origins: str = Field(
+        default="",
+        validation_alias=AliasChoices("FRONTEND_ORIGINS"),
+    )
 
     model_config = SettingsConfigDict(
         env_file=(API_DIR / ".env", REPO_ROOT / ".env"),
@@ -55,3 +62,14 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+
+def get_allowed_frontend_origins(cfg: Settings) -> set[str]:
+    origins = {cfg.frontend_origin.rstrip("/")}
+    extra = [
+        origin.strip().rstrip("/")
+        for origin in cfg.frontend_origins.split(",")
+        if origin.strip()
+    ]
+    origins.update(extra)
+    return origins

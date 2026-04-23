@@ -11,7 +11,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.deps import get_current_user_access
-from app.config import get_settings
+from app.config import get_allowed_frontend_origins, get_settings
 from app.db.client import get_supabase_client, get_supabase_for_access_token
 from app.db.service import insert_saved_plan
 from app.models.plan import SavedPlanCreate
@@ -26,7 +26,7 @@ app = FastAPI(title="Reg2Schedg API", version="0.1.0")
 
 settings = get_settings()
 allowed_origins = {
-    settings.frontend_origin.rstrip("/"),
+    *get_allowed_frontend_origins(settings),
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 }

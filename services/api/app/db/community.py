@@ -3,6 +3,7 @@ Community posts and replies: Supabase CRUD operations.
 """
 
 from datetime import datetime, timedelta, timezone
+from datetime import timedelta as dt_timedelta
 
 from fastapi import HTTPException
 from supabase import Client
@@ -21,6 +22,84 @@ ATTACHMENT_SIGNED_URL_TTL = 3600  # seconds
 AVATAR_SIGNED_URL_TTL = 3600 * 24  # seconds
 COMMUNITY_RATE_LIMIT_WINDOW_MINUTES = 10
 COMMUNITY_RATE_LIMIT_COUNT = 3
+
+
+def get_active_community_mute(user_id: str) -> dict | None:
+    service = get_supabase_client()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    resp = (
+        service.table("community_user_mutes")
+        .select("*")
+        .eq("user_id", user_id)
+        .lte("starts_at", now_iso)
+        .gt("ends_at", now_iso)
+        .order("ends_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = resp.data or []
+    return rows[0] if rows else None
+
+
+def create_community_mute(
+    user_id: str,
+    reason: str,
+    source: str,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> None:
+    service = get_supabase_client()
+    active = get_active_community_mute(user_id)
+    if active:
+        existing_end = datetime.fromisoformat(active["ends_at"].replace("Z", "+00:00"))
+        if existing_end >= ends_at:
+            return
+
+    service.table("community_user_mutes").insert(
+        {
+            "user_id": user_id,
+            "reason": reason,
+            "source": source,
+            "starts_at": starts_at.isoformat(),
+            "ends_at": ends_at.isoformat(),
+        }
+    ).execute()
+
+
+def log_community_moderation_event(
+    user_id: str,
+    content_type: str,
+    content_id: str | None,
+    severity: str,
+    action: str,
+    matched_terms: list[str],
+) -> None:
+    service = get_supabase_client()
+    service.table("community_moderation_events").insert(
+        {
+            "user_id": user_id,
+            "content_type": content_type,
+            "content_id": content_id,
+            "severity": severity,
+            "action": action,
+            "matched_terms": matched_terms,
+        }
+    ).execute()
+
+
+def count_recent_severe_block_events(user_id: str, window: dt_timedelta) -> int:
+    service = get_supabase_client()
+    cutoff = (datetime.now(timezone.utc) - window).isoformat()
+    resp = (
+        service.table("community_moderation_events")
+        .select("*", count="exact")
+        .eq("user_id", user_id)
+        .eq("severity", "severe")
+        .eq("action", "blocked")
+        .gte("created_at", cutoff)
+        .execute()
+    )
+    return resp.count or 0
 
 
 def _sign_attachments(rows: list[dict]) -> list[PostAttachment]:

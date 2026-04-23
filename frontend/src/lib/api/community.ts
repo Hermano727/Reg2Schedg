@@ -29,6 +29,13 @@ async function readApiErrorMessage(res: Response, fallback: string): Promise<str
   const payload = detail?.detail ?? detail;
   if (typeof payload === "string") return payload;
   if (payload && typeof payload === "object") {
+    if (payload.code === "COMMUNITY_MUTED" && typeof payload.retry_after_seconds === "number") {
+      const minutes = Math.max(1, Math.ceil(payload.retry_after_seconds / 60));
+      return `You are temporarily muted from posting and commenting. Please try again in about ${minutes} minute(s).`;
+    }
+    if (payload.code === "PROFANITY_BLOCKED") {
+      return "Your message includes severe terms and cannot be posted. Please reword and try again.";
+    }
     if (typeof payload.message === "string") return payload.message;
     if (typeof payload.detail === "string") return payload.detail;
   }

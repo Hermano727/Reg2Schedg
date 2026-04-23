@@ -23,6 +23,11 @@ from app.db.community import (
     toggle_reply_upvote,
     toggle_upvote,
 )
+from app.services.community_moderation import (
+    enforce_active_mute,
+    moderate_post_content,
+    moderate_reply_content,
+)
 from app.models.community import (
     CreatePostRequest,
     CreateReplyRequest,
@@ -71,13 +76,15 @@ def create_post(
     user_id, access_token = auth
     client = get_supabase_for_access_token(access_token)
     try:
+        enforce_active_mute(user_id)
+        moderated_title, moderated_body = moderate_post_content(user_id, body.title, body.body)
         check_community_action_rate_limit(client, user_id, "post_create")
         record_community_action(client, user_id, "post_create")
         return create_community_post(
             client,
             user_id,
-            title=body.title,
-            body=body.body,
+            title=moderated_title,
+            body=moderated_body,
             course_code=body.course_code,
             professor_name=body.professor_name,
             is_anonymous=body.is_anonymous,
@@ -199,6 +206,8 @@ def create_reply(
     user_id, access_token = auth
     client = get_supabase_for_access_token(access_token)
     try:
+        enforce_active_mute(user_id)
+        moderated_body = moderate_reply_content(user_id, body.body)
         action_type = "reply_attachment_upload" if body.attachment_paths else "reply_create"
         check_community_action_rate_limit(client, user_id, action_type)
         record_community_action(client, user_id, action_type, metadata={"attachment_count": len(body.attachment_paths)})
@@ -206,7 +215,7 @@ def create_reply(
             client,
             user_id,
             post_id,
-            body=body.body,
+            body=moderated_body,
             parent_reply_id=body.parent_reply_id,
             is_anonymous=body.is_anonymous,
             attachment_paths=body.attachment_paths,

@@ -783,6 +783,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
   const [dir, setDir] = useState(1);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showSkipWarning, setShowSkipWarning] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     major: "",
     careerPath: "",
@@ -885,11 +886,8 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     await saveProfileData(data);
   }
 
-  async function skipOnboarding() {
-    const shouldSkip = window.confirm(
-      "Are you sure you want to skip? Onboarding explains how Reg2Schedg works and improves analysis!",
-    );
-    if (!shouldSkip) return;
+  async function confirmSkipOnboarding() {
+    setShowSkipWarning(false);
     await saveProfileData(DEFAULT_ONBOARDING_DATA, { allowPassThroughOnError: true });
   }
 
@@ -974,6 +972,37 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
 
           {/* Footer nav */}
           <div className="mt-5 shrink-0 border-t border-white/[0.06] pt-4 sm:mt-8 sm:pt-5">
+            {showSkipWarning && (
+              <div className="mb-3 rounded-xl border border-hub-gold/40 bg-hub-gold/10 px-3 py-3 text-sm sm:px-4">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-hub-text">Skip onboarding?</p>
+                    <p className="mt-1 text-xs leading-5 text-hub-text-secondary">
+                      Onboarding explains how Reg2Schedg works and improves your analysis quality.
+                    </p>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowSkipWarning(false)}
+                        disabled={saving}
+                        className="rounded-lg border border-white/[0.14] px-2.5 py-1.5 text-xs font-medium text-hub-text-secondary transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        Keep onboarding
+                      </button>
+                      <button
+                        type="button"
+                        onClick={confirmSkipOnboarding}
+                        disabled={saving}
+                        className="rounded-lg bg-hub-danger/20 px-2.5 py-1.5 text-xs font-semibold text-hub-danger transition hover:bg-hub-danger/30 disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        Yes, skip
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             {saveError && (
               <p className="mb-3 text-center text-xs text-hub-danger">{saveError}</p>
             )}
@@ -981,7 +1010,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={skipOnboarding}
+                  onClick={() => setShowSkipWarning(true)}
                   disabled={saving}
                   className="rounded-lg px-2 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-danger disabled:pointer-events-none disabled:opacity-30 sm:px-3"
                 >

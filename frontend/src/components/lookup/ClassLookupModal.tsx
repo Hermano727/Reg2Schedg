@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, ChevronLeft, Loader2, MessageSquarePlus, Search, X } from "lucide-react";
+import { ChevronLeft, Loader2, MessageSquarePlus, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   searchCourseCache,
   expandCacheEntry,
-  researchCourseByText,
   type CourseLookupSearchResult,
 } from "@/lib/api/parse";
 import { courseResearchResultToDossier } from "@/lib/mappers/courseEntryToDossier";
@@ -38,7 +37,6 @@ export function ClassLookupModal({
   // Three distinct loading flags so TypeScript doesn't conflate them
   const [searching, setSearching] = useState(false);
   const [expanding, setExpanding] = useState(false);
-  const [researching, setResearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<CourseLookupSearchResult[]>([]);
   const [dossier, setDossier] = useState<ClassDossier | null>(null);
@@ -57,7 +55,6 @@ export function ClassLookupModal({
       setPhase("search");
       setSearching(false);
       setExpanding(false);
-      setResearching(false);
       setError(null);
       setResults([]);
       setDossier(null);
@@ -124,18 +121,8 @@ export function ClassLookupModal({
     }
   }
 
-  async function handleResearch() {
-    setResearching(true);
-    setError(null);
-    try {
-      const full = await researchCourseByText(courseCode.trim(), professorName.trim() || undefined);
-      setDossier(courseResearchResultToDossier(full));
-      setPhase("dossier");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Research failed");
-    } finally {
-      setResearching(false);
-    }
+  function openFeedbackModal() {
+    window.dispatchEvent(new CustomEvent("hub:open-feedback", { detail: { area: "lookup" } }));
   }
 
   function handleCreatePostAboutCourse() {
@@ -255,27 +242,20 @@ export function ClassLookupModal({
                   {!expanding && results.length === 0 && (
                     <div className="flex flex-col items-center gap-4 py-16">
                       <p className="text-sm text-white/50">
-                        No cached data found for{" "}
                         <span className="text-white/80">{courseCode.trim()}</span>
                         {professorName.trim() ? ` / ${professorName.trim()}` : ""}.
                       </p>
-                      <p className="text-xs text-white/30">
-                        Run a full research pass to pull professor ratings, grades, and student insights.
+                      <p className="text-xs text-white/35">
+                        No cached data yet. Submit a research request through the{" "}
+                        <button
+                          type="button"
+                          onClick={openFeedbackModal}
+                          className="text-hub-cyan underline underline-offset-2 transition hover:text-hub-cyan/80"
+                        >
+                          feedback form
+                        </button>
+                        .
                       </p>
-                      <button
-                        type="button"
-                        onClick={handleResearch}
-                        disabled={researching}
-                        className="flex items-center gap-2 rounded-lg bg-hub-cyan/10 border border-hub-cyan/30 px-5 py-2.5 text-sm font-medium text-hub-cyan transition hover:bg-hub-cyan/20 disabled:opacity-40"
-                      >
-                        {researching ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <BookOpen className="h-4 w-4" />
-                        )}
-                        Research {courseCode.trim()}
-                        {professorName.trim() ? ` / ${professorName.trim()}` : ""}
-                      </button>
                       {error && <p className="text-xs text-hub-danger">{error}</p>}
                     </div>
                   )}

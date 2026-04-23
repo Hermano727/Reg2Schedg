@@ -14,6 +14,7 @@ import { CalendarSyncProvider, type CalendarSyncRequest } from "@/components/lay
 import { CalendarStateProvider } from "@/components/layout/calendar-state-context";
 import { Header } from "@/components/layout/Header";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import type { HubUser } from "@/types/hub-user";
 
 type HubShellProps = {
@@ -26,6 +27,8 @@ export function HubShell({ children, user }: HubShellProps) {
     !user?.needsOnboarding,
   );
   const [toast, setToast] = useState<ToastPayload | null>(null);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackArea, setFeedbackArea] = useState<"command_center" | "profile" | "community" | "calendar" | "lookup" | "other">("other");
 
   useEffect(() => {
     function handleCalendarToast(
@@ -38,6 +41,16 @@ export function HubShell({ children, user }: HubShellProps) {
 
     window.addEventListener(GOOGLE_CALENDAR_TOAST_EVENT, handleCalendarToast);
     return () => window.removeEventListener(GOOGLE_CALENDAR_TOAST_EVENT, handleCalendarToast);
+  }, []);
+
+  useEffect(() => {
+    function handleOpenFeedback(event: Event) {
+      const customEvent = event as CustomEvent<{ area?: "command_center" | "profile" | "community" | "calendar" | "lookup" | "other" }>;
+      setFeedbackArea(customEvent.detail?.area ?? "other");
+      setFeedbackOpen(true);
+    }
+    window.addEventListener("hub:open-feedback", handleOpenFeedback as EventListener);
+    return () => window.removeEventListener("hub:open-feedback", handleOpenFeedback as EventListener);
   }, []);
 
   const handleSyncCalendar = useCallback(async (request: CalendarSyncRequest) => {
@@ -116,6 +129,11 @@ export function HubShell({ children, user }: HubShellProps) {
             onComplete={() => setOnboardingDone(true)}
           />
         )}
+        <FeedbackModal
+          open={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          initialProductArea={feedbackArea}
+        />
         <HubToast toast={toast} onDismiss={() => setToast(null)} />
       </CalendarSyncProvider>
     </CalendarStateProvider>

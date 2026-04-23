@@ -412,8 +412,9 @@ export function LeftSidebar({
           </span>
         </Link>
         <div className="flex-1" />
-        <Link
-          href="/profile?section=feedback"
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("hub:open-feedback", { detail: { area: "other" } }))}
           aria-label="Feedback"
           title="Feedback"
           className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-hub-text-muted transition hover:bg-white/[0.05] hover:text-hub-text"
@@ -425,7 +426,7 @@ export function LeftSidebar({
           >
             Feedback
           </span>
-        </Link>
+        </button>
         <Link
           href="/settings"
           aria-label="Settings"

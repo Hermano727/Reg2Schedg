@@ -288,7 +288,7 @@ def search_course_research_cache(
     professor_name: str | None = None,
     limit: int = 30,
 ) -> list[CourseResearchCacheRow]:
-    """Return all cached entries for a normalized course code.
+    """Return cached entries for a normalized course code or prefix.
 
     If professor_name is given, applies an ILIKE filter on normalized_professor_name
     so partial names (e.g. "smith") still match.
@@ -297,12 +297,16 @@ def search_course_research_cache(
     query = (
         client.table("course_research_cache")
         .select("id,course_code,course_title,professor_name,normalized_professor_name,updated_at,data_source,normalized_course_code,model,logistics")
-        .eq("normalized_course_code", norm_code)
         .neq("professor_name", "")
         .not_.is_("professor_name", "null")
         .order("updated_at", desc=True)
         .limit(limit)
     )
+    if " " in norm_code:
+        query = query.eq("normalized_course_code", norm_code)
+    else:
+        query = query.ilike("normalized_course_code", f"{norm_code}%")
+
     if professor_name:
         norm_prof = normalize_professor_name(professor_name)
         query = query.ilike("normalized_professor_name", f"%{norm_prof}%")

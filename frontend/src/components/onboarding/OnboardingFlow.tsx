@@ -150,7 +150,7 @@ const transition = { type: "tween" as const, ease: [0.22, 1, 0.36, 1] as const, 
 function ProgressBar({ current, total }: { current: number; total: number }) {
   const pct = ((current + 1) / total) * 100;
   return (
-    <div className="absolute right-8 top-6 flex items-center gap-3">
+    <div className="mb-5 flex items-center justify-between gap-3 sm:absolute sm:right-8 sm:top-6 sm:mb-0 sm:justify-start">
       <span className="text-xs font-medium text-hub-text-muted">
         {current + 1} / {total}
       </span>
@@ -355,9 +355,9 @@ function PreviewRadar({ data }: { data: OnboardingData }) {
 
 function WelcomeSlide() {
   return (
-    <div className="flex min-h-[320px] items-center justify-center">
-      <div className="max-w-xl rounded-[28px] border border-white/[0.08] bg-white/[0.035] px-7 py-7 text-center shadow-[0_22px_50px_rgba(0,0,0,0.22)]">
-        <p className="text-sm leading-7 text-hub-text-secondary">
+    <div className="flex min-h-[220px] items-center justify-center sm:min-h-[320px]">
+      <div className="max-w-xl rounded-[24px] border border-white/[0.08] bg-white/[0.035] px-5 py-6 text-center shadow-[0_22px_50px_rgba(0,0,0,0.22)] sm:rounded-[28px] sm:px-7 sm:py-7">
+        <p className="text-sm leading-6 text-hub-text-secondary sm:leading-7">
           You can update these details later from your profile, but setting them now gives your first evaluation a much better starting point.
         </p>
       </div>
@@ -367,9 +367,9 @@ function WelcomeSlide() {
 
 function ExamplesIntroSlide() {
   return (
-    <div className="flex min-h-[360px] items-center justify-center">
-      <div className="max-w-2xl rounded-[30px] border border-hub-cyan/18 bg-white/[0.04] px-8 py-8 shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
-        <p className="text-[15px] leading-8 text-hub-text-secondary">
+    <div className="flex min-h-[240px] items-center justify-center sm:min-h-[360px]">
+      <div className="max-w-2xl rounded-[24px] border border-hub-cyan/18 bg-white/[0.04] px-5 py-6 shadow-[0_24px_60px_rgba(0,0,0,0.24)] sm:rounded-[30px] sm:px-8 sm:py-8">
+        <p className="text-sm leading-7 text-hub-text-secondary sm:text-[15px] sm:leading-8">
           Make sure you use all of the resources we provide! The screenshots will come directly from the app.
         </p>
       </div>
@@ -379,9 +379,9 @@ function ExamplesIntroSlide() {
 
 function ShowcaseImageSlide({ imageSrc, imageAlt }: ShowcaseSlide) {
   return (
-    <div className="space-y-4">
-      <div className="rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,#f2f6ff_0%,#dbe7fb_100%)] p-4 shadow-[0_28px_70px_rgba(0,0,0,0.24)]">
-        <div className="overflow-hidden rounded-[22px] border border-slate-900/10 bg-[#0d1f38] shadow-[0_18px_35px_rgba(15,23,42,0.22)]">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="rounded-[22px] border border-white/[0.08] bg-[linear-gradient(180deg,#f2f6ff_0%,#dbe7fb_100%)] p-3 shadow-[0_28px_70px_rgba(0,0,0,0.24)] sm:rounded-[28px] sm:p-4">
+        <div className="overflow-hidden rounded-[18px] border border-slate-900/10 bg-[#0d1f38] shadow-[0_18px_35px_rgba(15,23,42,0.22)] sm:rounded-[22px]">
           <Image
             src={imageSrc}
             alt={imageAlt}
@@ -391,7 +391,7 @@ function ShowcaseImageSlide({ imageSrc, imageAlt }: ShowcaseSlide) {
           />
         </div>
       </div>
-      <p className="text-center text-sm text-hub-text-muted">
+      <p className="text-center text-xs text-hub-text-muted sm:text-sm">
         These screenshots come directly from the app so you know exactly what to look for.
       </p>
     </div>
@@ -410,7 +410,7 @@ function Slide1({
   const careers = CAREER_PATHS[data.major] ?? CAREER_PATHS.default;
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5 sm:space-y-7">
       <div>
         <SectionLabel>Declared Major</SectionLabel>
         <MajorSelect
@@ -448,7 +448,7 @@ function Slide1({
           transition={{ duration: 0.25 }}
         >
           <SectionLabel>Learning Preferences</SectionLabel>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {getLearningStyles(data.major).map(({ id, label, sub }) => (
               <button
                 key={id}
@@ -489,7 +489,7 @@ function Slide2({
   }
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-5 sm:space-y-7">
       <div>
         <SectionLabel>Biggest Concerns</SectionLabel>
         <p className="mb-3 text-xs text-hub-text-muted">Select all that apply. Used to sharpen your schedule fitness score.</p>
@@ -509,7 +509,7 @@ function Slide2({
 
       <div>
         <SectionLabel>Primary Transit</SectionLabel>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {TRANSIT_OPTIONS.map(({ id, label, icon }) => (
             <button
               key={id}
@@ -531,7 +531,7 @@ function Slide2({
 
       <div>
         <SectionLabel>Living Situation</SectionLabel>
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           {[
             { id: "on_campus", label: "On-Campus", sub: "Dorm or on-campus housing" },
             { id: "off_campus", label: "Off-Campus", sub: "Apartment, home, etc." },
@@ -616,9 +616,9 @@ function Slide2({
 
 function Slide3() {
   return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 flex gap-3">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex gap-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
         <p className="text-sm text-amber-200/80">
           Our app is optimized for WebReg&apos;s <strong>List View</strong>. The Calendar View does not display
           exam dates, losing important information for your analysis.
@@ -626,7 +626,7 @@ function Slide3() {
       </div>
 
       {/* Two-column comparison — horizontal image gets more space since it's wider */}
-      <div className="flex gap-5 items-start">
+      <div className="flex flex-col items-start gap-5 xl:flex-row">
 
         {/* ── Preferred: horizontal list view (wider image) ── */}
         <div className="flex-[3] space-y-3 min-w-0">
@@ -636,7 +636,7 @@ function Slide3() {
               alt="Horizontal list view — preferred"
               width={900}
               height={520}
-              className="w-full object-cover"
+              className="w-full object-contain"
               style={{ display: "block" }}
               priority
             />
@@ -646,11 +646,11 @@ function Slide3() {
               <Check className="h-3.5 w-3.5 text-hub-cyan" />
             </span>
             <div>
-              <p className="text-[18px] font-bold text-hub-cyan">Use This View</p>
-              <p className="text-[16px] text-hub-text-secondary mt-0.5 leading-relaxed">
+              <p className="text-base font-bold text-hub-cyan sm:text-[18px]">Use This View</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-hub-text-secondary sm:text-[16px]">
                 Horizontal list view: includes exam timings and full section detail for best analysis.
               </p>
-              <p className="text-[16px] py-3 text-hub-text-muted pt-1">
+              <p className="pt-1 text-sm text-hub-text-muted sm:py-3 sm:text-[16px]">
                 In WebReg: <strong className="text-hub-text-secondary">Take a screenshot OR print schedule → Save File</strong>.
               </p>
             </div>
@@ -665,7 +665,7 @@ function Slide3() {
               alt="Vertical calendar view — not preferred"
               width={560}
               height={720}
-              className="w-full object-cover grayscale"
+              className="w-full object-contain grayscale"
               style={{ display: "block" }}
               priority
             />
@@ -675,8 +675,8 @@ function Slide3() {
               <X className="h-3.5 w-3.5 text-hub-text-muted" />
             </span>
             <div>
-              <p className="text-[18px] font-semibold text-hub-cyan">Avoid This View</p>
-              <p className="text-[16px] text-hub-text-muted mt-0.5 leading-relaxed">
+              <p className="text-base font-semibold text-hub-cyan sm:text-[18px]">Avoid This View</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-hub-text-muted sm:text-[16px]">
                 Vertical calendar view: missing exam info, leading to incomplete analysis.
               </p>
             </div>
@@ -690,7 +690,7 @@ function Slide3() {
 
 function Slide4({ data }: { data: OnboardingData }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <div className="flex items-start gap-4">
         <div>
           <p className="font-semibold text-hub-text">Your profile is set.</p>
@@ -702,7 +702,7 @@ function Slide4({ data }: { data: OnboardingData }) {
 
       <PreviewRadar data={data} />
 
-      <div className="grid grid-cols-2 gap-3 text-xs">
+      <div className="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
         {[
           { label: "Major", value: data.major || "—" },
           { label: "Career", value: data.careerPath || "—" },
@@ -786,6 +786,14 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
   const patch = useCallback((p: Partial<OnboardingData>) => setData((d) => ({ ...d, ...p })), []);
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     const validConcernIds = new Set(getConcernOptions(data.major).map((opt) => opt.id));
     setData((d) => ({
       ...d,
@@ -834,32 +842,35 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto px-3 py-3 sm:items-center sm:px-4 sm:py-6"
       style={{ background: "rgba(10, 25, 47, 0.97)", backdropFilter: "blur(8px)" }}
     >
       {/* Card — widens on the image-comparison slide */}
       <motion.div
         animate={{ maxWidth: cardMaxWidth }}
         transition={{ type: "tween" as const, ease: [0.22, 1, 0.36, 1] as const, duration: 0.35 }}
-        className="relative w-full mx-4 rounded-2xl border border-white/[0.08] overflow-hidden"
+        className="relative my-auto flex w-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08]"
         style={{
           background: "linear-gradient(180deg, #112746 0%, #0b1d36 100%)",
           boxShadow: "0 32px 80px rgba(0,0,0,0.6)",
+          maxHeight: "calc(100dvh - 1.5rem)",
         }}
       >
         {/* Progress bar */}
         <ProgressBar current={slide} total={SLIDE_COUNT} />
 
         {/* Content area */}
-        <div className="flex flex-col px-8 pb-8 pt-10" style={{ minHeight: `${cardMinHeight}px` }}>
-          {/* Header */}
-          <div className="mb-7">
+        <div
+          className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-4 sm:px-8 sm:pb-8 sm:pt-10"
+          style={{ minHeight: `min(${cardMinHeight}px, calc(100dvh - 1.5rem))` }}
+        >
+          <div className="mb-5 sm:mb-7">
             <motion.h2
               key={slide}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="text-[20pt] font-bold text-hub-text font-[family-name:var(--font-outfit)]"
+              className="font-[family-name:var(--font-outfit)] text-[1.55rem] leading-tight font-bold text-hub-text sm:text-[20pt]"
             >
               {SLIDE_TITLES[slide]}
             </motion.h2>
@@ -868,14 +879,14 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.05 }}
-              className="mt-1.5 text-[14pt] text-hub-text-secondary"
+              className="mt-1.5 text-sm leading-6 text-hub-text-secondary sm:text-[14pt] sm:leading-7"
             >
               {SLIDE_SUBTITLES[slide]}
             </motion.p>
           </div>
 
           {/* Slide content */}
-          <div className="flex-1 overflow-y-auto pr-0.5">
+          <div className="hub-scroll min-h-0 flex-1 overflow-y-auto pr-1">
             <AnimatePresence mode="wait" custom={dir}>
               <motion.div
                 key={slide}
@@ -903,16 +914,16 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
           </div>
 
           {/* Footer nav */}
-          <div className="mt-8 border-t border-white/[0.06] pt-5">
+          <div className="mt-5 shrink-0 border-t border-white/[0.06] pt-4 sm:mt-8 sm:pt-5">
             {saveError && (
               <p className="mb-3 text-center text-xs text-hub-danger">{saveError}</p>
             )}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => go(-1)}
                 disabled={slide === 0}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-30"
+                className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-30 sm:px-3"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Back
@@ -923,7 +934,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
                 onClick={isLast ? finish : () => go(1)}
                 disabled={!canGoNext || saving}
                 className={[
-                  "flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-150 outline-none disabled:pointer-events-none disabled:opacity-40",
+                  "flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 outline-none disabled:pointer-events-none disabled:opacity-40 sm:px-5",
                   isLast
                     ? "bg-hub-cyan text-[#0a192f] hover:bg-hub-cyan/90"
                     : "bg-hub-cyan/15 text-hub-cyan ring-1 ring-hub-cyan/35 hover:bg-hub-cyan/25",

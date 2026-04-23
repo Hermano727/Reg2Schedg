@@ -61,7 +61,14 @@ def get_settings() -> Settings:
     return Settings()
 
 
-settings = get_settings()
+class SettingsProxy:
+    """Resolve settings lazily so imports stay side-effect free in tests."""
+
+    def __getattr__(self, name: str):
+        return getattr(get_settings(), name)
+
+
+settings = SettingsProxy()
 
 
 def get_allowed_frontend_origins(cfg: Settings) -> set[str]:

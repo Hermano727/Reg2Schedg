@@ -71,6 +71,9 @@ export function ProcessingModal({ open }: ProcessingModalProps) {
               <p className="mt-1 text-sm text-hub-text-secondary">
                 Researching courses, professors, and grade data…
               </p>
+              <p className="mt-2 text-xs text-hub-text-muted">
+                This usually takes 30 seconds to 1 minute while we gather course data.
+              </p>
             </div>
 
             {/* Animated dots */}

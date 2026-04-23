@@ -126,10 +126,10 @@ export function DropZone({
   return (
     <>
       <div
-        className={`relative rounded-xl border border-dashed px-6 py-14 transition lg:px-8 lg:py-16 ${
+        className={`relative rounded-2xl border border-dashed px-6 py-12 transition lg:px-8 lg:py-14 ${
           dragActive
-            ? "border-hub-cyan/55 bg-hub-cyan/[0.06]"
-            : "border-white/[0.14] bg-hub-bg/30"
+            ? "border-hub-cyan/55 bg-hub-cyan/[0.05]"
+            : "border-white/[0.14] bg-white/[0.02]"
         } ${disabled ? "pointer-events-none opacity-50" : ""}`}
         onDragEnter={(e) => {
           e.preventDefault();
@@ -185,7 +185,7 @@ export function DropZone({
             We&apos;ll parse your schedule, cross-reference course evaluations, and
             build a summary for each class.
           </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <label
               htmlFor="ingest-input"
               className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-5 py-2.5 text-[15px] font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan"

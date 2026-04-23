@@ -126,6 +126,17 @@ type OnboardingData = {
   externalHours: number | "";
 };
 
+const DEFAULT_ONBOARDING_DATA: OnboardingData = {
+  major: "Undeclared",
+  careerPath: "Industry / Private Sector",
+  skillPreference: "balanced",
+  concerns: ["workload"],
+  transitMode: "walking",
+  livingSituation: "on_campus",
+  commuteMinutes: 10,
+  externalHours: 0,
+};
+
 type Props = {
   userId: string;
   onComplete: () => void;
@@ -808,21 +819,21 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     setSlide(next);
   }
 
-  async function finish() {
+  async function saveProfileData(profileData: OnboardingData) {
     setSaving(true);
     setSaveError(null);
     try {
       const supabase = createClient();
       const { error } = await supabase.from("profiles").upsert({
         id: userId,
-        major: data.major || null,
-        career_path: data.careerPath || null,
-        skill_preference: data.skillPreference || null,
-        biggest_concerns: data.concerns.length ? data.concerns : null,
-        transit_mode: data.transitMode || null,
-        living_situation: data.livingSituation || null,
-        commute_minutes: data.commuteMinutes !== "" ? Number(data.commuteMinutes) : null,
-        external_commitment_hours: data.externalHours === "" ? 0 : Number(data.externalHours),
+        major: profileData.major || null,
+        career_path: profileData.careerPath || null,
+        skill_preference: profileData.skillPreference || null,
+        biggest_concerns: profileData.concerns.length ? profileData.concerns : null,
+        transit_mode: profileData.transitMode || null,
+        living_situation: profileData.livingSituation || null,
+        commute_minutes: profileData.commuteMinutes !== "" ? Number(profileData.commuteMinutes) : null,
+        external_commitment_hours: profileData.externalHours === "" ? 0 : Number(profileData.externalHours),
         onboarding_complete: true,
       });
       if (error) throw error;
@@ -832,6 +843,18 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       setSaveError(err instanceof Error ? err.message : "Failed to save. Please try again.");
       setSaving(false);
     }
+  }
+
+  async function finish() {
+    await saveProfileData(data);
+  }
+
+  async function skipOnboarding() {
+    const shouldSkip = window.confirm(
+      "Are you sure you want to skip? Onboarding explains how Reg2Schedg works and improves analysis!",
+    );
+    if (!shouldSkip) return;
+    await saveProfileData(DEFAULT_ONBOARDING_DATA);
   }
 
   const isLast = slide === SLIDE_COUNT - 1;
@@ -919,15 +942,25 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
               <p className="mb-3 text-center text-xs text-hub-danger">{saveError}</p>
             )}
             <div className="flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => go(-1)}
-                disabled={slide === 0}
-                className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-30 sm:px-3"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={skipOnboarding}
+                  disabled={saving}
+                  className="rounded-lg px-2 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-danger disabled:pointer-events-none disabled:opacity-30 sm:px-3"
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => go(-1)}
+                  disabled={slide === 0 || saving}
+                  className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-hub-text-muted transition hover:text-hub-text disabled:pointer-events-none disabled:opacity-30 sm:px-3"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
+                </button>
+              </div>
 
               <button
                 type="button"

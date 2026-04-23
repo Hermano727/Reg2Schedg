@@ -24,8 +24,6 @@ type IngestionHubProps = {
   classCount: number;
   quarterLabel: string;
   isLocked?: boolean;
-  onViewExampleOutput?: () => void;
-  isExampleLoading?: boolean;
 };
 
 export function IngestionHub({
@@ -41,8 +39,6 @@ export function IngestionHub({
   classCount,
   quarterLabel,
   isLocked,
-  onViewExampleOutput,
-  isExampleLoading = false,
 }: IngestionHubProps) {
   const busy = phase === "processing";
   const [helpOpen, setHelpOpen] = useState(false);
@@ -103,9 +99,9 @@ export function IngestionHub({
   return (
     <motion.section
       layout
-      className="glass-panel mb-6 rounded-xl border border-white/[0.08] p-5 lg:p-6"
+      className="mb-6"
     >
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <div className="flex items-center gap-2">
             <h2 className="font-[family-name:var(--font-outfit)] text-xl font-semibold tracking-tight text-hub-text lg:text-[1.45rem]">
@@ -142,43 +138,25 @@ export function IngestionHub({
 
       <motion.div layout>
         {isLocked && !isDashboardExpanded ? (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-white/[0.08] bg-hub-bg/40 px-6 py-10 text-center">
-            <div className="rounded-lg border border-hub-gold/30 bg-hub-gold/[0.07] px-4 py-3 text-sm text-hub-text-secondary max-w-sm">
+          <div className="rounded-2xl border border-white/[0.08] bg-hub-bg/35 px-6 py-8">
+            <div className="max-w-xl rounded-lg border border-hub-gold/30 bg-hub-gold/[0.07] px-4 py-3 text-sm text-hub-text-secondary">
               <p className="font-semibold text-hub-text mb-1">UCSD students only</p>
               <p>Reg2Schedg is currently only for UCSD students. Sign in with your @ucsd.edu account to upload your schedule.</p>
             </div>
-            <div className="flex items-center gap-3">
-              <a
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14]"
-              >
-                Sign in with UCSD account
-              </a>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <a
                 href="/signup"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] px-4 py-2 text-sm font-medium text-hub-text-secondary transition hover:border-white/[0.18] hover:text-hub-text"
+                className="inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14]"
               >
                 Create account
               </a>
+              <a
+                href="/login"
+                className="text-sm font-medium text-hub-text-secondary transition hover:text-hub-text"
+              >
+                Already have a UCSD account? Sign in
+              </a>
             </div>
-            {onViewExampleOutput ? (
-              <div className="w-full max-w-xl rounded-xl border border-hub-cyan/20 bg-hub-cyan/[0.05] px-4 py-4 text-left">
-                <p className="text-sm font-semibold text-hub-text">
-                  For users without a UCSD email: See example output here
-                </p>
-                <p className="mt-1.5 text-sm leading-relaxed text-hub-text-secondary">
-                  Open a researched sample schedule to preview the dashboard, professor data, and workload analysis before signing in.
-                </p>
-                <button
-                  type="button"
-                  onClick={onViewExampleOutput}
-                  disabled={isExampleLoading}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14] disabled:cursor-wait disabled:opacity-60"
-                >
-                  {isExampleLoading ? "Loading example..." : "View example schedule"}
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : (
           <DropZone

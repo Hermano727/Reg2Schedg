@@ -86,6 +86,24 @@ const WHAT_YOU_GET = [
   { label: "MAP VISUALIZATION", detail: "Interactive campus map showing class locations and walking patterns between buildings" },
 ] as const;
 
+const LANDING_JOURNEY_STEPS = [
+  {
+    step: "01",
+    title: "Attach your schedule",
+    detail: "Upload a screenshot or PDF.",
+  },
+  {
+    step: "02",
+    title: "Look up a class or professor",
+    detail: "Check one class or professor first.",
+  },
+  {
+    step: "03",
+    title: "Calendar and summary",
+    detail: "See the calendar, ratings, and workload.",
+  },
+] as const;
+
 type ProfileFitContext = {
   major?: string;
   careerPath?: string;
@@ -239,13 +257,13 @@ const PREVIEW_BLOCKS = [
   { col: 2, top: 60, h: 26, accent: "#a78bfa", label: "COGS 101" },
 ];
 
-function IdlePreviewCard() {
+function IdlePreviewCard({ className = "" }: { className?: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="mb-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-hub-surface"
+      className={`overflow-hidden rounded-2xl border border-white/[0.08] bg-hub-surface ${className}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-2.5">
@@ -1071,173 +1089,301 @@ export function CommandCenter() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }}
                   transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                  className="relative grid grid-cols-1 gap-8 lg:grid-cols-[6fr_5fr] lg:gap-12 xl:gap-14"
+                  className="relative space-y-14 lg:space-y-20"
                 >
 
-                  {/* ── Col 1: Problem statement + action ── */}
-                  <div className="relative">
-                    {/* Ambient glow */}
-                    <motion.div
-                      aria-hidden
-                      animate={{ opacity: [0.06, 0.13, 0.06], scale: [1, 1.1, 1] }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", repeatType: "mirror" }}
-                      className="pointer-events-none absolute left-0 top-0 h-[480px] w-[480px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-hub-cyan blur-[100px]"
-                    />
-                    <div className="relative mb-8">
+                  <motion.div
+                    aria-hidden
+                    animate={{ opacity: [0.05, 0.11, 0.05], scale: [1, 1.08, 1] }}
+                    transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', repeatType: 'mirror' }}
+                    className='pointer-events-none absolute left-0 top-0 h-[440px] w-[440px] -translate-x-1/4 -translate-y-1/4 rounded-full bg-hub-cyan blur-[120px]'
+                  />
+
+                  <section className='relative px-1 py-2 lg:px-2 lg:py-3'>
+                    <div className='relative max-w-2xl'>
                       <motion.h1
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                        className="font-[family-name:var(--font-outfit)] text-[2.75rem] font-bold leading-[1.06] tracking-tight text-hub-text lg:text-[3.5rem]"
+                        className='font-[family-name:var(--font-outfit)] text-[clamp(2.45rem,5.6vw,4rem)] font-semibold leading-[0.96] tracking-[-0.042em] text-hub-text'
                       >
-                        Stop guessing<br />your schedule.
-                      </motion.h1>
-                      <motion.p
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                        className="mt-5 max-w-[520px] text-[18px] leading-[1.68] text-hub-text-secondary"
-                      >
-                        Upload your WebReg screenshot. Get professor ratings, grade distributions, Reddit posts, and a workload estimate for every class, before you finalize anything.
-                      </motion.p>
+                        Stop guessing
+                        <br />
+                        your schedule.
+                      </motion.h1> 
                     </div>
 
-                    <motion.button
-                      type="button"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.4, delay: 0.15 }}
-                      onClick={() => setShowExampleModal(true)}
-                      className="mb-4 flex items-center gap-2 text-[18px] text-hub-text-secondary transition hover:text-hub-cyan"
-                    >
-                      <Images className="h-4 w-4" />
-                      See what to upload
-                    </motion.button>
-
-                    <IngestionHub
-                      phase={phase}
-                      collapsed={ingestionCollapsed}
-                      onToggleCollapse={() => setIngestionCollapsed((c) => !c)}
-                      onFilesSelected={handleFilesSelected}
-                      onOpenUploadFormatModal={() => setShowExampleModal(true)}
-                      submissionUsesLeft={submissionCountRemaining}
-                      submissionResetsAtLabel={submissionResetAtLabel}
-                      skipUploadConfirmation={skipUploadConfirmation}
-                      onSkipUploadConfirmationChange={handleSkipUploadConfirmationChange}
-                      onManualSubmit={handleManualSubmit}
-                      classCount={classCount}
-                      quarterLabel={displayedQuarterLabel}
-                      isLocked={!authed || !isUcsdUser}
-                      onViewExampleOutput={handleViewExampleOutput}
-                      isExampleLoading={isExampleLoading}
-                    />
-
-                  </div>
-
-                  {/* ── Col 2: Sample output + feature list ── */}
-                  <div className="flex flex-col gap-5 lg:pt-1">
-
-                    {/* What you get label */}
-                    <motion.p
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.35, delay: 0.38, ease: [0.22, 1, 0.36, 1] }}
-                      className="text-[15px] font-bold uppercase tracking-[0.18em] text-hub-cyan"
-                    >
-                      What you get
-                    </motion.p>
-
-                    <IdlePreviewCard />
-
-                    {/* Separator */}
-                    <div className="h-px bg-white/[0.05]" />
-
-                    {/* Feature chips — 2 columns, scoped to this panel */}
-                    <div className="grid grid-cols-2 gap-2.5">
-                      {WHAT_YOU_GET.map((item, i) => (
-                        <motion.div
-                          key={item.label}
-                          initial={{ opacity: 0, y: 5 }}
+                    <div className='relative mt-8 grid gap-10'>
+                      <div className='max-w-3xl'>
+                        <motion.p
+                          initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.26, delay: 0.44 + i * 0.048, ease: [0.22, 1, 0.36, 1] }}
-                          className="cursor-default rounded-xl border border-white/[0.06] bg-hub-surface/70 px-3.5 py-3.5 transition-colors duration-150 hover:border-white/[0.11] hover:bg-hub-surface"
+                          transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+                          className='mt-5 max-w-[700px] text-[16px] leading-8 text-hub-text-secondary/95 sm:text-[17px]'
                         >
-                          <div className="mb-1.5 font-[family-name:var(--font-jetbrains-mono)] text-[15px] font-bold tabular-nums text-hub-cyan">
-                            {String(i + 1).padStart(2, "0")}
-                          </div>
-                          <div className="text-[13px] font-semibold leading-snug text-hub-text">
-                            {item.label}
-                          </div>
+                          Upload your WebReg screenshot. Get professor ratings, grade distributions, Reddit posts,
+                          and a workload estimate for every class before you finalize anything.
+                        </motion.p>
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.45, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
+                          className='mt-8 flex flex-col gap-3 sm:flex-row'
+                        >
+                          <a
+                            href='#attach-schedule'
+                            className='inline-flex items-center justify-center gap-2 rounded-full border border-hub-cyan/40 bg-hub-cyan/12 px-5 py-3 text-sm font-semibold text-hub-cyan transition hover:border-hub-cyan/60 hover:bg-hub-cyan/18'
+                          >
+                            Attach your schedule
+                            <ChevronRight className='h-4 w-4' />
+                          </a>
+                          <button
+                            type='button'
+                            onClick={() => setShowExampleModal(true)}
+                            className='inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.02] px-5 py-3 text-sm font-medium text-hub-text-secondary transition hover:border-white/[0.24] hover:bg-white/[0.05] hover:text-hub-text'
+                          >
+                            <Images className='h-4 w-4' />
+                            See what to upload
+                          </button>
                         </motion.div>
-                      ))}
+                      </div>
+                      <motion.div
+                        initial={{ opacity: 0, x: 12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.45, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                        className='max-w-[860px] rounded-[26px] border border-white/[0.08] bg-white/[0.02] p-4 sm:p-5'
+                      >
+                        <p className='px-1 font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-[0.2em] text-hub-cyan/85'>
+                          Quick flow
+                        </p>
+                        <div className='mt-3 space-y-1'>
+                          {LANDING_JOURNEY_STEPS.map((item) => (
+                            <div key={item.step} className='group grid grid-cols-[34px_minmax(0,1fr)] items-start gap-3 rounded-2xl px-2 py-2.5 transition hover:bg-white/[0.04]'>
+                              <span className='mt-[2px] inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.1] bg-white/[0.03] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold tracking-[0.12em] text-hub-cyan/85'>
+                                {item.step}
+                              </span>
+                              <div className='min-w-0 border-l border-white/[0.07] pl-3'>
+                                <p className='text-sm font-semibold text-hub-text'>{item.title}</p>
+                                <p className='mt-1 text-[13px] leading-6 text-hub-text-muted/85'>{item.detail}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
                     </div>
+                  </section>
 
-                    <motion.div
-                      initial={{ opacity: 0, y: 5 }}
+                  <section
+                    id='attach-schedule'
+                    className='mt-12 grid scroll-mt-6 gap-8 xl:grid-cols-[minmax(320px,0.78fr)_minmax(0,1.12fr)] xl:items-start lg:mt-16'
+                  >
+                    <motion.aside
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.26, delay: 0.76, ease: [0.22, 1, 0.36, 1] }}
-                      className="rounded-xl border border-white/[0.08] bg-hub-surface/75 p-4"
+                      transition={{ duration: 0.36, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      className='relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-hub-surface/78 p-5 shadow-[0_24px_70px_rgba(2,12,27,0.22)] lg:p-6'
                     >
-                      <div className="mb-3 flex items-start gap-2.5">
-                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-hub-cyan/25 bg-hub-cyan/10 text-hub-cyan">
-                          <GraduationCap className="h-4 w-4" />
+                      <div className='pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.12]' />
+                      <p className='font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-[0.22em] text-hub-gold/90'>
+                        Best results
+                      </p>
+                      <p className='mt-3 font-[family-name:var(--font-outfit)] text-[1.2rem] font-semibold tracking-[-0.03em] text-hub-text'>
+                        Clear input helps.
+                      </p>
+                      <div className='mt-6 space-y-4'>
+                        {[
+                          'List view shows the most detail.',
+                          'PDFs and screenshots both work.',
+                          'Use the lookup section for a single class.',
+                        ].map((note, index) => (
+                          <div key={note} className='flex items-start gap-3'>
+                            <span className='mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold text-hub-text-muted'>
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <p className='text-sm leading-6 text-hub-text-secondary'>{note}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type='button'
+                        onClick={() => setShowExampleModal(true)}
+                        className='mt-6 inline-flex items-center gap-2 text-sm font-medium text-hub-text-secondary transition hover:text-hub-cyan'
+                      >
+                        <Images className='h-4 w-4' />
+                        Open upload examples
+                      </button>
+                    </motion.aside>
+                    <div className='space-y-4'>
+                      <div className='max-w-2xl'>
+                        <p className='font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-[0.22em] text-hub-cyan'>
+                          01 / Attach your schedule
+                        </p>
+                        <h2 className='mt-3 font-[family-name:var(--font-outfit)] text-[clamp(1.6rem,3.2vw,2.55rem)] font-semibold leading-[1.04] tracking-[-0.04em] text-hub-text'>
+                          Upload your WebReg schedule.
+                        </h2>
+                        <p className='mt-4 max-w-[760px] text-[16px] leading-8 text-hub-text-secondary sm:text-[17px]'>
+                          List view, PDF, or screenshot all work.
+                        </p>
+                      </div>
+                      <IngestionHub
+                        phase={phase}
+                        collapsed={ingestionCollapsed}
+                        onToggleCollapse={() => setIngestionCollapsed((c) => !c)}
+                        onFilesSelected={handleFilesSelected}
+                        onOpenUploadFormatModal={() => setShowExampleModal(true)}
+                        submissionUsesLeft={submissionCountRemaining}
+                        submissionResetsAtLabel={submissionResetAtLabel}
+                        skipUploadConfirmation={skipUploadConfirmation}
+                        onSkipUploadConfirmationChange={handleSkipUploadConfirmationChange}
+                        onManualSubmit={handleManualSubmit}
+                        classCount={classCount}
+                        quarterLabel={displayedQuarterLabel}
+                        isLocked={!authed || !isUcsdUser}
+                      />
+                      {!authed || !isUcsdUser ? (
+                        <div className='max-w-2xl border-t border-white/[0.08] pt-4'>
+                          <p className='text-sm font-semibold text-hub-text'>
+                            For users without a UCSD email: preview an example output
+                          </p>
+                          <p className='mt-1.5 text-sm leading-relaxed text-hub-text-secondary'>
+                            Open a researched sample schedule to preview the dashboard, professor data, and workload analysis before signing in.
+                          </p>
+                          <button
+                            type='button'
+                            onClick={handleViewExampleOutput}
+                            disabled={isExampleLoading}
+                            className='mt-3 inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14] disabled:cursor-wait disabled:opacity-60'
+                          >
+                            {isExampleLoading ? "Loading example..." : "View example schedule"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+
+                  <section
+                    id='class-lookup'
+                    className='mt-14 grid scroll-mt-6 gap-6 xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] xl:items-start xl:gap-10 lg:mt-20'
+                  >
+                    <div className='rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] p-6 lg:p-8'>
+                      <p className='font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-[0.22em] text-hub-cyan'>
+                        02 / Look up a class or professor
+                      </p>
+                      <h2 className='mt-3 max-w-[16ch] font-[family-name:var(--font-outfit)] text-[clamp(1.45rem,2.8vw,2.1rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-hub-text'>
+                        Look up a class or professor.
+                      </h2>
+                      <p className='mt-4 max-w-[540px] text-[16px] leading-8 text-hub-text-secondary'>
+                        Search by course code or professor name for fast lookup.
+                      </p>
+                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.36, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                      className='rounded-[28px] border border-white/[0.08] bg-hub-surface/80 p-5 shadow-[0_24px_70px_rgba(2,12,27,0.24)] lg:p-6'
+                    >
+                      <div className='mb-4 flex items-start gap-3'>
+                        <span className='mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-hub-cyan/25 bg-hub-cyan/10 text-hub-cyan'>
+                          <GraduationCap className='h-4 w-4' />
                         </span>
                         <div>
-                          <p className="text-[14px] font-semibold text-hub-text">Look up a class or professor</p>
-                          <p className="mt-0.5 text-[12px] leading-relaxed text-hub-text-muted">
-                            Search any class or instructor to preview ratings, grade trends, and community signals.
+                          <p className='text-[15px] font-semibold text-hub-text'>Search</p>
+                          <p className='mt-1 text-sm leading-6 text-hub-text-muted'>
+                            Preview ratings, grade trends, and community signals.
                           </p>
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[1.1fr_1fr]">
-                        <label className="flex min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.10] bg-[#0d1f35]/70 px-3 py-2.5 transition focus-within:border-hub-cyan/40 focus-within:ring-1 focus-within:ring-hub-cyan/20">
-                          <Search className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                      <div className='grid grid-cols-1 gap-3 sm:grid-cols-[1.1fr_1fr]'>
+                        <label className='flex min-w-0 items-center gap-2.5 rounded-2xl border border-white/[0.10] bg-[#0d1f35]/75 px-4 py-3 transition focus-within:border-hub-cyan/40 focus-within:ring-1 focus-within:ring-hub-cyan/20'>
+                          <Search className='h-4 w-4 shrink-0 text-white/40' />
                           <input
-                            type="text"
+                            type='text'
                             value={lookupCourseCode}
                             onChange={(e) => setLookupCourseCode(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                              if (e.key === 'Enter') {
                                 e.preventDefault();
                                 handleOpenLookup();
                               }
                             }}
-                            placeholder="Course code (e.g. CSE 120)"
-                            className="min-w-0 flex-1 bg-transparent text-[13px] text-white/90 placeholder:text-white/30 outline-none"
+                            placeholder='Course code (e.g. CSE 120)'
+                            className='min-w-0 flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/30 outline-none'
                           />
                         </label>
-
-                        <label className="flex min-w-0 items-center gap-2.5 rounded-lg border border-white/[0.10] bg-[#0d1f35]/70 px-3 py-2.5 transition focus-within:border-hub-cyan/40 focus-within:ring-1 focus-within:ring-hub-cyan/20">
-                          <GraduationCap className="h-3.5 w-3.5 shrink-0 text-white/40" />
+                        <label className='flex min-w-0 items-center gap-2.5 rounded-2xl border border-white/[0.10] bg-[#0d1f35]/75 px-4 py-3 transition focus-within:border-hub-cyan/40 focus-within:ring-1 focus-within:ring-hub-cyan/20'>
+                          <GraduationCap className='h-4 w-4 shrink-0 text-white/40' />
                           <input
-                            type="text"
+                            type='text'
                             value={lookupProfessorName}
                             onChange={(e) => setLookupProfessorName(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                              if (e.key === 'Enter') {
                                 e.preventDefault();
                                 handleOpenLookup();
                               }
                             }}
-                            placeholder="Professor (optional)"
-                            className="min-w-0 flex-1 bg-transparent text-[13px] text-white/90 placeholder:text-white/30 outline-none"
+                            placeholder='Professor (optional)'
+                            className='min-w-0 flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/30 outline-none'
                           />
                         </label>
-
                         <button
-                          type="button"
+                          type='button'
                           onClick={handleOpenLookup}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.12] bg-hub-surface-elevated px-4 py-2.5 text-[13px] font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan sm:col-span-2"
+                          className='inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.12] bg-hub-surface-elevated px-4 py-3 text-sm font-medium text-hub-text transition hover:border-hub-cyan/35 hover:text-hub-cyan sm:col-span-2'
                         >
                           Search
-                          <ChevronRight className="h-3.5 w-3.5" />
+                          <ChevronRight className='h-4 w-4' />
                         </button>
                       </div>
                     </motion.div>
-                  </div>
+                  </section>
 
+                  <section
+                    id='what-you-get'
+                    className='relative mt-14 scroll-mt-6 lg:mt-20 lg:px-8 lg:py-8 xl:px-10 xl:py-10'
+                  >
+                    <div className='pointer-events-none absolute left-[-10%] top-[14%] h-[220px] w-[220px] rounded-full bg-hub-cyan/10 blur-[100px]' />
+                    <div className='relative'>
+                      <div className='max-w-2xl'>
+                        <p className='font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-[0.22em] text-hub-cyan'>
+                          03 / What you get
+                        </p>
+                        <h2 className='mt-3 font-[family-name:var(--font-outfit)] text-[clamp(1.5rem,2.9vw,2.2rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-hub-text'>
+                          Calendar and summary.
+                        </h2>
+                        <p className='mt-4 max-w-[760px] text-[16px] leading-8 text-hub-text-secondary sm:text-[17px]'>
+                          Weekly calendar, ratings, and workload in one place.
+                        </p>
+                      </div>
+                      <div className='mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.98fr)] xl:items-start'>
+                        <div className='space-y-4'>
+                          <IdlePreviewCard className='shadow-[0_24px_70px_rgba(2,12,27,0.28)]' />
+                          <div className='rounded-[22px] border border-white/[0.08] bg-white/[0.03] px-4 py-4 text-sm leading-7 text-hub-text-secondary'>
+                            The calendar, ratings, and workload score stay together.
+                          </div>
+                        </div>
+                        <div className='grid gap-3 sm:grid-cols-2'>
+                          {WHAT_YOU_GET.map((item, i) => (
+                            <motion.div
+                              key={item.label}
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.26, delay: 0.28 + i * 0.045, ease: [0.22, 1, 0.36, 1] }}
+                              className='rounded-[22px] border border-white/[0.06] bg-white/[0.03] px-4 py-4 transition-colors duration-150 hover:border-white/[0.12] hover:bg-white/[0.05]'
+                            >
+                              <div className='font-[family-name:var(--font-jetbrains-mono)] text-[13px] font-bold tabular-nums text-hub-cyan'>
+                                {String(i + 1).padStart(2, '0')}
+                              </div>
+                              <p className='mt-3 text-[13px] font-semibold leading-6 text-hub-text'>{item.label}</p>
+                              <p className='mt-1.5 text-[13px] leading-6 text-hub-text-muted/85'>{item.detail}</p>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
                 </motion.div>
+
               ) : phase === "dashboard" ? (
                 <motion.div
                   key="dashboard"

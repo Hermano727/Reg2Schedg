@@ -13,9 +13,9 @@
   --hub-text-muted: rgba(230, 241, 255, 0.95);
   --hub-danger: #ff6b6b;
   --hub-success: #5eead4;
-  --hub-watermark-size-mobile: 58%;
-  --hub-watermark-size-tablet: 74%;
-  --hub-watermark-size-desktop: 88%;
+  --hub-watermark-size-mobile: 54%;
+  --hub-watermark-size-tablet: 66%;
+  --hub-watermark-size-desktop: 76%;
   --hub-watermark-opacity-mobile: 0.021;
   --hub-watermark-opacity-tablet: 0.028;
   --hub-watermark-opacity-desktop: 0.035;
@@ -120,7 +120,7 @@ p {
   inset: 0;
   background-image: url('/images/ucsd_tritons_logo2.png');
   background-repeat: no-repeat;
-  background-position: calc(50% + 100px) 52%;
+  background-position: calc(100% + 220px) 1%;
   background-size: var(--hub-watermark-size-mobile);
   opacity: var(--hub-watermark-opacity-mobile);
   filter: brightness(0) invert(1);
@@ -134,6 +134,7 @@ p {
 
 @media (min-width: 768px) {
   .idle-watermark {
+    background-position: calc(100% + 260px) -1%;
     background-size: var(--hub-watermark-size-tablet);
     opacity: var(--hub-watermark-opacity-tablet);
   }
@@ -141,6 +142,7 @@ p {
 
 @media (min-width: 1280px) {
   .idle-watermark {
+    background-position: calc(100% + 300px) -4%;
     background-size: var(--hub-watermark-size-desktop);
     opacity: var(--hub-watermark-opacity-desktop);
   }

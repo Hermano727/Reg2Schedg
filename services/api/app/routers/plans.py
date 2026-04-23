@@ -37,7 +37,7 @@ _log = logging.getLogger(__name__)
 router = APIRouter()
 
 STALE_AFTER_DAYS = 30
-PUBLIC_DEMO_PLAN_ID = "b00b5866-285e-4bc5-8951-c37f8e25d791"
+PUBLIC_DEMO_PLAN_ID = "750711e7-131b-4de5-9e43-aaea6fc713db"
 
 
 def _is_stale(updated_at_str: str | None) -> bool:
@@ -65,9 +65,62 @@ def _expand_from_class_refs(
         if not cache_id:
             continue
 
-        row = get_course_research_cache_by_id(client, cache_id)
-        if row is None:
-            _log.warning("[expand] cache_id %s not found in course_research_cache", cache_id)
+        try:
+            row = get_course_research_cache_by_id(client, cache_id)
+            if row is None:
+                _log.warning("[expand] cache_id %s not found in course_research_cache", cache_id)
+                assembled.append({
+                    "course_code": ref.get("course_code", ""),
+                    "professor_name": ref.get("professor_name"),
+                    "meetings": ref.get("meetings", []),
+                    "logistics": None,
+                    "cache_id": cache_id,
+                    "stale": False,
+                    "missing": True,
+                })
+                continue
+
+            try:
+                logistics = CourseLogistics.model_validate(row.logistics)
+                logistics_dict = logistics.model_dump(mode="json")
+            except Exception:
+                logistics_dict = row.logistics
+
+            overrides = ref.get("overrides") or {}
+            professor_name = ref.get("professor_name") or row.professor_name or None
+
+            try:
+                sunset_row, is_fallback = get_sunset_grade_distribution(
+                    client,
+                    course_code=row.course_code,
+                    professor_name=professor_name,
+                )
+                sunset_dist = build_sunset_grade_distribution(
+                    sunset_row,
+                    is_cross_course_fallback=is_fallback,
+                    source_course_code=row.course_code if is_fallback else None,
+                )
+                sunset_payload = sunset_dist.model_dump(mode="json") if sunset_dist else None
+            except Exception as exc:
+                _log.warning("[expand] sunset lookup failed for cache_id %s: %s", cache_id, exc)
+                sunset_payload = None
+
+            assembled.append({
+                "course_code": row.course_code,
+                "professor_name": professor_name,
+                "course_title": overrides.get("course_title") or row.course_title,
+                "meetings": ref.get("meetings", []),
+                "overrides": overrides,
+                "logistics": overrides.get("logistics") or logistics_dict,
+                "cache_id": cache_id,
+                "cached_at": row.updated_at,
+                "stale": _is_stale(row.updated_at),
+                "missing": False,
+                "data_source": row.data_source,
+                "sunset_grade_distribution": sunset_payload,
+            })
+        except Exception as exc:
+            _log.exception("[expand] failed to assemble cache_id %s", cache_id)
             assembled.append({
                 "course_code": ref.get("course_code", ""),
                 "professor_name": ref.get("professor_name"),
@@ -76,43 +129,8 @@ def _expand_from_class_refs(
                 "cache_id": cache_id,
                 "stale": False,
                 "missing": True,
+                "error": f"Failed to expand cached course: {exc}",
             })
-            continue
-
-        try:
-            logistics = CourseLogistics.model_validate(row.logistics)
-            logistics_dict = logistics.model_dump(mode="json")
-        except Exception:
-            logistics_dict = row.logistics
-
-        overrides = ref.get("overrides") or {}
-        professor_name = ref.get("professor_name") or row.professor_name or None
-
-        sunset_row, is_fallback = get_sunset_grade_distribution(
-            client,
-            course_code=row.course_code,
-            professor_name=professor_name,
-        )
-        sunset_dist = build_sunset_grade_distribution(
-            sunset_row,
-            is_cross_course_fallback=is_fallback,
-            source_course_code=row.course_code if is_fallback else None,
-        )
-
-        assembled.append({
-            "course_code": row.course_code,
-            "professor_name": professor_name,
-            "course_title": overrides.get("course_title") or row.course_title,
-            "meetings": ref.get("meetings", []),
-            "overrides": overrides,
-            "logistics": overrides.get("logistics") or logistics_dict,
-            "cache_id": cache_id,
-            "cached_at": row.updated_at,
-            "stale": _is_stale(row.updated_at),
-            "missing": False,
-            "data_source": row.data_source,
-            "sunset_grade_distribution": sunset_dist.model_dump(mode="json") if sunset_dist else None,
-        })
 
     return assembled
 

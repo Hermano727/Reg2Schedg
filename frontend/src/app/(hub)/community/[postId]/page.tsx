@@ -7,6 +7,50 @@ type Props = {
   params: Promise<{ postId: string }>;
 };
 
+function pruneDeletedReplySubtrees(rawReplies: Record<string, unknown>[]): Record<string, unknown>[] {
+  if (rawReplies.length === 0) return [];
+
+  const byId = new Map<string, Record<string, unknown>>();
+  const childrenByParent = new Map<string | null, string[]>();
+
+  for (const row of rawReplies) {
+    const id = String(row.id ?? "");
+    if (!id) continue;
+    byId.set(id, row);
+    const parentReplyId = (row.parent_reply_id as string | null) ?? null;
+    const siblings = childrenByParent.get(parentReplyId) ?? [];
+    siblings.push(id);
+    childrenByParent.set(parentReplyId, siblings);
+  }
+
+  const keepIds = new Set<string>();
+  const visited = new Set<string>();
+
+  const walk = (replyId: string): boolean => {
+    if (visited.has(replyId)) return keepIds.has(replyId);
+    visited.add(replyId);
+
+    const row = byId.get(replyId);
+    if (!row) return false;
+
+    const childIds = childrenByParent.get(replyId) ?? [];
+    const childHasVisible = childIds.some((childId) => walk(childId));
+    const isDeleted = Boolean(row.is_deleted);
+    const keep = !isDeleted || childHasVisible;
+    if (keep) keepIds.add(replyId);
+    return keep;
+  };
+
+  for (const rootId of childrenByParent.get(null) ?? []) {
+    walk(rootId);
+  }
+  for (const replyId of byId.keys()) {
+    if (!visited.has(replyId)) walk(replyId);
+  }
+
+  return rawReplies.filter((row) => keepIds.has(String(row.id ?? "")));
+}
+
 export default async function ThreadPage({ params }: Props) {
   const { postId } = await params;
 
@@ -35,7 +79,8 @@ export default async function ThreadPage({ params }: Props) {
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
-  const replyIds = (rawReplies ?? []).map((row) => row.id as string);
+  const visibleReplies = pruneDeletedReplySubtrees((rawReplies ?? []) as Record<string, unknown>[]);
+  const replyIds = visibleReplies.map((row) => row.id as string);
   let attachmentsQuery = supabase
     .from("community_attachments")
     .select("id, post_id, reply_id, storage_path, name, mime_type, size_bytes");
@@ -110,7 +155,7 @@ export default async function ThreadPage({ params }: Props) {
     });
 
   const replies: ReplyOut[] = await Promise.all(
-    (rawReplies ?? []).map(async (row) => ({
+    visibleReplies.map(async (row) => ({
       id: row.id as string,
       postId: row.post_id as string,
       userId: row.user_id as string,

@@ -127,13 +127,13 @@ type OnboardingData = {
 };
 
 const DEFAULT_ONBOARDING_DATA: OnboardingData = {
-  major: "Undeclared",
-  careerPath: "Industry / Private Sector",
-  skillPreference: "balanced",
-  concerns: ["workload"],
-  transitMode: "walking",
-  livingSituation: "on_campus",
-  commuteMinutes: 10,
+  major: "",
+  careerPath: "",
+  skillPreference: "",
+  concerns: [],
+  transitMode: "",
+  livingSituation: "",
+  commuteMinutes: "",
   externalHours: 0,
 };
 
@@ -819,11 +819,26 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     setSlide(next);
   }
 
-  async function saveProfileData(profileData: OnboardingData) {
+  function extractSupabaseErrorMessage(err: unknown): string {
+    if (err && typeof err === "object") {
+      const maybeError = err as { message?: string; details?: string; hint?: string; code?: string };
+      const parts = [maybeError.message, maybeError.details, maybeError.hint, maybeError.code]
+        .filter((part): part is string => typeof part === "string" && part.trim().length > 0);
+      if (parts.length > 0) return parts.join(" — ");
+    }
+    if (err instanceof Error && err.message.trim().length > 0) return err.message;
+    return "Failed to save. Please try again.";
+  }
+
+  async function saveProfileData(
+    profileData: OnboardingData,
+    options?: { allowPassThroughOnError?: boolean },
+  ) {
     setSaving(true);
     setSaveError(null);
+    const supabase = createClient();
+    let completed = false;
     try {
-      const supabase = createClient();
       const { error } = await supabase.from("profiles").upsert({
         id: userId,
         major: profileData.major || null,
@@ -837,11 +852,32 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
         onboarding_complete: true,
       });
       if (error) throw error;
+      completed = true;
       onComplete();
     } catch (err) {
       console.log("Failed to save onboarding data:", err);
-      setSaveError(err instanceof Error ? err.message : "Failed to save. Please try again.");
-      setSaving(false);
+      // Skip should never trap users in onboarding if profile defaults fail constraints.
+      if (options?.allowPassThroughOnError) {
+        try {
+          const { error: fallbackError } = await supabase.from("profiles").upsert({
+            id: userId,
+            onboarding_complete: true,
+          });
+          if (fallbackError) throw fallbackError;
+          completed = true;
+          onComplete();
+          return;
+        } catch (fallbackErr) {
+          console.log("Fallback onboarding completion save failed:", fallbackErr);
+          setSaveError(extractSupabaseErrorMessage(fallbackErr));
+          return;
+        }
+      }
+      setSaveError(extractSupabaseErrorMessage(err));
+    } finally {
+      if (!completed) {
+        setSaving(false);
+      }
     }
   }
 
@@ -854,7 +890,7 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
       "Are you sure you want to skip? Onboarding explains how Reg2Schedg works and improves analysis!",
     );
     if (!shouldSkip) return;
-    await saveProfileData(DEFAULT_ONBOARDING_DATA);
+    await saveProfileData(DEFAULT_ONBOARDING_DATA, { allowPassThroughOnError: true });
   }
 
   const isLast = slide === SLIDE_COUNT - 1;

@@ -191,6 +191,51 @@ def _reply_row_with_avatar(row: dict, service: Client) -> dict:
     return hydrated
 
 
+def _prune_deleted_reply_subtrees(raw_replies: list[dict]) -> list[dict]:
+    """
+    Keep non-deleted replies always.
+    Keep deleted replies only if they preserve context for a non-deleted descendant.
+    Prune fully deleted branches.
+    """
+    if not raw_replies:
+        return []
+
+    by_id = {row["id"]: row for row in raw_replies}
+    children_by_parent: dict[str | None, list[str]] = {}
+    for row in raw_replies:
+        parent_id = row.get("parent_reply_id")
+        children_by_parent.setdefault(parent_id, []).append(row["id"])
+
+    keep_ids: set[str] = set()
+    has_visible_non_deleted_descendant: dict[str, bool] = {}
+
+    def walk(reply_id: str) -> bool:
+        row = by_id[reply_id]
+        child_ids = children_by_parent.get(reply_id, [])
+        child_has_visible = any(walk(child_id) for child_id in child_ids)
+
+        is_deleted = bool(row.get("is_deleted"))
+        keep = (not is_deleted) or child_has_visible
+        if keep:
+            keep_ids.add(reply_id)
+
+        visible_here = (not is_deleted) or child_has_visible
+        has_visible_non_deleted_descendant[reply_id] = visible_here
+        return visible_here
+
+    for root_id in children_by_parent.get(None, []):
+        walk(root_id)
+
+    # Handle malformed/orphaned rows deterministically.
+    for row in raw_replies:
+        reply_id = row["id"]
+        if reply_id in has_visible_non_deleted_descendant:
+            continue
+        walk(reply_id)
+
+    return [row for row in raw_replies if row["id"] in keep_ids]
+
+
 def _guess_mime(filename: str) -> str:
     lower = filename.lower()
     if lower.endswith(".jpg") or lower.endswith(".jpeg"):
@@ -431,9 +476,10 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
         .execute()
     )
     raw_replies = replies_resp.data or []
+    visible_replies = _prune_deleted_reply_subtrees(raw_replies)
 
     # Fetch all attachments for this post and its replies in one query
-    reply_ids = [r["id"] for r in raw_replies]
+    reply_ids = [r["id"] for r in visible_replies]
     att_query = (
         client.table("community_attachments")
         .select("*")
@@ -466,7 +512,7 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
             **_reply_row_with_avatar(r, service),
             "attachments": reply_attachments_map.get(r["id"], []),
         })
-        for r in raw_replies
+        for r in visible_replies
     ]
     return PostDetail(
         **PostSummary.model_validate(_post_row_with_avatar(post_resp.data[0], service)).model_dump(),

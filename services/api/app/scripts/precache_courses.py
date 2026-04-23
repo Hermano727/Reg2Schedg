@@ -12,11 +12,17 @@ Usage:
     # Cache all CSE + MATH courses
     python -m app.scripts.precache_courses --prefix CSE,MATH
 
+    # Cache one exact course code (space-friendly)
+    python -m app.scripts.precache_courses --course MAE 143A
+
     # Full catalog run (paid Gemini tier — adjust delay as needed)
     python -m app.scripts.precache_courses --delay 2.0
 
     # Quick test with 5 courses
     python -m app.scripts.precache_courses --prefix CSE --limit 5
+
+    # Re-run only low-quality cached entries (score < 2), no Browser Use
+    python -m app.scripts.precache_courses --threshold 2 --prefix CSE --delay 2.0
 
 Rate limiting:
     Each pipeline run makes ~2 Gemini calls (Tier 0.5 + Tier 3).
@@ -34,6 +40,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -120,6 +127,61 @@ def fetch_already_cached(client) -> set[tuple[str, str]]:
     return cached
 
 
+def fetch_cached_rows_for_scoring(client) -> list[dict]:
+    """Fetch cached rows with logistics payload for threshold-based reruns."""
+    rows: list[dict] = []
+    offset = 0
+    page_size = 1000
+
+    while True:
+        resp = (
+            client.table("course_research_cache")
+            .select("normalized_course_code,normalized_professor_name,logistics")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        if not resp.data:
+            break
+        rows.extend(resp.data)
+        if len(resp.data) < page_size:
+            break
+        offset += page_size
+
+    return rows
+
+
+def quality_score(logistics: dict) -> int:
+    """Score cache richness using the same 0-5 rubric as audit/enrichment scripts."""
+    score = 0
+    if logistics.get("professor_info_found", True):
+        score += 1
+    evidence = logistics.get("evidence") or []
+    if len(evidence) >= 1:
+        score += 1
+    if len(evidence) >= 3:
+        score += 1
+    if logistics.get("student_sentiment_summary"):
+        score += 1
+    if logistics.get("grade_breakdown"):
+        score += 1
+    return score
+
+
+def fetch_pairs_below_threshold(client, threshold: int) -> list[tuple[str, str]]:
+    """Return distinct cached pairs whose logistics quality score is below threshold."""
+    rows = fetch_cached_rows_for_scoring(client)
+    pairs: set[tuple[str, str]] = set()
+
+    for row in rows:
+        cc = (row.get("normalized_course_code") or "").strip()
+        pn = (row.get("normalized_professor_name") or "").strip()
+        logistics = row.get("logistics") or {}
+        if cc and quality_score(logistics) < threshold:
+            pairs.add((cc, pn))
+
+    return sorted(pairs)
+
+
 def filter_by_prefix(
     pairs: list[tuple[str, str]],
     prefixes: list[str],
@@ -135,6 +197,33 @@ def filter_by_prefix(
         (cc, pn)
         for (cc, pn) in pairs
         if cc.split()[0].upper() in prefix_set
+    ]
+
+
+def filter_by_exact_course(
+    pairs: list[tuple[str, str]],
+    course_code: str,
+) -> list[tuple[str, str]]:
+    """Keep pairs whose normalized course code exactly matches course_code.
+
+    Accepts either spaced or compact input, e.g. "MAE 143A" and "MAE143A".
+    """
+    from app.utils.normalize import normalize_course_code
+
+    def _normalize_course_arg(raw: str) -> str:
+        cleaned = " ".join(raw.upper().split())
+        # Accept compact forms like MAE143A by inserting a space before digits.
+        if " " not in cleaned:
+            m = re.match(r"^([A-Z&]+)(\d.*)$", cleaned)
+            if m:
+                cleaned = f"{m.group(1)} {m.group(2)}"
+        return normalize_course_code(cleaned)
+
+    normalized_target = _normalize_course_arg(course_code)
+    return [
+        (cc, pn)
+        for (cc, pn) in pairs
+        if normalize_course_code(cc) == normalized_target
     ]
 
 
@@ -203,6 +292,8 @@ async def precache_one(
 
 async def main(
     prefixes: list[str] | None,
+    exact_course_code: str | None,
+    threshold: int | None,
     dry_run: bool,
     limit: int | None,
     offset: int,
@@ -211,28 +302,39 @@ async def main(
 ) -> None:
     client = _get_client()
 
-    _log.info("Fetching pairs from sunset_grade_distributions...")
-    all_pairs = fetch_pairs_from_sunset(client)
-    _log.info("Found %d (course, professor) pairs in sunset_grade_distributions", len(all_pairs))
-
-    # Always skip graduate courses (course number ≥ 200) — they're out of scope.
-    all_pairs = filter_undergrad_only(all_pairs)
-    _log.info("After skipping grad courses (≥200): %d pairs remain", len(all_pairs))
-
-    if not force:
-        _log.info("Fetching already-cached pairs...")
-        already_cached = fetch_already_cached(client)
-        _log.info("Already cached: %d pairs — will skip these", len(already_cached))
-        pending = [(cc, pn) for (cc, pn) in all_pairs if (cc, pn) not in already_cached]
+    if threshold is not None:
+        if force:
+            _log.info("Ignoring --force because --threshold targets existing cached rows only")
+        _log.info("Fetching cached entries below quality threshold %d...", threshold)
+        pending = fetch_pairs_below_threshold(client, threshold)
+        _log.info("Found %d cached pairs below threshold %d", len(pending), threshold)
     else:
-        _log.info("--force: re-caching all pairs (including existing cache rows)")
-        pending = list(all_pairs)
+        _log.info("Fetching pairs from sunset_grade_distributions...")
+        all_pairs = fetch_pairs_from_sunset(client)
+        _log.info("Found %d (course, professor) pairs in sunset_grade_distributions", len(all_pairs))
 
-    _log.info("Pending (cache miss): %d pairs", len(pending))
+        # Always skip graduate courses (course number ≥ 200) — they're out of scope.
+        all_pairs = filter_undergrad_only(all_pairs)
+        _log.info("After skipping grad courses (≥200): %d pairs remain", len(all_pairs))
+
+        if not force:
+            _log.info("Fetching already-cached pairs...")
+            already_cached = fetch_already_cached(client)
+            _log.info("Already cached: %d pairs — will skip these", len(already_cached))
+            pending = [(cc, pn) for (cc, pn) in all_pairs if (cc, pn) not in already_cached]
+            _log.info("Pending (cache miss): %d pairs", len(pending))
+        else:
+            _log.info("--force: re-caching all pairs (including existing cache rows)")
+            pending = list(all_pairs)
+            _log.info("Pending (--force): %d pairs", len(pending))
 
     if prefixes:
         pending = filter_by_prefix(pending, prefixes)
         _log.info("After --prefix %s: %d pairs", ",".join(prefixes), len(pending))
+
+    if exact_course_code:
+        pending = filter_by_exact_course(pending, exact_course_code)
+        _log.info("After --course %s: %d pairs", exact_course_code, len(pending))
 
     if offset:
         pending = pending[offset:]
@@ -295,6 +397,8 @@ if __name__ == "__main__":
 Examples:
   python -m app.scripts.precache_courses --dry-run
   python -m app.scripts.precache_courses --prefix CSE,MATH,COGS --dry-run
+    python -m app.scripts.precache_courses --course MAE 143A --dry-run
+    python -m app.scripts.precache_courses --threshold 2 --prefix CSE --delay 2.0
   python -m app.scripts.precache_courses --prefix CSE,MATH --delay 2.0
   python -m app.scripts.precache_courses --prefix CSE --limit 5
 
@@ -309,6 +413,18 @@ Rate limiting guide:
         type=str,
         default=None,
         help="Comma-separated course code prefixes to filter (e.g. CSE,MATH,COGS)",
+    )
+    parser.add_argument(
+        "--course",
+        nargs="+",
+        default=None,
+        help="Exact course code to filter (spaces allowed), e.g. --course MAE 143A",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=int,
+        default=None,
+        help="Re-run only cached entries with quality score below this value (e.g. 2)",
     )
     parser.add_argument(
         "--dry-run",
@@ -341,9 +457,12 @@ Rate limiting guide:
     args = parser.parse_args()
 
     prefixes = [p.strip().upper() for p in args.prefix.split(",")] if args.prefix else None
+    exact_course_code = " ".join(args.course).strip() if args.course else None
 
     asyncio.run(main(
         prefixes=prefixes,
+        exact_course_code=exact_course_code,
+        threshold=args.threshold,
         dry_run=args.dry_run,
         offset=args.offset,
         limit=args.limit,

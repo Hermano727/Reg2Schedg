@@ -24,6 +24,7 @@ out/
 
 # production
 build/
+supabase/
 
 # misc
 .DS_Store

@@ -2,7 +2,7 @@ export type UiPhase = "idle" | "processing" | "dashboard";
 
 export type TransitProfile = "walking" | "biking" | "spin" | "car";
 export type PriorityType = "career" | "research" | "interest" | "grad_school";
-export type SkillFocus = "project" | "theoretical" | "mixed";
+export type SkillFocus = "project" | "theoretical" | "career" | "mixed";
 
 export type ScheduleBriefing = {
   scheduleTitle: string;
@@ -26,8 +26,17 @@ export interface QuarterRef {
 export interface VaultItem {
   id: string;
   name: string;
-  kind: "syllabus" | "webreg" | "note";
+  kind: "syllabus" | "webreg" | "note" | "pdf" | "image" | "doc" | "community";
+  mimeType?: string | null;
+  sizeBytes?: number | null;
   updatedAt: string;
+  updatedAtFull?: string;
+  signedUrl?: string;
+  // Community attachment saves
+  communityPostId?: string | null;
+  communityReplyId?: string | null;
+  communityPostTitle?: string | null;
+  communityReplyPreview?: string | null;
 }
 
 export interface StatusChipData {
@@ -105,9 +114,20 @@ export interface SunsetGradeDistribution {
   source_course_code?: string | null;
 }
 
+export interface GradeRow {
+  component: string;
+  weight: string;
+}
+
+export interface GradeScheme {
+  label: string | null;
+  rows: GradeRow[];
+}
+
 export interface CourseLogistics {
   attendance_required: boolean | null;
   grade_breakdown: string | null;
+  grade_schemes?: GradeScheme[] | null;
   course_webpage_url: string | null;
   textbook_required: boolean | null;
   podcasts_available: boolean | null;
@@ -153,13 +173,24 @@ export interface FitnessCategory {
   detail: string;
 }
 
+export interface UserInputFeedback {
+  academic_alignment: string[];
+  practical_risks: string[];
+}
+
 export interface ScheduleEvaluation {
   fitnessScore: number;
   fitnessMax: number;
   trendLabel: string;
   categories?: FitnessCategory[];
   alerts: ScheduleAlert[];
-  recommendation?: string;
+  /** New API returns string[]; old saved plans may have a legacy string. */
+  recommendation?: string[] | string;
+  /** Estimated weekly study hours (outside class). */
+  studyHoursMin?: number;
+  studyHoursMax?: number;
+  /** Gemini's structured response to student's stated goals vs. courses. Only present when briefing was provided. */
+  userInputFeedback?: UserInputFeedback | string[] | string;
 }
 
 export interface ScheduleItem {

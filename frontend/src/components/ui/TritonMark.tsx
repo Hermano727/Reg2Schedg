@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 
 type TritonMarkProps = {
@@ -10,9 +11,11 @@ type TritonMarkProps = {
 
 function IconImage({ className }: { className?: string }) {
   return (
-    <img
+    <Image
       src="/images/reg2schedg_64x64icon.png"
       alt="Reg2Schedg"
+      width={64}
+      height={64}
       className={className}
       aria-hidden
     />

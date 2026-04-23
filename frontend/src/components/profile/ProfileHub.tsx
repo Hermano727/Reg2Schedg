@@ -1,21 +1,29 @@
 "use client";
 
+import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Anchor,
+  Camera,
   ClipboardList,
   FileText,
   FolderArchive,
   GraduationCap,
   MessageSquare,
-  Sparkles,
+  Plus,
+  ChevronRight,
 } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { initialsFromName } from "@/lib/hub/initials";
 import { vaultKindLabel } from "@/lib/hub/vault-map";
+import { uploadFile } from "@/lib/storage";
+import { createClient } from "@/lib/supabase/client";
+import { AvatarCropModal } from "./AvatarCropModal";
+import { VaultUploadModal } from "./VaultUploadModal";
 import type { VaultItem } from "@/types/dossier";
-import type { PostSummary } from "@/types/community";
+import type { PostSummary, ReplyOut } from "@/types/community";
+import { getPost } from "@/lib/api/community";
 
 export type ProfilePlan = {
   id: string;
@@ -44,10 +52,12 @@ const fadeUp = {
 };
 
 type ProfileHubProps = {
+  userId: string;
   displayName: string;
   email: string;
   college: string | null;
   expectedGrad: string | null;
+  avatarUrl: string | null;
   plans: ProfilePlan[];
   quarters: ProfileQuarter[];
   vaultItems: VaultItem[];
@@ -55,15 +65,61 @@ type ProfileHubProps = {
 };
 
 export function ProfileHub({
+  userId,
   displayName,
   email,
   college,
   expectedGrad,
+  avatarUrl,
   plans,
   quarters,
   vaultItems,
   userPosts = [],
 }: ProfileHubProps) {
+  const router = useRouter();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(avatarUrl);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [vaultModalOpen, setVaultModalOpen] = useState(false);
+  const [postMetaByItemId, setPostMetaByItemId] = useState<Record<string, {
+    courseCode?: string | null;
+    professorName?: string | null;
+    replyAuthor?: string | null;
+    replyBody?: string | null;
+  }>>({});
+
+  // Fetch post metadata for community-saved vault items
+  useEffect(() => {
+    const communityItems = vaultItems.filter((i) => i.kind === "community" && i.communityPostId);
+    if (communityItems.length === 0) return;
+    communityItems.forEach((item) => {
+      if (postMetaByItemId[item.id]) return;
+      (async () => {
+        try {
+          const post = await getPost(item.communityPostId!);
+          const meta: {
+            courseCode: string | null;
+            professorName: string | null;
+            replyAuthor?: string | null;
+            replyBody?: string | null;
+          } = {
+            courseCode: post.courseCode ?? null,
+            professorName: post.professorName ?? null,
+          };
+          if (item.communityReplyId) {
+            const reply = post.replies?.find((r: ReplyOut) => r.id === item.communityReplyId);
+            meta.replyAuthor = reply?.authorDisplayName ?? null;
+            meta.replyBody = reply?.body ?? null;
+          }
+          setPostMetaByItemId((s) => ({ ...s, [item.id]: meta }));
+        } catch {
+          // ignore
+        }
+      })();
+    });
+  }, [vaultItems, postMetaByItemId]);
+
   const initials =
     displayName
       .split(/\s+/)
@@ -72,8 +128,34 @@ export function ProfileHub({
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?";
 
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCropFile(file);
+    // Reset so same file can be re-selected later
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  }
+
+  async function handleCropConfirm(blob: Blob) {
+    setCropFile(null);
+    setAvatarUploading(true);
+    try {
+      const path = `${userId}/avatar/profile.jpg`;
+      const storagePath = await uploadFile(path, blob, { maxBytes: 5 * 1_000_000 });
+      const supabase = createClient();
+      await supabase.from("profiles").update({ avatar_url: storagePath }).eq("id", userId);
+      // Optimistic preview from the cropped blob
+      setLocalAvatarUrl(URL.createObjectURL(blob));
+      router.refresh();
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   return (
-    <div className="relative mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-y-auto px-4 py-8 pb-16 lg:px-8">
+    <div className="relative min-h-0 w-full max-w-5xl flex-1 px-4 py-8 pb-16 lg:px-8">
       {/* Chart grid: utilitarian "nav plot" without overwhelming the hub canvas */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
@@ -102,12 +184,48 @@ export function ProfileHub({
 
         <div className="relative flex flex-col gap-8 p-6 sm:flex-row sm:items-end sm:justify-between sm:p-8">
           <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-end">
-            <div
-              className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-hub-gold/35 bg-hub-bg/60 font-[family-name:var(--font-jetbrains-mono)] text-xl font-bold tracking-tight text-hub-gold shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
-              aria-hidden
+            {/* Avatar */}
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              aria-label="Change profile picture"
+              className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-hub-gold/35 bg-hub-bg/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition disabled:opacity-60"
             >
-              {initials}
-            </div>
+              {localAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={localAvatarUrl}
+                  alt="Profile picture"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center font-[family-name:var(--font-jetbrains-mono)] text-xl font-bold tracking-tight text-hub-gold">
+                  {initials}
+                </span>
+              )}
+              <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition group-hover:opacity-100">
+                {avatarUploading ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                ) : (
+                  <Camera className="h-5 w-5 text-white" />
+                )}
+              </span>
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
+            {cropFile && (
+              <AvatarCropModal
+                file={cropFile}
+                onConfirm={handleCropConfirm}
+                onCancel={() => setCropFile(null)}
+              />
+            )}
             <div className="min-w-0">
               <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-medium uppercase tracking-[0.2em] text-hub-cyan">
                 Your profile
@@ -205,7 +323,7 @@ export function ProfileHub({
           <div className="flex items-center gap-2 border-b border-hub-cyan/25 pb-3">
             <ClipboardList className="h-4 w-4 text-hub-cyan" aria-hidden />
             <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
-              Saved audit logs
+              COMING SOON: Saved audit logs
             </h2>
             <span className="ml-auto rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[9px] font-medium uppercase tracking-wider text-hub-text-muted">
               Soon
@@ -225,13 +343,12 @@ export function ProfileHub({
               </p>
               <p className="mt-2 max-w-sm text-xs leading-relaxed text-hub-text-muted">
                 When the degree planner ships, each proposed audit, diff against
-                the portal, and "complete later" items will be listed here.
+                the portal, and &quot;complete later&quot; items will be listed here.
               </p>
             </div>
           </div>
 
           <div className="mt-8 flex items-center gap-2 border-b border-white/[0.08] pb-3">
-            <Sparkles className="h-4 w-4 text-hub-text-muted" aria-hidden />
             <h2 className="font-[family-name:var(--font-outfit)] text-sm font-semibold uppercase tracking-[0.12em] text-hub-text">
               Saved plans
             </h2>
@@ -243,7 +360,7 @@ export function ProfileHub({
               plans.map((p) => (
                 <li key={p.id}>
                   <Link
-                    href="/"
+                    href={`/?planId=${p.id}`}
                     className="flex flex-col rounded-lg border border-white/[0.06] bg-hub-bg/35 px-4 py-3 transition hover:border-white/[0.14]"
                   >
                     <span className="text-sm font-medium text-hub-text">
@@ -273,7 +390,7 @@ export function ProfileHub({
         animate="show"
         className="relative mt-10"
       >
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.1] pb-4">
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-white/[0.06] pb-3">
           <div className="flex items-center gap-2">
             <FolderArchive className="h-5 w-5 text-hub-cyan" aria-hidden />
             <div>
@@ -286,43 +403,133 @@ export function ProfileHub({
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setVaultModalOpen(true)}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-hub-cyan/30 bg-hub-cyan/10 px-3 text-xs font-medium text-hub-cyan transition hover:bg-hub-cyan/20"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Upload file
+          </button>
         </div>
+
+        <VaultUploadModal
+          userId={userId}
+          open={vaultModalOpen}
+          onOpenChange={setVaultModalOpen}
+          onSuccess={() => router.refresh()}
+        />
 
         <ul className="mt-5 grid gap-3 sm:grid-cols-2">
           {vaultItems.length === 0 ? (
             <li className="sm:col-span-2 rounded-xl border border-dashed border-white/[0.12] bg-hub-surface/40 px-4 py-12 text-center">
-              <FileText
-                className="mx-auto h-8 w-8 text-hub-text-muted"
-                aria-hidden
-              />
+              <FileText className="mx-auto h-8 w-8 text-hub-text-muted" aria-hidden />
               <p className="mt-3 text-sm text-hub-text-muted">
                 Vault is empty. Add files from the command center after ingest.
               </p>
             </li>
           ) : (
-            vaultItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-hub-surface/50 p-4 text-left transition hover:border-hub-cyan/25 hover:bg-hub-surface-elevated/60"
-                >
-                  <FileText
-                    className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-hub-text">
-                      {item.name}
+            vaultItems.map((item) =>
+              item.kind === "community" && item.communityPostId ? (
+                // Community attachment save — rich card with post + comment context
+                <li key={item.id} className="sm:col-span-2">
+                  <article className="mb-6 p-0">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1 pr-4">
+                        <div className="flex items-baseline gap-3">
+                          <h3 className="truncate text-sm font-medium text-hub-cyan">{item.communityPostTitle ?? "Community post"}</h3>
+                          <span className="text-[11px] text-hub-text-muted">
+                            {(postMetaByItemId[item.id]?.courseCode || postMetaByItemId[item.id]?.professorName)
+                              ? `${postMetaByItemId[item.id]?.courseCode ?? ""} ${postMetaByItemId[item.id]?.professorName ?? ""}`.trim()
+                              : ""}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-hub-text">
+                        {item.updatedAtFull ?? item.updatedAt}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr,240px]">
+                      <div>
+                        {item.signedUrl && item.mimeType?.startsWith("image/") && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.signedUrl} alt={item.name} className="w-full object-cover" />
+                        )}
+                        {item.communityReplyPreview && (
+                          <p className="mt-3 line-clamp-2 text-sm italic text-hub-text-secondary/70">&ldquo;{item.communityReplyPreview}&rdquo;</p>
+                        )}
+                        <div className="mt-3 text-[10px] text-hub-text-muted uppercase tracking-wide">{item.name}</div>
+                      </div>
+
+                      <aside className="w-full lg:w-[240px]">
+                        <h4 className="text-sm font-semibold text-hub-text-muted">Post logistics</h4>
+                        <ul className="mt-3 space-y-2 text-sm text-hub-text-secondary">
+                          <li>
+                            <div className="text-[11px] text-hub-text-muted">Saved</div>
+                            <div className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-hub-text">{item.updatedAtFull ?? item.updatedAt}</div>
+                          </li>
+                          <li>
+                            <div className="text-[11px] text-hub-text-muted">Comment</div>
+                            <div className="mt-0.5 italic text-sm text-hub-text">{postMetaByItemId[item.id]?.replyBody ?? item.communityReplyPreview ?? "—"}</div>
+                          </li>
+                          <li>
+                            <div className="text-[11px] text-hub-text-muted">Original commenter</div>
+                            <div className="mt-0.5 text-sm text-hub-text">{postMetaByItemId[item.id]?.replyAuthor ?? "—"}</div>
+                          </li>
+                        </ul>
+
+                        <div className="mt-4">
+                          <Link href={`/community/${item.communityPostId}${item.communityReplyId ? `#reply-${item.communityReplyId}` : ""}`} className="inline-flex items-center gap-1 text-hub-cyan text-sm">
+                            <span>Go to comment</span>
+                            <ChevronRight className="h-4 w-4" />
+                          </Link>
+                        </div>
+                      </aside>
+                    </div>
+                  </article>
+                </li>
+              ) : item.signedUrl ? (
+                // Regular file with signed URL — downloadable
+                <li key={item.id}>
+                  <a
+                    href={item.signedUrl}
+                    download={item.name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-hub-surface/50 p-4 text-left transition hover:border-hub-cyan/25 hover:bg-hub-surface-elevated/60"
+                  >
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-hub-text">{item.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
+                        <span>{vaultKindLabel(item.kind)}</span>
+                        <span aria-hidden>·</span>
+                        <span>Updated {item.updatedAt}</span>
+                        <span aria-hidden>·</span>
+                        <span className="text-hub-cyan/60">Download</span>
+                      </span>
                     </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
-                      <span>{vaultKindLabel(item.kind)}</span>
-                      <span aria-hidden>·</span>
-                      <span>Updated {item.updatedAt}</span>
+                  </a>
+                </li>
+              ) : (
+                // Non-downloadable plain file
+                <li key={item.id}>
+                  <div className="flex w-full items-start gap-3 rounded-xl border border-white/[0.08] bg-hub-surface/50 p-4 text-left">
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-hub-gold" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-hub-text">{item.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wide text-hub-text-muted">
+                        <span>{vaultKindLabel(item.kind)}</span>
+                        <span aria-hidden>·</span>
+                        <span>Updated {item.updatedAt}</span>
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))
+                  </div>
+                </li>
+              )
+            )
           )}
         </ul>
       </motion.section>

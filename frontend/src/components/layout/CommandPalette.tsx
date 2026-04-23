@@ -7,6 +7,7 @@ import {
   BarChart2,
   BookmarkCheck,
   Command,
+  GraduationCap,
   LayoutGrid,
   Layers,
   Map as MapIcon,
@@ -92,23 +93,37 @@ type CommandPaletteProps = {
   open: boolean;
   onClose: () => void;
   onPhaseSelect?: (phase: string) => void;
+  onOpenLookup?: (query: string) => void;
 };
 
-export function CommandPalette({ open, onClose, onPhaseSelect }: CommandPaletteProps) {
+export function CommandPalette({ open, onClose, onPhaseSelect, onOpenLookup }: CommandPaletteProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Dynamic "look up" item — always first, label changes with the current query
+  const lookupItem: PaletteItem = {
+    id: "lookup-course",
+    group: "Look up",
+    label: query.trim() ? `Look up "${query.trim()}"` : "Look up a class or professor",
+    description: query.trim() ? "Search for professor ratings, grades & insights" : "Enter a course code to explore ratings, grades, and student insights",
+    icon: GraduationCap,
+    onSelect: () => onOpenLookup?.(query.trim()),
+  };
+
   const allItems = [...NAV_ITEMS, ...WORKSPACE_ITEMS];
 
-  const filtered = query.trim()
+  const filteredRest = query.trim()
     ? allItems.filter(
         (item) =>
           item.label.toLowerCase().includes(query.toLowerCase()) ||
           item.description?.toLowerCase().includes(query.toLowerCase()),
       )
     : allItems;
+
+  // Lookup item is always first
+  const filtered = [lookupItem, ...filteredRest];
 
   // Group filtered items
   const groups = Array.from(new Set(filtered.map((i) => i.group)));
@@ -190,7 +205,7 @@ export function CommandPalette({ open, onClose, onPhaseSelect }: CommandPaletteP
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search or jump to..."
+                placeholder="Research class or jump to..."
                 className="flex-1 bg-transparent text-sm text-white/90 placeholder:text-white/30 outline-none"
               />
               <kbd className="hidden items-center gap-1 rounded border border-white/[0.1] bg-white/[0.04] px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-white/30 sm:flex">
@@ -298,7 +313,7 @@ export function CommandPaletteTrigger({ onClick }: { onClick: () => void }) {
       aria-label="Open command palette"
     >
       <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
-      <span className="flex-1 text-left">Search or jump to...</span>
+      <span className="flex-1 text-left">Research class or jump to...</span>
       <span className="hidden items-center gap-0.5 sm:flex">
         <kbd className="flex h-5 w-5 items-center justify-center rounded border border-white/[0.08] bg-white/[0.04] font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-white/30">
           <Command className="h-2.5 w-2.5" />

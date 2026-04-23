@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, JetBrains_Mono, Outfit } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -46,6 +47,7 @@ export default function RootLayout({
         className={`${outfit.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} antialiased min-h-screen hub-canvas`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );

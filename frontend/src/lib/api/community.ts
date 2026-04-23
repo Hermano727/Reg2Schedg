@@ -4,6 +4,7 @@ import type {
   CreatePostPayload,
   CreateReplyPayload,
   NotificationOut,
+  PostAttachment,
   PostDetail,
   PostListResponse,
   PostSummary,
@@ -21,6 +22,17 @@ async function getAccessToken(): Promise<string> {
     throw new Error("Not authenticated");
   }
   return session.access_token;
+}
+
+async function readApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  const detail = await res.json().catch(() => null);
+  const payload = detail?.detail ?? detail;
+  if (typeof payload === "string") return payload;
+  if (payload && typeof payload === "object") {
+    if (typeof payload.message === "string") return payload.message;
+    if (typeof payload.detail === "string") return payload.detail;
+  }
+  return fallback;
 }
 
 export async function listPosts(opts?: {
@@ -82,11 +94,22 @@ export async function createPost(
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const detail = await res.json().catch(() => null);
-    const msg = detail?.detail ?? `createPost failed: ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    throw new Error(await readApiErrorMessage(res, `createPost failed: ${res.status}`));
   }
   return res.json() as Promise<PostSummary>;
+}
+
+export async function deletePost(postId: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(`${getApiBaseUrl()}/api/community/${postId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const msg = detail?.detail ?? `deletePost failed: ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
 }
 
 export async function createReply(
@@ -106,9 +129,7 @@ export async function createReply(
     },
   );
   if (!res.ok) {
-    const detail = await res.json().catch(() => null);
-    const msg = detail?.detail ?? `createReply failed: ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    throw new Error(await readApiErrorMessage(res, `createReply failed: ${res.status}`));
   }
   return res.json() as Promise<PostDetail>;
 }
@@ -155,6 +176,43 @@ export async function toggleReplyUpvote(
   return res.json() as Promise<VoteResponse>;
 }
 
+export async function editReply(postId: string, replyId: string, body: string): Promise<PostDetail> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    `${getApiBaseUrl()}/api/community/${postId}/replies/${replyId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ body }),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const msg = detail?.detail ?? `editReply failed: ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+  return res.json() as Promise<PostDetail>;
+}
+
+export async function deleteReply(postId: string, replyId: string): Promise<void> {
+  const token = await getAccessToken();
+  const res = await fetch(
+    `${getApiBaseUrl()}/api/community/${postId}/replies/${replyId}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    const msg = detail?.detail ?? `deleteReply failed: ${res.status}`;
+    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+}
+
 export async function toggleReplyDownvote(
   postId: string,
   replyId: string,
@@ -186,4 +244,35 @@ export async function markNotificationsRead(): Promise<void> {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
+}
+
+export async function saveAttachmentToVault(opts: {
+  attachment: PostAttachment;
+  postId: string;
+  postTitle: string;
+  replyId?: string;
+  replyPreview?: string;
+}): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase.from("vault_items").insert({
+    user_id: user.id,
+    name: opts.attachment.name,
+    kind: "community",
+    storage_path: opts.attachment.storagePath,
+    mime_type: opts.attachment.mimeType,
+    size_bytes: opts.attachment.sizeBytes,
+    community_attachment_id: opts.attachment.id,
+    community_post_id: opts.postId,
+    community_reply_id: opts.replyId ?? null,
+    community_post_title: opts.postTitle,
+    community_reply_preview: opts.replyPreview ? opts.replyPreview.slice(0, 200) : null,
+  });
+
+  if (error) {
+    if (error.code === "23505") throw new Error("already_saved");
+    throw new Error(error.message);
+  }
 }

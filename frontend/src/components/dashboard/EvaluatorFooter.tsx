@@ -1,6 +1,7 @@
 import { AlertCircle, AlertTriangle, Info } from "lucide-react";
 import type { ScheduleEvaluation } from "@/types/dossier";
 import { FitnessDial } from "@/components/dashboard/FitnessDial";
+import { getScheduleDifficultyLabel } from "@/lib/hub/scheduleDifficulty";
 
 type EvaluatorFooterProps = {
   evaluation: ScheduleEvaluation;
@@ -18,10 +19,10 @@ function SeverityIcon({ severity }: { severity: ScheduleEvaluation["alerts"][0][
 }
 
 function difficultyLabel(score: number): { text: string; color: string } {
-  if (score <= 3) return { text: "Light Load", color: "#34d399" };
-  if (score <= 5) return { text: "Moderate Load", color: "#34d399" };
-  if (score <= 7) return { text: "Heavy Load", color: "#e3b12f" };
-  return { text: "Very Heavy Load", color: "#ff6b6b" };
+  const text = getScheduleDifficultyLabel(score);
+  if (score <= 4) return { text, color: "#34d399" };
+  if (score <= 8) return { text, color: "#e3b12f" };
+  return { text, color: "#ff6b6b" };
 }
 
 export function EvaluatorFooter({ evaluation }: EvaluatorFooterProps) {

@@ -10,7 +10,7 @@ Usage:
     python -m app.scripts.browser_use_enrich --dry-run
 
     # Enrich all POOR entries (score 0-1) across CSE
-    python -m app.scripts.browser_use_enrich --prefix CSE --threshold 2
+    python -m app.scripts.browser_use_enrich --department CSE --threshold 2
 
     # Specific course/professor (targeted fix)
     python -m app.scripts.browser_use_enrich --course "CSE 123" --professor "Shalev, Aaron D"
@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -74,6 +75,17 @@ def _score(logistics: dict) -> int:
     if logistics.get("grade_breakdown"):
         score += 1
     return score
+
+
+def _normalize_course_arg(course_code: str) -> str:
+    from app.utils.normalize import normalize_course_code
+
+    cleaned = " ".join(course_code.upper().split())
+    if " " not in cleaned:
+        match = re.match(r"^([A-Z&]+)(\d.*)$", cleaned)
+        if match:
+            cleaned = f"{match.group(1)} {match.group(2)}"
+    return normalize_course_code(cleaned)
 
 
 # ---------------------------------------------------------------------------
@@ -122,8 +134,7 @@ def fetch_poor_entries(
 
         # Specific course/professor filter
         if course_filter:
-            from app.utils.normalize import normalize_course_code
-            if normalize_course_code(course_filter) != cc:
+            if _normalize_course_arg(course_filter) != cc:
                 continue
         if professor_filter:
             from app.utils.normalize import normalize_professor_name
@@ -179,12 +190,69 @@ async def enrich_one(
         return False, str(exc)[:120]
 
 
+async def enrich_single_course(args: argparse.Namespace) -> None:
+    if not args.course:
+        raise SystemExit("--single-course requires --course")
+
+    from app.db.client import get_supabase_client
+    from app.services.browser_use import (
+        resolve_browser_use_api_key,
+        create_browser_use_client,
+        run_course_logistics,
+    )
+    from app.db.service import upsert_course_research_cache
+
+    db_client = get_supabase_client()
+    course_code = _normalize_course_arg(args.course)
+    professor_name = args.professor.strip() if args.professor else ""
+
+    if args.dry_run:
+        print("DRY RUN — single-course Browser Use cache target:\n")
+        print(f"  {course_code:<12} / {professor_name or '(no professor)'}")
+        print("\nDry-run — no Browser Use calls made.")
+        return
+
+    api_key = resolve_browser_use_api_key()
+    bu_client = create_browser_use_client(api_key)
+
+    _log.info("Browser Use → %s / %s", course_code, professor_name or "(no professor)")
+    outcome = await run_course_logistics(bu_client, course_code, professor_name or None, args.model)
+    logistics_dict = outcome.logistics.model_dump(mode="json")
+
+    upsert_course_research_cache(
+        db_client,
+        course_code=course_code,
+        professor_name=professor_name or None,
+        course_title=None,
+        logistics=logistics_dict,
+        model=args.model,
+        data_source="browser_use_enrichment",
+    )
+
+    new_score = _score(logistics_dict)
+    print("\n" + "=" * 60)
+    print(f"Single-course enrichment complete: {course_code} / {professor_name or '(no professor)'}")
+    print(f"Score={new_score}/5 | cost ${outcome.cost.total_cost_usd:.4f}")
+    print("=" * 60)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
 async def async_main(args: argparse.Namespace) -> None:
-    prefixes = [p.strip().upper() for p in args.prefix.split(",")] if args.prefix else None
+    if args.single_course:
+        await enrich_single_course(args)
+        return
+
+    if args.department and args.prefix:
+        raise SystemExit("Use either --department or --prefix, not both.")
+
+    prefix_input = args.prefix
+    if args.department:
+        prefix_input = args.department
+
+    prefixes = [p.strip().upper() for p in prefix_input.split(",")] if prefix_input else None
 
     from app.db.client import get_supabase_client
     db_client = get_supabase_client()
@@ -256,10 +324,19 @@ async def async_main(args: argparse.Namespace) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Browser Use enrichment pass for thin cache entries")
     parser.add_argument("--prefix", help="Comma-separated dept prefixes, e.g. CSE,MATH")
+    parser.add_argument(
+        "--department",
+        help="Department filter alias for --prefix (supports comma-separated values, e.g. CSE or CSE,MATH)",
+    )
     parser.add_argument("--threshold", type=int, default=2,
                         help="Enrich entries with score strictly below this value (default: 2)")
     parser.add_argument("--course", help="Target a specific course code, e.g. 'CSE 123'")
     parser.add_argument("--professor", help="Target a specific professor name")
+    parser.add_argument(
+        "--single-course",
+        action="store_true",
+        help="Cache exactly one course/professor pair via Browser Use instead of scanning the cache",
+    )
     parser.add_argument("--limit", type=int, default=0,
                         help="Max entries to process (0 = no limit)")
     parser.add_argument("--delay", type=float, default=5.0,

@@ -45,6 +45,29 @@ class EvidenceItem(BaseModel):
     )
 
 
+class GradeRow(BaseModel):
+    component: str = Field(
+        ...,
+        description="Grade component name, e.g. 'Homework', 'Midterm', 'Final Exam'",
+    )
+    weight: str = Field(
+        ...,
+        description="Weight as a string — may be a range, e.g. '20%', '20-25%', 'varies'",
+    )
+
+
+class GradeScheme(BaseModel):
+    label: str | None = Field(
+        default=None,
+        description=(
+            "Scheme label: null when only one scheme exists. "
+            "'Standard' / 'Alternate' for two-option grading policies. "
+            "'Option 1' / 'Option 2' / etc. for three or more."
+        ),
+    )
+    rows: list[GradeRow] = Field(default_factory=list)
+
+
 class CourseLogistics(BaseModel):
     attendance_required: bool | None = Field(
         default=None,
@@ -52,7 +75,17 @@ class CourseLogistics(BaseModel):
     )
     grade_breakdown: str | None = Field(
         default=None,
-        description='Compact grading breakdown such as "Homework 20%, Midterm 30%, Final 50%"',
+        description='Compact grading breakdown such as "Homework 20%, Midterm 30%, Final 50%". Kept for backward compatibility — prefer grade_schemes.',
+    )
+    grade_schemes: list[GradeScheme] | None = Field(
+        default=None,
+        description=(
+            "Structured grading breakdown. Each scheme has a label (null for a single scheme) "
+            "and a list of rows with component name and weight string. "
+            "Use multiple schemes when the professor offers alternative grading policies "
+            "(e.g. 'Standard' vs 'Alternate best-of policy'). "
+            "Weight may be a range like '20-25%'. NEVER fabricate percentages not in the source."
+        ),
     )
     course_webpage_url: str | None = Field(
         default=None,

@@ -14,6 +14,7 @@ export type SavedPlanPayloadV1 = {
   classes?: ClassDossier[];
   commitments?: ScheduleCommitment[];
   evaluation?: ScheduleEvaluation;
+  courseLabels?: Record<string, string>;
 };
 
 // ---------------------------------------------------------------------------
@@ -35,6 +36,7 @@ export type SavedPlanPayloadV2 = {
   activeQuarterId?: string;
   commitments?: ScheduleCommitment[];
   evaluation?: ScheduleEvaluation;
+  courseLabels?: Record<string, string>;
   /** Inline class refs (mirrors saved_plan_classes join rows) */
   class_refs: ClassRef[];
 };
@@ -51,6 +53,7 @@ export function parsePlanPayload(raw: unknown): {
   activeQuarterId: string;
   version: 1 | 2;
   classRefs: ClassRef[];
+  courseLabels: Record<string, string>;
 } {
   const empty = {
     classes: [] as ClassDossier[],
@@ -59,6 +62,7 @@ export function parsePlanPayload(raw: unknown): {
     activeQuarterId: "",
     version: 1 as 1 | 2,
     classRefs: [] as ClassRef[],
+    courseLabels: {} as Record<string, string>,
   };
 
   if (!raw || typeof raw !== "object") return empty;
@@ -72,6 +76,10 @@ export function parsePlanPayload(raw: unknown): {
   const evaluation = (o.evaluation as ScheduleEvaluation | undefined) ?? mockDossier.evaluation;
   const activeQuarterId =
     typeof o.activeQuarterId === "string" ? o.activeQuarterId : "";
+  const courseLabels =
+    o.courseLabels && typeof o.courseLabels === "object" && !Array.isArray(o.courseLabels)
+      ? (o.courseLabels as Record<string, string>)
+      : {};
 
   if (version === 2) {
     const classRefs = Array.isArray(o.class_refs)
@@ -84,12 +92,13 @@ export function parsePlanPayload(raw: unknown): {
       activeQuarterId,
       version: 2,
       classRefs,
+      courseLabels,
     };
   }
 
   // v1 — full dossiers
   const classes = Array.isArray(o.classes) ? (o.classes as ClassDossier[]) : [];
-  return { classes, commitments, evaluation, activeQuarterId, version: 1, classRefs: [] };
+  return { classes, commitments, evaluation, activeQuarterId, version: 1, classRefs: [], courseLabels };
 }
 
 // ---------------------------------------------------------------------------
@@ -111,8 +120,9 @@ export function buildPayloadFromClasses(
   classes: ClassDossier[],
   commitments: ScheduleCommitment[] = [],
   evaluation: ScheduleEvaluation = mockDossier.evaluation,
+  courseLabels: Record<string, string> = {},
 ): SavedPlanPayloadV1 {
-  return { version: 1, activeQuarterId, classes, commitments, evaluation };
+  return { version: 1, activeQuarterId, classes, commitments, evaluation, courseLabels };
 }
 
 /** Build a v2 payload (references only). Requires cacheId on the dossiers. */
@@ -121,6 +131,8 @@ export function buildPayloadV2(
   classes: ClassDossier[],
   commitments: ScheduleCommitment[] = [],
   evaluation: ScheduleEvaluation = mockDossier.evaluation,
+  courseLabels: Record<string, string> = {},
+  hasDossierEdits = false,
 ): SavedPlanPayloadV2 {
   const class_refs: ClassRef[] = classes
     .filter((c) => !!c.cacheId)
@@ -129,10 +141,17 @@ export function buildPayloadV2(
       course_code: c.courseCode,
       professor_name: c.professorName ?? null,
       meetings: c.meetings as unknown[],
-      overrides: {},
+      // When the user has made dossier edits, persist course_title + logistics so
+      // the backend expansion prefers these over the shared research cache.
+      overrides: hasDossierEdits
+        ? {
+            course_title: c.courseTitle,
+            ...(c.logistics ? { logistics: c.logistics } : {}),
+          }
+        : {},
     }));
 
-  return { version: 2, activeQuarterId, class_refs, commitments, evaluation };
+  return { version: 2, activeQuarterId, class_refs, commitments, evaluation, courseLabels };
 }
 
 /** Returns true if every class has a cacheId — safe to save as v2. */

@@ -40,12 +40,21 @@ export function ExamsPanel({ classes }: { classes: ClassDossier[] }) {
   if (grouped.size === 0) return null;
 
   return (
-    <section className="rounded-xl border border-white/[0.08] bg-hub-surface/90 px-6 py-5 shadow-sm">
+    <section
+      className="rounded-xl border border-white/[0.13] px-6 py-5"
+      style={{
+        background: "rgba(17, 34, 64, 0.92)",
+        boxShadow: "0 0 0 1px rgba(255,255,255,0.05) inset, 0 4px 16px rgba(0,0,0,0.35)",
+      }}
+    >
       <div className="mb-5 flex items-center gap-2.5">
         <GraduationCap className="h-4 w-4 text-hub-gold" aria-hidden />
         <h2 className="text-sm font-semibold text-white/90">
           Upcoming exams
         </h2>
+        <h3 className="ml-auto text-xs font-medium text-white/50">
+          Note: These frequently change, so double-check with your course materials!
+        </h3>
       </div>
 
       <div className="space-y-6">

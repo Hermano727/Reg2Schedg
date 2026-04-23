@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ThreadView } from "@/components/community/ThreadView";
-import type { PostDetail, ReplyOut } from "@/types/community";
+import type { PostAttachment, PostDetail, ReplyOut } from "@/types/community";
 
 type Props = {
   params: Promise<{ postId: string }>;
@@ -35,21 +35,101 @@ export default async function ThreadPage({ params }: Props) {
     .eq("post_id", postId)
     .order("created_at", { ascending: true });
 
-  const replies: ReplyOut[] = (rawReplies ?? []).map((row) => ({
-    id: row.id as string,
-    postId: row.post_id as string,
-    userId: row.user_id as string,
-    body: row.body as string,
-    parentReplyId: (row.parent_reply_id as string | null) ?? null,
-    isAnonymous: (row.is_anonymous as boolean) ?? false,
-    authorDisplayName: (row.author_display_name as string) ?? "Anonymous",
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    upvoteCount: (row.upvote_count as number) ?? 0,
-    downvoteCount: (row.downvote_count as number) ?? 0,
-    userHasUpvoted: (row.user_has_upvoted as boolean) ?? false,
-    userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
-  }));
+  const replyIds = (rawReplies ?? []).map((row) => row.id as string);
+  let attachmentsQuery = supabase
+    .from("community_attachments")
+    .select("id, post_id, reply_id, storage_path, name, mime_type, size_bytes");
+
+  if (replyIds.length > 0) {
+    attachmentsQuery = attachmentsQuery.or(`post_id.eq.${postId},reply_id.in.(${replyIds.join(",")})`);
+  } else {
+    attachmentsQuery = attachmentsQuery.eq("post_id", postId);
+  }
+
+  const { data: rawAttachments } = await attachmentsQuery.order("created_at", { ascending: true });
+
+  const signedAvatarByPath = new Map<string, string | null>();
+  async function signAvatarPath(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    const cached = signedAvatarByPath.get(path);
+    if (cached !== undefined) return cached;
+    const { data: signed } = await supabase.storage
+      .from("user-content")
+      .createSignedUrl(path, 60 * 60 * 24);
+    const signedUrl = signed?.signedUrl ?? null;
+    signedAvatarByPath.set(path, signedUrl);
+    return signedUrl;
+  }
+
+  const signedAttachments = await Promise.all(
+    (rawAttachments ?? []).map(async (row) => {
+      const { data: signed } = await supabase.storage
+        .from("user-content")
+        .createSignedUrl(row.storage_path as string, 3600);
+      return {
+        id: row.id as string,
+        replyId: (row.reply_id as string | null) ?? null,
+        postId: (row.post_id as string | null) ?? null,
+        storagePath: row.storage_path as string,
+        name: row.name as string,
+        mimeType: row.mime_type as string,
+        sizeBytes: row.size_bytes as number,
+        signedUrl: signed?.signedUrl ?? undefined,
+      };
+    }),
+  );
+
+  const postAttachments: PostAttachment[] = signedAttachments
+    .filter((row) => row.postId === postId && row.replyId === null)
+    .map((row) => ({
+      id: row.id,
+      storagePath: row.storagePath,
+      name: row.name,
+      mimeType: row.mimeType,
+      sizeBytes: row.sizeBytes,
+      signedUrl: row.signedUrl,
+    }));
+
+  const replyAttachmentsByReplyId = new Map<string, PostAttachment[]>();
+  signedAttachments
+    .filter((row) => row.replyId)
+    .forEach((row) => {
+      const attachment: PostAttachment = {
+        id: row.id,
+        storagePath: row.storagePath,
+        name: row.name,
+        mimeType: row.mimeType,
+        sizeBytes: row.sizeBytes,
+        signedUrl: row.signedUrl,
+      };
+      const replyId = row.replyId;
+      const rid = replyId as string;
+      const existing = replyAttachmentsByReplyId.get(rid) ?? [];
+      existing.push(attachment);
+      replyAttachmentsByReplyId.set(rid, existing);
+    });
+
+  const replies: ReplyOut[] = await Promise.all(
+    (rawReplies ?? []).map(async (row) => ({
+      id: row.id as string,
+      postId: row.post_id as string,
+      userId: row.user_id as string,
+      body: row.body as string,
+      parentReplyId: (row.parent_reply_id as string | null) ?? null,
+      isAnonymous: (row.is_anonymous as boolean) ?? false,
+      isDeleted: (row.is_deleted as boolean) ?? false,
+      editedAt: (row.edited_at as string | null) ?? null,
+      authorDisplayName: (row.author_display_name as string) ?? "Anonymous",
+      authorAvatarUrl: await signAvatarPath((row.author_avatar_path as string | null) ?? null),
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+      upvoteCount: (row.upvote_count as number) ?? 0,
+      downvoteCount: (row.downvote_count as number) ?? 0,
+      userHasUpvoted: (row.user_has_upvoted as boolean) ?? false,
+      userHasDownvoted: (row.user_has_downvoted as boolean) ?? false,
+      attachments: replyAttachmentsByReplyId.get(row.id as string) ?? [],
+    })),
+  );
 
   const post: PostDetail = {
     id: rawPost.id as string,
@@ -61,6 +141,7 @@ export default async function ThreadPage({ params }: Props) {
     isAnonymous: (rawPost.is_anonymous as boolean) ?? false,
     generalTags: (rawPost.general_tags as string[]) ?? [],
     authorDisplayName: (rawPost.author_display_name as string) ?? "Anonymous",
+    authorAvatarUrl: await signAvatarPath((rawPost.author_avatar_path as string | null) ?? null),
     createdAt: rawPost.created_at as string,
     updatedAt: rawPost.updated_at as string,
     replyCount: (rawPost.reply_count as number) ?? 0,
@@ -69,6 +150,7 @@ export default async function ThreadPage({ params }: Props) {
     userHasUpvoted: (rawPost.user_has_upvoted as boolean) ?? false,
     userHasDownvoted: (rawPost.user_has_downvoted as boolean) ?? false,
     replies,
+    attachments: postAttachments,
   };
 
   return <ThreadView post={post} />;

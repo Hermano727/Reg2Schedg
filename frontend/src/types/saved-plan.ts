@@ -16,7 +16,9 @@ export type VaultItemRow = {
   user_id: string;
   plan_id: string | null;
   name: string;
-  kind: "syllabus" | "webreg" | "note";
+  kind: "syllabus" | "webreg" | "note" | "pdf" | "image" | "doc";
   storage_path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
   updated_at: string;
 };

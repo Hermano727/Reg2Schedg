@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
   PlusCircle,
   Search,
@@ -19,9 +21,19 @@ import { PostCard } from "./PostCard";
 type CommunityHubProps = {
   initialPosts: PostSummary[];
   initialTotal: number;
+  userId: string;
+  initialComposeCourseCode?: string;
+  initialComposeProfessorName?: string;
 };
 
-export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) {
+export function CommunityHub({
+  initialPosts,
+  initialTotal,
+  userId,
+  initialComposeCourseCode = "",
+  initialComposeProfessorName = "",
+}: CommunityHubProps) {
+  const router = useRouter();
   const [posts, setPosts] = useState<PostSummary[]>(initialPosts);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
@@ -39,6 +51,9 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
   const [pendingCourse, setPendingCourse] = useState("");
   const [activeDept, setActiveDept] = useState("");
   const [activeCourse, setActiveCourse] = useState("");
+  const [composeOpen, setComposeOpen] = useState(Boolean(initialComposeCourseCode || initialComposeProfessorName));
+  const [composeCourseCode, setComposeCourseCode] = useState(initialComposeCourseCode);
+  const [composeProfessorName, setComposeProfessorName] = useState(initialComposeProfessorName);
 
   const filterRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
@@ -64,6 +79,20 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
       getDepartments().then(setDepartments).catch(() => {});
     }
   }, [filterOpen, departments.length]);
+
+  useEffect(() => {
+    if (!initialComposeCourseCode && !initialComposeProfessorName) return;
+    setComposeCourseCode(initialComposeCourseCode);
+    setComposeProfessorName(initialComposeProfessorName);
+    setComposeOpen(true);
+  }, [initialComposeCourseCode, initialComposeProfessorName]);
+
+  function handleComposerOpenChange(nextOpen: boolean) {
+    setComposeOpen(nextOpen);
+    if (!nextOpen) {
+      router.replace("/community");
+    }
+  }
 
   function fetchPosts(opts: {
     search?: string;
@@ -117,6 +146,13 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
   function handlePostCreated(post: PostSummary) {
     setPosts((prev) => [post, ...prev]);
     setTotal((t) => t + 1);
+    setComposeOpen(false);
+    router.replace("/community");
+  }
+
+  function handlePostDeleted(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    setTotal((t) => Math.max(0, t - 1));
   }
 
   return (
@@ -147,6 +183,11 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
             </button>
           }
           onCreated={handlePostCreated}
+          userId={userId}
+          open={composeOpen}
+          onOpenChange={handleComposerOpenChange}
+          initialCourseCode={composeCourseCode}
+          initialProfessorName={composeProfessorName}
         />
       </div>
 
@@ -321,7 +362,7 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
           <div className="flex flex-wrap items-center gap-1.5">
             {activeSearch && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-xs text-hub-text-muted">
-                Search: <span className="text-hub-text-secondary">"{activeSearch}"</span>
+                Search: <span className="text-hub-text-secondary">&ldquo;{activeSearch}&rdquo;</span>
               </span>
             )}
             {activeDept && (
@@ -334,8 +375,11 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
       </div>
 
       {/* Post list */}
-      <div
-        className={`flex flex-col gap-3 transition-opacity ${isPending ? "opacity-50" : "opacity-100"}`}
+      <motion.div
+        className={`flex flex-col gap-3 transition-opacity ${isPending ? "opacity-40" : "opacity-100"}`}
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
       >
         {posts.length === 0 ? (
           <div className="glass-panel rounded-xl border border-white/[0.08] p-10 text-center">
@@ -345,9 +389,19 @@ export function CommunityHub({ initialPosts, initialTotal }: CommunityHubProps) 
             </p>
           </div>
         ) : (
-          posts.map((post) => <PostCard key={post.id} post={post} />)
+          posts.map((post) => (
+            <motion.div
+              key={post.id}
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } },
+              }}
+            >
+              <PostCard post={post} currentUserId={userId} onDeleted={handlePostDeleted} />
+            </motion.div>
+          ))
         )}
-      </div>
+      </motion.div>
 
       {/* Pagination */}
       {totalPages > 1 && (

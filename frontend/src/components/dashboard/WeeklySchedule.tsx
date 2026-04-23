@@ -17,10 +17,22 @@ function getKindClasses(kind: ScheduleItem["kind"]) {
 }
 
 function formatTime(time24: string) {
-  const [hourRaw, minute] = time24.split(":");
-  const hour = Number(hourRaw);
+  const value = time24.trim();
 
-  if (Number.isNaN(hour) || !minute) return time24;
+  const ampmMatch = value.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    const hour = Number(ampmMatch[1]);
+    const minute = ampmMatch[2] ?? "00";
+    const suffix = ampmMatch[3].toUpperCase();
+    return `${hour}:${minute} ${suffix}`;
+  }
+
+  const h24Match = value.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!h24Match) return time24;
+
+  const hour = Number(h24Match[1]);
+  const minute = h24Match[2];
+  if (Number.isNaN(hour)) return time24;
 
   const suffix = hour >= 12 ? "PM" : "AM";
   const hour12 = hour % 12 || 12;

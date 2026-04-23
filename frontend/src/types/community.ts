@@ -8,6 +8,7 @@ export interface PostSummary {
   isAnonymous: boolean;
   generalTags: string[];
   authorDisplayName: string;
+  authorAvatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   replyCount: number;
@@ -24,17 +25,31 @@ export interface ReplyOut {
   body: string;
   parentReplyId: string | null;
   isAnonymous: boolean;
+  isDeleted: boolean;
+  editedAt: string | null;
   authorDisplayName: string;
+  authorAvatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   upvoteCount: number;
   downvoteCount: number;
   userHasUpvoted: boolean;
   userHasDownvoted: boolean;
+  attachments?: PostAttachment[];
+}
+
+export interface PostAttachment {
+  id: string;
+  storagePath: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  signedUrl?: string;
 }
 
 export interface PostDetail extends PostSummary {
   replies: ReplyOut[];
+  attachments: PostAttachment[];
 }
 
 export interface PostListResponse {
@@ -51,12 +66,14 @@ export interface CreatePostPayload {
   professorName?: string;
   isAnonymous?: boolean;
   generalTags?: string[];
+  attachmentPaths?: string[];
 }
 
 export interface CreateReplyPayload {
   body: string;
   parentReplyId?: string;
   isAnonymous?: boolean;
+  attachmentPaths?: string[];
 }
 
 export interface UpvoteResponse {

@@ -6,7 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 API_DIR = Path(__file__).resolve().parents[1]
-REPO_ROOT = Path(__file__).resolve().parents[3]
+# In local dev, API_DIR is <repo>/services/api; in Railway containers it's often /app.
+# Guard against shallow paths so startup never crashes on import.
+REPO_ROOT = API_DIR.parents[1] if len(API_DIR.parents) > 1 else API_DIR
 
 
 class Settings(BaseSettings):

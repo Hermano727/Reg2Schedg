@@ -2,15 +2,231 @@
 Community posts and replies: Supabase CRUD operations.
 """
 
+from datetime import datetime, timedelta, timezone
+
+from fastapi import HTTPException
 from supabase import Client
 
+from app.db.client import get_supabase_client
 from app.models.community import (
     NotificationOut,
+    PostAttachment,
     PostDetail,
     PostListResponse,
     PostSummary,
     ReplyOut,
 )
+
+ATTACHMENT_SIGNED_URL_TTL = 3600  # seconds
+AVATAR_SIGNED_URL_TTL = 3600 * 24  # seconds
+COMMUNITY_RATE_LIMIT_WINDOW_MINUTES = 10
+COMMUNITY_RATE_LIMIT_COUNT = 3
+
+
+def _sign_attachments(rows: list[dict]) -> list[PostAttachment]:
+    """Convert community_attachments rows into PostAttachment with signed URLs."""
+    if not rows:
+        return []
+    service = get_supabase_client()
+    result = []
+    for row in rows:
+        signed_url: str | None = None
+        try:
+            sign_resp = service.storage.from_("user-content").create_signed_url(
+                row["storage_path"], ATTACHMENT_SIGNED_URL_TTL
+            )
+            signed_url = sign_resp.get("signedURL") or sign_resp.get("signed_url")
+        except Exception:
+            pass
+        result.append(
+            PostAttachment(
+                id=row["id"],
+                storage_path=row["storage_path"],
+                name=row["name"],
+                mime_type=row["mime_type"],
+                size_bytes=row["size_bytes"],
+                signed_url=signed_url,
+            )
+        )
+    return result
+
+
+def _insert_attachments(
+    client: Client,
+    user_id: str,
+    attachment_paths: list[str],
+    post_id: str | None = None,
+    reply_id: str | None = None,
+) -> None:
+    if not attachment_paths:
+        return
+    rows = []
+    for path in attachment_paths:
+        filename = path.split("/")[-1]
+        # Strip leading timestamp_ prefix if present for display name
+        name = "_".join(filename.split("_")[1:]) if "_" in filename else filename
+        row: dict = {
+            "user_id": user_id,
+            "storage_path": path,
+            "name": name,
+            "mime_type": _guess_mime(filename),
+            "size_bytes": 0,
+        }
+        if post_id:
+            row["post_id"] = post_id
+        if reply_id:
+            row["reply_id"] = reply_id
+        rows.append(row)
+    client.table("community_attachments").insert(rows).execute()
+
+
+def _sign_storage_path(service: Client, storage_path: str | None, ttl_seconds: int) -> str | None:
+    if not storage_path:
+        return None
+    try:
+        sign_resp = service.storage.from_("user-content").create_signed_url(
+            storage_path, ttl_seconds
+        )
+        return sign_resp.get("signedURL") or sign_resp.get("signed_url")
+    except Exception:
+        return None
+
+
+def _post_row_with_avatar(row: dict, service: Client) -> dict:
+    hydrated = dict(row)
+    hydrated["author_avatar_url"] = _sign_storage_path(
+        service,
+        row.get("author_avatar_path"),
+        AVATAR_SIGNED_URL_TTL,
+    )
+    return hydrated
+
+
+def _reply_row_with_avatar(row: dict, service: Client) -> dict:
+    hydrated = dict(row)
+    hydrated["author_avatar_url"] = _sign_storage_path(
+        service,
+        row.get("author_avatar_path"),
+        AVATAR_SIGNED_URL_TTL,
+    )
+    return hydrated
+
+
+def _guess_mime(filename: str) -> str:
+    lower = filename.lower()
+    if lower.endswith(".jpg") or lower.endswith(".jpeg"):
+        return "image/jpeg"
+    if lower.endswith(".png"):
+        return "image/png"
+    if lower.endswith(".gif"):
+        return "image/gif"
+    if lower.endswith(".webp"):
+        return "image/webp"
+    if lower.endswith(".pdf"):
+        return "application/pdf"
+    if lower.endswith(".txt"):
+        return "text/plain"
+    return "application/octet-stream"
+
+
+def _rate_limit_action_label(action_type: str) -> str:
+    if action_type == "post_create":
+        return "posting"
+    if action_type == "reply_create":
+        return "commenting"
+    if action_type == "reply_attachment_upload":
+        return "uploading comment attachments"
+    return action_type.replace("_", " ")
+
+
+def _rate_limit_message(action_type: str, remaining_seconds: int) -> str:
+    minutes = (remaining_seconds + 59) // 60
+    label = _rate_limit_action_label(action_type)
+    return f"Too many attempts at {label}. Please wait {minutes} minute(s) before trying again."
+
+
+def log_community_action(
+    client: Client,
+    user_id: str,
+    action_type: str,
+    metadata: dict | None = None,
+) -> None:
+    client.table("community_action_log").insert(
+        {
+            "user_id": user_id,
+            "action_type": action_type,
+            "metadata": metadata or {},
+        }
+    ).execute()
+
+
+def get_community_timeout_remaining_seconds(
+    client: Client,
+    user_id: str,
+    action_type: str,
+) -> int:
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=COMMUNITY_RATE_LIMIT_WINDOW_MINUTES)).isoformat()
+
+    resp = (
+        client.table("community_action_log")
+        .select("created_at")
+        .eq("user_id", user_id)
+        .eq("action_type", action_type)
+        .gte("created_at", cutoff)
+        .order("created_at", desc=True)
+        .limit(COMMUNITY_RATE_LIMIT_COUNT)
+        .execute()
+    )
+    rows = resp.data or []
+    if len(rows) < COMMUNITY_RATE_LIMIT_COUNT:
+        return 0
+
+    most_recent_str = rows[0]["created_at"]
+    try:
+        most_recent = datetime.fromisoformat(most_recent_str.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+
+    timeout_until = most_recent + timedelta(minutes=COMMUNITY_RATE_LIMIT_WINDOW_MINUTES)
+    remaining = (timeout_until - datetime.now(timezone.utc)).total_seconds()
+    return max(0, int(remaining))
+
+
+def check_community_action_rate_limit(
+    client: Client,
+    user_id: str,
+    action_type: str,
+) -> None:
+    remaining = get_community_timeout_remaining_seconds(client, user_id, action_type)
+    if remaining > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "RATE_LIMITED",
+                "message": _rate_limit_message(action_type, remaining),
+                "retry_after_seconds": remaining,
+            },
+        )
+
+
+def record_community_action(
+    client: Client,
+    user_id: str,
+    action_type: str,
+    metadata: dict | None = None,
+) -> None:
+    """Record an action attempt, then enforce the rolling timeout window."""
+    log_community_action(client, user_id, action_type, metadata=metadata)
+    remaining = get_community_timeout_remaining_seconds(client, user_id, action_type)
+    if remaining > 0:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "RATE_LIMITED",
+                "message": _rate_limit_message(action_type, remaining),
+                "retry_after_seconds": remaining,
+            },
+        )
 
 
 def list_community_posts(
@@ -24,6 +240,7 @@ def list_community_posts(
     page: int = 1,
     page_size: int = 20,
 ) -> PostListResponse:
+    service = get_supabase_client()
     offset = (page - 1) * page_size
     query = client.table("community_posts_with_author").select("*", count="exact")
 
@@ -54,7 +271,10 @@ def list_community_posts(
         query = query.order("created_at", desc=True)
 
     response = query.range(offset, offset + page_size - 1).execute()
-    posts = [PostSummary.model_validate(row) for row in (response.data or [])]
+    posts = [
+        PostSummary.model_validate(_post_row_with_avatar(row, service))
+        for row in (response.data or [])
+    ]
     total = response.count or 0
     return PostListResponse(posts=posts, total=total, page=page, page_size=page_size)
 
@@ -85,7 +305,9 @@ def create_community_post(
     professor_name: str | None = None,
     is_anonymous: bool = False,
     general_tags: list[str] | None = None,
+    attachment_paths: list[str] | None = None,
 ) -> PostSummary:
+    service = get_supabase_client()
     row: dict = {
         "user_id": user_id,
         "title": title,
@@ -99,6 +321,7 @@ def create_community_post(
         row["professor_name"] = professor_name
     insert_resp = client.table("community_posts").insert(row).execute()
     post_id = insert_resp.data[0]["id"]
+    _insert_attachments(client, user_id, attachment_paths or [], post_id=post_id)
     fetch_resp = (
         client.table("community_posts_with_author")
         .select("*")
@@ -106,10 +329,11 @@ def create_community_post(
         .single()
         .execute()
     )
-    return PostSummary.model_validate(fetch_resp.data)
+    return PostSummary.model_validate(_post_row_with_avatar(fetch_resp.data, service))
 
 
 def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail | None:
+    service = get_supabase_client()
     post_resp = (
         client.table("community_posts_with_author")
         .select("*")
@@ -119,6 +343,7 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
     )
     if not post_resp.data:
         return None
+
     replies_resp = (
         client.table("community_replies_with_author")
         .select("*")
@@ -126,8 +351,49 @@ def get_community_post_with_replies(client: Client, post_id: str) -> PostDetail 
         .order("created_at")
         .execute()
     )
-    replies = [ReplyOut.model_validate(r) for r in (replies_resp.data or [])]
-    return PostDetail(**PostSummary.model_validate(post_resp.data[0]).model_dump(), replies=replies)
+    raw_replies = replies_resp.data or []
+
+    # Fetch all attachments for this post and its replies in one query
+    reply_ids = [r["id"] for r in raw_replies]
+    att_query = (
+        client.table("community_attachments")
+        .select("*")
+        .eq("post_id", post_id)
+    )
+    post_att_resp = att_query.execute()
+    post_attachments = _sign_attachments(post_att_resp.data or [])
+
+    reply_attachments_map: dict[str, list[PostAttachment]] = {}
+    if reply_ids:
+        reply_att_resp = (
+            client.table("community_attachments")
+            .select("*")
+            .in_("reply_id", reply_ids)
+            .execute()
+        )
+        for row in (reply_att_resp.data or []):
+            rid = row["reply_id"]
+            if rid not in reply_attachments_map:
+                reply_attachments_map[rid] = []
+            reply_attachments_map[rid].append(row)
+        # Sign per-reply
+        reply_attachments_map = {
+            rid: _sign_attachments(rows)
+            for rid, rows in reply_attachments_map.items()
+        }
+
+    replies = [
+        ReplyOut.model_validate({
+            **_reply_row_with_avatar(r, service),
+            "attachments": reply_attachments_map.get(r["id"], []),
+        })
+        for r in raw_replies
+    ]
+    return PostDetail(
+        **PostSummary.model_validate(_post_row_with_avatar(post_resp.data[0], service)).model_dump(),
+        replies=replies,
+        attachments=post_attachments,
+    )
 
 
 def create_community_reply(
@@ -137,6 +403,7 @@ def create_community_reply(
     body: str,
     parent_reply_id: str | None = None,
     is_anonymous: bool = False,
+    attachment_paths: list[str] | None = None,
 ) -> None:
     check = client.table("community_posts").select("id").eq("id", post_id).limit(1).execute()
     if not check.data:
@@ -149,7 +416,62 @@ def create_community_reply(
     }
     if parent_reply_id:
         row["parent_reply_id"] = parent_reply_id
-    client.table("community_replies").insert(row).execute()
+    reply_resp = client.table("community_replies").insert(row).execute()
+    reply_id = reply_resp.data[0]["id"]
+    _insert_attachments(client, user_id, attachment_paths or [], reply_id=reply_id)
+
+
+# ---------------------------------------------------------------------------
+# Reply delete
+# ---------------------------------------------------------------------------
+
+def _get_reply_owned(client: Client, reply_id: str, user_id: str) -> dict:
+    resp = (
+        client.table("community_replies")
+        .select("id, user_id, is_deleted")
+        .eq("id", reply_id)
+        .limit(1)
+        .execute()
+    )
+    if not resp.data:
+        raise LookupError(f"Reply {reply_id} not found")
+    if resp.data[0]["user_id"] != user_id:
+        raise PermissionError("Not allowed to modify this reply")
+    return resp.data[0]
+
+
+def delete_community_reply(client: Client, reply_id: str, user_id: str) -> None:
+    """Soft-delete a reply by setting is_deleted=true."""
+    _get_reply_owned(client, reply_id, user_id)
+    client.table("community_replies").update({"is_deleted": True}).eq("id", reply_id).execute()
+
+
+def delete_community_post(client: Client, post_id: str, user_id: str) -> None:
+    """Soft-delete a post by setting is_deleted=true."""
+    resp = (
+        client.table("community_posts")
+        .select("id, user_id")
+        .eq("id", post_id)
+        .limit(1)
+        .execute()
+    )
+    if not resp.data:
+        raise LookupError(f"Post {post_id} not found")
+    if resp.data[0]["user_id"] != user_id:
+        raise PermissionError("Not allowed to delete this post")
+    client.table("community_posts").update({"is_deleted": True}).eq("id", post_id).execute()
+
+
+def update_community_reply(client: Client, reply_id: str, user_id: str, body: str) -> None:
+    """Edit a reply body. Sets edited_at to now()."""
+    row = _get_reply_owned(client, reply_id, user_id)
+    if row.get("is_deleted"):
+        raise ValueError("Cannot edit a deleted reply")
+    import datetime
+    client.table("community_replies").update({
+        "body": body,
+        "edited_at": datetime.datetime.utcnow().isoformat(),
+    }).eq("id", reply_id).execute()
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +666,7 @@ def mark_notifications_read(client: Client, user_id: str) -> None:
 
 
 def get_user_posts(client: Client, user_id: str) -> list[PostSummary]:
+    service = get_supabase_client()
     resp = (
         client.table("community_posts_with_author")
         .select("*")
@@ -352,4 +675,7 @@ def get_user_posts(client: Client, user_id: str) -> list[PostSummary]:
         .limit(20)
         .execute()
     )
-    return [PostSummary.model_validate(row) for row in (resp.data or [])]
+    return [
+        PostSummary.model_validate(_post_row_with_avatar(row, service))
+        for row in (resp.data or [])
+    ]

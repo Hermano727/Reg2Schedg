@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, HelpCircle, Upload, X } from "lucide-react";
 import { DropZone } from "@/components/ingestion/DropZone";
@@ -10,6 +11,11 @@ type IngestionHubProps = {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onFilesSelected: (files: FileList | File[]) => void;
+  onOpenUploadFormatModal: () => void;
+  submissionUsesLeft: number;
+  submissionResetsAtLabel: string;
+  skipUploadConfirmation: boolean;
+  onSkipUploadConfirmationChange: (next: boolean) => Promise<void> | void;
   onManualSubmit: (payload: {
     professor: string;
     course: string;
@@ -18,6 +24,8 @@ type IngestionHubProps = {
   classCount: number;
   quarterLabel: string;
   isLocked?: boolean;
+  onViewExampleOutput?: () => void;
+  isExampleLoading?: boolean;
 };
 
 export function IngestionHub({
@@ -25,10 +33,16 @@ export function IngestionHub({
   collapsed,
   onToggleCollapse,
   onFilesSelected,
-  onManualSubmit,
+  onOpenUploadFormatModal,
+  submissionUsesLeft,
+  submissionResetsAtLabel,
+  skipUploadConfirmation,
+  onSkipUploadConfirmationChange,
   classCount,
   quarterLabel,
   isLocked,
+  onViewExampleOutput,
+  isExampleLoading = false,
 }: IngestionHubProps) {
   const busy = phase === "processing";
   const [helpOpen, setHelpOpen] = useState(false);
@@ -89,12 +103,12 @@ export function IngestionHub({
   return (
     <motion.section
       layout
-      className="glass-panel mb-6 rounded-xl border border-white/[0.08] p-4"
+      className="glass-panel mb-6 rounded-xl border border-white/[0.08] p-5 lg:p-6"
     >
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-2xl">
           <div className="flex items-center gap-2">
-            <h2 className="font-[family-name:var(--font-outfit)] text-lg font-semibold tracking-tight text-hub-text">
+            <h2 className="font-[family-name:var(--font-outfit)] text-xl font-semibold tracking-tight text-hub-text lg:text-[1.45rem]">
               {isDashboardExpanded ? "Add files" : "Attach your schedule"}
             </h2>
             {!isDashboardExpanded && (
@@ -108,7 +122,7 @@ export function IngestionHub({
               </button>
             )}
           </div>
-          <p className="mt-1 text-sm leading-relaxed text-hub-text-secondary">
+          <p className="mt-1.5 text-[15px] leading-relaxed text-hub-text-secondary">
             {isDashboardExpanded
               ? "Attach another WebReg export or syllabus to refresh your schedule."
               : "Attach your WebReg schedule to get started. Export a PDF directly from WebReg, take a screenshot, or paste one from your clipboard."}
@@ -147,9 +161,35 @@ export function IngestionHub({
                 Create account
               </a>
             </div>
+            {onViewExampleOutput ? (
+              <div className="w-full max-w-xl rounded-xl border border-hub-cyan/20 bg-hub-cyan/[0.05] px-4 py-4 text-left">
+                <p className="text-sm font-semibold text-hub-text">
+                  For users without a UCSD email: See example output here
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-hub-text-secondary">
+                  Open a researched sample schedule to preview the dashboard, professor data, and workload analysis before signing in.
+                </p>
+                <button
+                  type="button"
+                  onClick={onViewExampleOutput}
+                  disabled={isExampleLoading}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14] disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isExampleLoading ? "Loading example..." : "View example schedule"}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : (
-          <DropZone onFilesSelected={onFilesSelected} disabled={busy} />
+          <DropZone
+            onFilesSelected={onFilesSelected}
+            disabled={busy}
+            submissionUsesLeft={submissionUsesLeft}
+            submissionResetsAtLabel={submissionResetsAtLabel}
+            onOpenUploadFormatModal={onOpenUploadFormatModal}
+            skipUploadConfirmation={skipUploadConfirmation}
+            onSkipUploadConfirmationChange={onSkipUploadConfirmationChange}
+          />
         )}
       </motion.div>
 
@@ -178,9 +218,11 @@ export function IngestionHub({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <img
+            <Image
               src="/images/print_schedule_help.png"
               alt="Screenshot showing the WebReg print flow to save your schedule as a PDF"
+              width={1280}
+              height={720}
               className="w-full rounded-lg border border-white/[0.08]"
             />
             <p className="mt-3 text-xs leading-relaxed text-hub-text-muted">

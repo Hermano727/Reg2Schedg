@@ -23,7 +23,7 @@ export default function LoginPage() {
       </Suspense>
       <p className="mt-3 text-center text-sm text-hub-text-muted">
         <Link href="/" className="text-hub-text-secondary hover:text-hub-cyan hover:underline">
-          Back to command center
+          Back to home
         </Link>
       </p>
     </main>

@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/client";
 import type { CourseLogistics, FitnessCategory, ScheduleBriefing } from "@/types/dossier";
 
 export interface SectionMeeting {
@@ -81,18 +82,27 @@ export interface BatchResearchResponse {
   fit_evaluation?: FitAnalysisResult | null;
 }
 
+export interface UserInputFeedback {
+  academic_alignment: string[];
+  practical_risks: string[];
+}
+
 export interface FitAnalysisResult {
   fitness_score: number;
   fitness_max: number;
   trend_label: string;
+  study_hours_min?: number;
+  study_hours_max?: number;
   categories?: FitnessCategory[];
   alerts: Array<{ id: string; severity: "critical" | "warning" | "info"; title: string; detail: string }>;
-  recommendation: string;
+  /** New API returns string[]; old saved plans may have a legacy string. */
+  recommendation: string[] | string;
+  user_input_feedback?: UserInputFeedback | string[] | null;
 }
 
 export async function analyzeFit(
   results: CourseResearchResult[],
-  context?: ScheduleBriefing,
+  context?: ScheduleBriefing | Record<string, unknown>,
 ): Promise<FitAnalysisResult> {
   const res = await fetch("http://localhost:8000/api/fit-analysis", {
     method: "POST",
@@ -101,6 +111,73 @@ export async function analyzeFit(
   });
   if (!res.ok) throw new Error(`Fit analysis failed: ${res.status} ${res.statusText}`);
   return res.json() as Promise<FitAnalysisResult>;
+}
+
+export class InvalidScheduleError extends Error {
+  readonly code = "INVALID_SCHEDULE";
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidScheduleError";
+  }
+}
+
+export class RateLimitedError extends Error {
+  readonly code = "RATE_LIMITED";
+  readonly retryAfterSeconds: number;
+  constructor(message: string, retryAfterSeconds: number) {
+    super(message);
+    this.name = "RateLimitedError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+async function _getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      return { Authorization: `Bearer ${session.access_token}` };
+    }
+  } catch { /* unauthenticated — fall through */ }
+  return {};
+}
+
+export interface CourseLookupSearchResult {
+  cache_id: string;
+  course_code: string;
+  course_title: string | null;
+  professor_name: string;
+  updated_at: string;
+}
+
+export async function searchCourseCache(
+  courseCode: string,
+  professorName?: string,
+): Promise<CourseLookupSearchResult[]> {
+  const params = new URLSearchParams({ course_code: courseCode });
+  if (professorName) params.set("professor_name", professorName);
+  const res = await fetch(`http://localhost:8000/api/lookup-course/search?${params}`);
+  if (!res.ok) throw new Error(`Search failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CourseLookupSearchResult[]>;
+}
+
+export async function expandCacheEntry(cacheId: string): Promise<CourseResearchResult> {
+  const res = await fetch(`http://localhost:8000/api/lookup-course/${cacheId}`);
+  if (!res.ok) throw new Error(`Expand failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CourseResearchResult>;
+}
+
+export async function researchCourseByText(
+  courseCode: string,
+  professorName?: string,
+): Promise<CourseResearchResult> {
+  const res = await fetch("http://localhost:8000/api/lookup-course/research", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ course_code: courseCode, professor_name: professorName || null }),
+  });
+  if (!res.ok) throw new Error(`Research failed: ${res.status} ${res.statusText}`);
+  return res.json() as Promise<CourseResearchResult>;
 }
 
 export async function researchScreenshot(
@@ -114,12 +191,30 @@ export async function researchScreenshot(
     ? "http://localhost:8000/api/research-screenshot?force_refresh=true"
     : "http://localhost:8000/api/research-screenshot";
 
+  const authHeaders = await _getAuthHeaders();
+
   const res = await fetch(url, {
     method: "POST",
+    headers: authHeaders,
     body: form,
   });
 
   if (!res.ok) {
+    let detail: { code?: string; message?: string; retry_after_seconds?: number } = {};
+    try {
+      const body = await res.json() as { detail?: typeof detail };
+      if (typeof body.detail === "object" && body.detail !== null) detail = body.detail;
+    } catch { /* ignore */ }
+
+    if (res.status === 422 && detail.code === "INVALID_SCHEDULE") {
+      throw new InvalidScheduleError(detail.message ?? "Invalid schedule file.");
+    }
+    if (res.status === 429 && detail.code === "RATE_LIMITED") {
+      throw new RateLimitedError(
+        detail.message ?? "Too many invalid uploads. Please wait before trying again.",
+        detail.retry_after_seconds ?? 600,
+      );
+    }
     throw new Error(`Research failed: ${res.status} ${res.statusText}`);
   }
 

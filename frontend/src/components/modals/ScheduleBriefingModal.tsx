@@ -62,8 +62,9 @@ const PRIORITY_OPTIONS: { value: PriorityType; label: string }[] = [
 ];
 
 const SKILL_OPTIONS: { value: SkillFocus; label: string }[] = [
-  { value: "project", label: "Project-based" },
+  { value: "project", label: "Projects" },
   { value: "theoretical", label: "Theoretical" },
+  { value: "career", label: "Career Skills"},
   { value: "mixed", label: "Mixed" },
 ];
 
@@ -191,7 +192,7 @@ export function ScheduleBriefingModal({ open, onSubmit, onSkip, researchDone = f
                     type="text"
                     value={form.scheduleTitle}
                     onChange={(e) => set("scheduleTitle", e.target.value)}
-                    placeholder="e.g. Spring 2026 — Light quarter"
+                    placeholder="e.g. Spring 2026 Draft 1"
                     className="w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm text-hub-text placeholder-hub-text-muted/60 outline-none transition focus:border-hub-cyan/40 focus:bg-white/[0.06]"
                   />
                 </div>
@@ -212,7 +213,7 @@ export function ScheduleBriefingModal({ open, onSubmit, onSkip, researchDone = f
                   <div className="flex gap-1.5">
                     {[
                       { value: true, label: "Balanced" },
-                      { value: false, label: "Challenge me" },
+                      { value: false, label: "Want to be challenged" },
                     ].map((opt) => (
                       <button
                         key={String(opt.value)}
@@ -240,7 +241,7 @@ export function ScheduleBriefingModal({ open, onSubmit, onSkip, researchDone = f
 
                 {/* Transit profile */}
                 <ChipGroup
-                  label="Getting around"
+                  label="Campus travel style"
                   options={TRANSIT_OPTIONS}
                   value={form.transitProfile}
                   onChange={(v) => set("transitProfile", v)}
@@ -249,7 +250,7 @@ export function ScheduleBriefingModal({ open, onSubmit, onSkip, researchDone = f
                 {/* Free-text fields */}
                 {(
                   [
-                    { key: "careerGoals", label: "Career goals", placeholder: "e.g. Full-stack dev at Jane Street" },
+                    { key: "careerGoals", label: "Career goals", placeholder: "e.g. Software Engineering, Dentist, Professor" },
                     { key: "currentWorries", label: "Current worries", placeholder: "e.g. Math 103B workload" },
                     { key: "externalCommitments", label: "External commitments", placeholder: "e.g. Working 15 hrs/week" },
                   ] as const

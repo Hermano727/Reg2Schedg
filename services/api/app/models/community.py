@@ -4,6 +4,15 @@ from pydantic import Field
 from app.models.domain import CamelModel
 
 
+class PostAttachment(CamelModel):
+    id: str
+    storage_path: str
+    name: str
+    mime_type: str
+    size_bytes: int
+    signed_url: Optional[str] = None
+
+
 class CreatePostRequest(CamelModel):
     title: str
     body: str
@@ -11,12 +20,18 @@ class CreatePostRequest(CamelModel):
     professor_name: Optional[str] = None
     is_anonymous: bool = False
     general_tags: list[str] = Field(default_factory=list)
+    attachment_paths: list[str] = Field(default_factory=list)
 
 
 class CreateReplyRequest(CamelModel):
     body: str
     parent_reply_id: Optional[str] = None
     is_anonymous: bool = False
+    attachment_paths: list[str] = Field(default_factory=list)
+
+
+class UpdateReplyRequest(CamelModel):
+    body: str
 
 
 class PostSummary(CamelModel):
@@ -29,6 +44,7 @@ class PostSummary(CamelModel):
     is_anonymous: bool = False
     general_tags: list[str] = Field(default_factory=list)
     author_display_name: str
+    author_avatar_url: Optional[str] = None
     created_at: str
     updated_at: str
     reply_count: int = 0
@@ -45,17 +61,22 @@ class ReplyOut(CamelModel):
     body: str
     parent_reply_id: Optional[str] = None
     is_anonymous: bool = False
+    is_deleted: bool = False
+    edited_at: Optional[str] = None
     author_display_name: str
+    author_avatar_url: Optional[str] = None
     created_at: str
     updated_at: str
     upvote_count: int = 0
     downvote_count: int = 0
     user_has_upvoted: bool = False
     user_has_downvoted: bool = False
+    attachments: list[PostAttachment] = Field(default_factory=list)
 
 
 class PostDetail(PostSummary):
     replies: list[ReplyOut] = Field(default_factory=list)
+    attachments: list[PostAttachment] = Field(default_factory=list)
 
 
 class PostListResponse(CamelModel):

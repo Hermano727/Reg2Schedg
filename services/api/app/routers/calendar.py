@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import json
+import logging
+import re
 import secrets
 import time
-import logging
-import hashlib
-import base64
+from html import escape
 from typing import Any
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse
 
 from app.auth.deps import get_current_user_access
 from app.config import get_settings
@@ -24,6 +27,8 @@ logger = logging.getLogger(__name__)
 # In production, persist these in the database.
 _pending_auth: dict[str, dict[str, str]] = {}  # oauth_state -> {user_id, code_verifier}
 _token_store: dict[str, dict[str, Any]] = {}  # user_id -> google credentials dict
+
+OAUTH_MESSAGE_TYPE = "reg2schedg-google-calendar-oauth"
 
 
 def _make_flow():  # type: ignore[return]
@@ -56,6 +61,111 @@ def _make_flow():  # type: ignore[return]
         scopes=["https://www.googleapis.com/auth/calendar"],
         redirect_uri=settings.google_redirect_uri,
     )
+
+
+def _popup_response(status: str, message: str, *, status_code: int = 200) -> HTMLResponse:
+    """Return a tiny HTML page that reports OAuth status to the opener and closes."""
+    frontend_origin = get_settings().frontend_origin.rstrip("/")
+    payload = {
+        "type": OAUTH_MESSAGE_TYPE,
+        "status": status,
+        "message": message,
+    }
+    payload_json = json.dumps(payload).replace("</", "<\\/")
+    html = f"""<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reg2Schedg Calendar Sync</title>
+    <style>
+      body {{
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0a192f;
+        color: #e6f1ff;
+        font-family: Arial, sans-serif;
+      }}
+      main {{
+        width: min(440px, calc(100vw - 32px));
+        padding: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        background: rgba(17, 34, 64, 0.96);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      }}
+      h1 {{
+        margin: 0 0 8px;
+        font-size: 18px;
+      }}
+      p {{
+        margin: 0;
+        line-height: 1.5;
+        color: rgba(230, 241, 255, 0.76);
+      }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>{escape("Google Calendar connected" if status == "success" else "Google Calendar connection failed")}</h1>
+      <p>{escape(message)}</p>
+    </main>
+    <script>
+      const payload = {payload_json};
+      if (window.opener && !window.opener.closed) {{
+        window.opener.postMessage(payload, "*");
+      }}
+      window.setTimeout(() => window.close(), 120);
+      window.setTimeout(() => {{
+        window.location.replace({json.dumps(frontend_origin)});
+      }}, 1200);
+    </script>
+  </body>
+</html>
+"""
+    return HTMLResponse(content=html, status_code=status_code)
+
+
+def _extract_google_error_detail(exc: Exception) -> tuple[int | None, str]:
+    """Return a friendly error detail from a Google API exception when possible."""
+    status_code = getattr(getattr(exc, "resp", None), "status", None)
+    raw_content = getattr(exc, "content", b"")
+    detail = str(exc)
+
+    if isinstance(raw_content, bytes):
+        try:
+            payload = json.loads(raw_content.decode("utf-8"))
+        except Exception:
+            payload = None
+    else:
+        payload = None
+
+    if isinstance(payload, dict):
+        error_payload = payload.get("error")
+        if isinstance(error_payload, dict):
+            message = error_payload.get("message")
+            if isinstance(message, str) and message.strip():
+                detail = message.strip()
+
+            errors = error_payload.get("errors")
+            if isinstance(errors, list):
+                for item in errors:
+                    if not isinstance(item, dict):
+                        continue
+                    reason = item.get("reason")
+                    if reason == "accessNotConfigured":
+                        project_match = re.search(r"project (\d+)", detail)
+                        project_suffix = f" for project {project_match.group(1)}" if project_match else ""
+                        return (
+                            503,
+                            "Google Calendar API is disabled"
+                            f"{project_suffix}. Enable the Google Calendar API in Google Cloud Console, "
+                            "wait a few minutes for propagation, then try syncing again.",
+                        )
+
+    return status_code, detail
 
 
 def _make_signed_state(user_id: str, code_verifier: str | None = None, expires_seconds: int = 300) -> str:
@@ -127,7 +237,7 @@ def authorize(
     url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="false",
-        prompt="consent",
+        prompt="select_account consent",
         state=state,
         code_challenge=code_challenge,
         code_challenge_method="S256",
@@ -135,9 +245,32 @@ def authorize(
     return {"url": url}
 
 
+@router.get("/status")
+def calendar_status(
+    auth: tuple[str, str] = Depends(get_current_user_access),
+) -> dict[str, bool]:
+    """Return whether the current user has Google Calendar credentials on file."""
+    user_id, _ = auth
+    return {"authorized": user_id in _token_store}
+
+
 @router.get("/callback")
-def callback(code: str, state: str) -> RedirectResponse:
+def callback(code: str | None = None, state: str | None = None, error: str | None = None) -> HTMLResponse:
     """Handle the OAuth callback from Google and store the user's tokens."""
+    if error:
+        return _popup_response(
+            "error",
+            f"Google returned an authorization error: {error}. Please try again.",
+            status_code=400,
+        )
+
+    if not code or not state:
+        return _popup_response(
+            "error",
+            "Google did not provide the required authorization response.",
+            status_code=400,
+        )
+
     # Try stateless signed state first (may carry the code_verifier), then
     # fall back to the in-memory map which stores the verifier.
     signed = _verify_signed_state(state)
@@ -146,7 +279,11 @@ def callback(code: str, state: str) -> RedirectResponse:
     else:
         mapping = _pending_auth.pop(state, None)
         if not mapping:
-            raise HTTPException(status_code=400, detail="Invalid or expired OAuth state.")
+            return _popup_response(
+                "error",
+                "The Google Calendar connection expired before it finished. Please try again.",
+                status_code=400,
+            )
         user_id = mapping.get("user_id")
         code_verifier = mapping.get("code_verifier")
 
@@ -167,7 +304,11 @@ def callback(code: str, state: str) -> RedirectResponse:
         flow.fetch_token(code=code)
     except Exception as exc:  # pragma: no cover - network / external error
         logger.exception("Failed to fetch token from Google OAuth")
-        raise HTTPException(status_code=502, detail=f"Failed to exchange code for token: {exc}")
+        return _popup_response(
+            "error",
+            f"Failed to finish the Google Calendar connection: {exc}",
+            status_code=502,
+        )
 
     creds = flow.credentials
     _token_store[user_id] = {
@@ -179,8 +320,7 @@ def callback(code: str, state: str) -> RedirectResponse:
         "scopes": list(creds.scopes or []),
     }
 
-    frontend_origin = get_settings().frontend_origin
-    return RedirectResponse(url=f"{frontend_origin}/?calendar_connected=true")
+    return _popup_response("success", "Google Calendar is connected. You can close this window.")
 
 
 @router.post("/sync")
@@ -216,24 +356,63 @@ def sync_calendar(
                 creds.refresh(Request())
                 # persist refreshed token back to in-memory store so subsequent calls use it
                 _token_store[user_id]["token"] = creds.token
+                if creds.refresh_token:
+                    _token_store[user_id]["refresh_token"] = creds.refresh_token
             else:
                 logger.info("Google credentials not valid and cannot be refreshed (no refresh_token)")
+                _token_store.pop(user_id, None)
+                raise HTTPException(
+                    status_code=401,
+                    detail="Google Calendar authorization expired. Please reconnect your account.",
+                )
     except Exception as exc:  # pragma: no cover - external network
+        if isinstance(exc, HTTPException):
+            raise
         logger.exception("Failed to refresh Google credentials")
-        raise HTTPException(status_code=502, detail=f"Failed to refresh Google credentials: {exc}")
+        _token_store.pop(user_id, None)
+        raise HTTPException(
+            status_code=401,
+            detail="Google Calendar authorization expired. Please reconnect your account.",
+        ) from exc
 
-    service = build("calendar", "v3", credentials=creds)
+    service = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
     created_ids: list[str] = []
     results: list[dict[str, Any]] = []
+    first_error_status: int | None = None
+    first_error_detail: str | None = None
     for event in events:
         try:
             result = service.events().insert(calendarId="primary", body=event).execute()
             created_ids.append(result.get("id", ""))
             results.append({"id": result.get("id"), "status": "inserted"})
         except Exception as exc:  # pragma: no cover - external error
+            error_status, error_detail = _extract_google_error_detail(exc)
+            if first_error_detail is None:
+                first_error_status = error_status
+                first_error_detail = error_detail
+
+            if error_status == 503:
+                logger.warning(
+                    "Google Calendar insert blocked by project configuration for user %s: %s",
+                    user_id,
+                    error_detail,
+                )
+                raise HTTPException(status_code=503, detail=error_detail) from exc
+
             logger.exception("Failed to insert calendar event for user %s", user_id)
-            results.append({"error": str(exc)})
+            results.append({"error": error_detail})
 
     logger.info("Inserted %d events for user %s", len(created_ids), user_id)
-    return {"created": created_ids, "count": len(created_ids), "results": results}
+    failed_count = len(results) - len(created_ids)
+    if created_ids == [] and failed_count > 0:
+        raise HTTPException(
+            status_code=first_error_status or 502,
+            detail=first_error_detail or "Google Calendar rejected the sync request.",
+        )
+    return {
+        "created": created_ids,
+        "count": len(created_ids),
+        "failed": failed_count,
+        "results": results,
+    }

@@ -435,45 +435,12 @@ async def research_courses(
                                             exc,
                                         )
                             refreshed.append(r)
-                        # Prefer top-level fit_evaluation, but allow older snapshots
-                        # that stored it only inside assembled_payload.
-                        cached_fit = known.get("fit_evaluation") or cached_response.fit_evaluation
-                        if snapshot_changed:
-                            cached_fit = None
-
-                        # Backfill fit_evaluation on older known_schedules rows so
-                        # future hits are fully deterministic and skip /fit-analysis.
-                        if cached_fit is None:
-                            try:
-                                from app.services.fit_analysis import analyze_fit
-                                fit_result = analyze_fit(list(refreshed))
-                                cached_fit = fit_result.model_dump(mode="json")
-                                try:
-                                    upsert_known_schedule(
-                                        cache_client,
-                                        signature=signature,
-                                        assembled_payload=cached_response.model_dump(mode="json"),
-                                        fit_evaluation=cached_fit,
-                                    )
-                                    _log.info(
-                                        "[fast-path] backfilled fit evaluation for signature %s",
-                                        signature[:16],
-                                    )
-                                except Exception as write_exc:
-                                    _log.warning(
-                                        "[fast-path] fit backfill write failed for signature %s: %s",
-                                        signature[:16],
-                                        write_exc,
-                                    )
-                            except Exception as fit_exc:
-                                _log.warning(
-                                    "[fast-path] fit backfill failed for signature %s: %s",
-                                    signature[:16],
-                                    fit_exc,
-                                )
+                        # Do not surface fit_evaluation from the cache. Fit analysis is
+                        # user-context-dependent — the frontend always runs it fresh via
+                        # /api/fit-analysis so the student's profile is reflected.
                         refreshed_response = cached_response.model_copy(update={
                             "results": refreshed,
-                            "fit_evaluation": cached_fit,
+                            "fit_evaluation": None,
                         })
                         if snapshot_changed:
                             try:
@@ -545,25 +512,15 @@ async def research_courses(
     )
 
     # --- Write known_schedules for future fast path (only when all courses cached) ---
+    # fit_evaluation is intentionally not cached here — it is user-context-dependent
+    # and always run fresh by the frontend via /api/fit-analysis.
     if signature is not None and all(r.cache_id is not None for r in results):
         try:
-            # Run fit analysis so the difficulty score is cached with the snapshot.
-            # This makes the score deterministic for the same set of courses and
-            # allows the frontend to skip the /api/fit-analysis Gemini call on hits.
-            fit_eval_dict: dict[str, Any] | None = None
-            try:
-                from app.services.fit_analysis import analyze_fit
-                fit_result = analyze_fit(list(results))
-                fit_eval_dict = fit_result.model_dump(mode="json")
-                _log.info("[fast-path] fit evaluation cached for signature %s", signature[:16])
-            except Exception as fit_exc:
-                _log.warning("[fast-path] fit evaluation failed, snapshot stored without it: %s", fit_exc)
-
             upsert_known_schedule(
                 cache_client,
                 signature=signature,
                 assembled_payload=response.model_dump(mode="json"),
-                fit_evaluation=fit_eval_dict,
+                fit_evaluation=None,
             )
             _log.info("[fast-path] wrote known_schedules signature %s", signature[:16])
         except Exception as exc:

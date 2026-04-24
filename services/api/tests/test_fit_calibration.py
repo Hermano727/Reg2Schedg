@@ -231,6 +231,33 @@ SCENARIO_D2_HARSH_LOGISTICS_4 = [
     ),
 ]
 
+# Scenario D3: User-reported case. 2 hard courses + 1 easy elective.
+# avg_rmp = 3.73 (moderate bucket) but 2 courses with RMP ≥ 4.0 trigger outlier rule.
+# Expected: 6–7. Getting anything below 5.5 is a regression (was 3.5/4.0 before outlier fix).
+SCENARIO_D3_MIXED_HARD_EASY_3 = [
+    CourseResearchResult(
+        course_code="CSE 120", professor_name="Voelker",
+        meetings=[
+            _meeting("Lecture", "TuTh", "11:00 AM", "12:20 PM"),
+            _meeting("Discussion", "F", "10:00 AM", "10:50 AM"),
+        ],
+        logistics=_logistics(rmp_difficulty=4.3, attendance=False, textbook=True, podcasts=True,
+                             grade_breakdown="PA 30%, Midterm 30%, Final 40%"),
+    ),
+    CourseResearchResult(
+        course_code="MATH 103B", professor_name="Rogalski",
+        meetings=[_meeting("Lecture", "MWF", "09:00 AM", "09:50 AM")],
+        logistics=_logistics(rmp_difficulty=4.1, attendance=False, textbook=True, podcasts=False,
+                             grade_breakdown="HW 20%, Midterm 40%, Final 40%"),
+    ),
+    CourseResearchResult(
+        course_code="MGT 128R", professor_name="Staff",
+        meetings=[_meeting("Lecture", "TuTh", "02:00 PM", "03:20 PM")],
+        logistics=_logistics(rmp_difficulty=2.8, attendance=False, textbook=False, podcasts=True,
+                             grade_breakdown="Participation 20%, Case 40%, Final 40%"),
+    ),
+]
+
 # Scenario E: 5 hard courses — should land 7–9.
 SCENARIO_E_HEAVY_5 = [
     _course(
@@ -340,6 +367,16 @@ class TestFitScoreCalibration:
         """
         result = analyze_fit(SCENARIO_D_MODERATE_4)
         self._check(result.fitness_score, lo=4.0, hi=6.0, label="moderate_4")
+
+    def test_mixed_hard_easy_3_courses(self):
+        """
+        CSE 120 (RMP 4.3) + MATH 103B (RMP 4.1) + MGT 128R (RMP 2.8).
+        avg_rmp = 3.73 falls in 'moderate' bucket, but the outlier rule (+1.0 for
+        2 hard courses) must push the score to 6–7, not 4–5.
+        User-reported regression: was 3.5 before calibration fixes, 4.0 before outlier rule.
+        """
+        result = analyze_fit(SCENARIO_D3_MIXED_HARD_EASY_3)
+        self._check(result.fitness_score, lo=5.5, hi=7.5, label="mixed_hard_easy_3")
 
     def test_harsh_logistics_4_courses(self):
         """

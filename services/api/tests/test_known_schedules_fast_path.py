@@ -135,13 +135,15 @@ class TestKnownSchedulesFastPath:
         # Result matches the prebuilt payload
         assert result.input_source == "known_schedules"
         assert result.course_count == 2
-        assert result.fit_evaluation == cached_fit
+        # fit_evaluation is always None in the response — frontend runs it fresh
+        assert result.fit_evaluation is None
 
     @pytest.mark.asyncio
-    async def test_fast_path_backfills_missing_fit_evaluation(self):
+    async def test_fast_path_null_fit_evaluation_skips_pipeline(self):
         """
-        If a known_schedules row exists but has no fit_evaluation (older rows),
-        fast-path should compute and persist it once, then return it.
+        If a known_schedules row has no fit_evaluation (older rows), the fast path
+        still short-circuits the research pipeline. fit_evaluation is never backfilled
+        server-side — the frontend always runs /api/fit-analysis fresh.
         """
         entries = [_make_entry("CSE 110"), _make_entry("MATH 20C", "Jones")]
         prebuilt = _make_prebuilt_response(entries)
@@ -151,24 +153,11 @@ class TestKnownSchedulesFastPath:
             "fit_evaluation": None,
             "updated_at": "2026-01-01T00:00:00+00:00",
         }
-        fit_payload = {
-            "fitness_score": 6.8,
-            "fitness_max": 10.0,
-            "trend_label": "Manageable",
-            "categories": [],
-            "alerts": [],
-            "recommendation": ["Keep your current load balance"],
-            "study_hours_min": 12,
-            "study_hours_max": 18,
-            "user_input_feedback": None,
-        }
-        mock_fit = MagicMock()
-        mock_fit.model_dump.return_value = fit_payload
 
         with (
             patch("app.services.course_research.get_supabase_client") as mock_client_fn,
             patch("app.services.course_research.get_known_schedule", return_value=mock_known_row),
-            patch("app.services.fit_analysis.analyze_fit", return_value=mock_fit) as mock_analyze_fit,
+            patch("app.services.fit_analysis.analyze_fit") as mock_analyze_fit,
             patch("app.services.course_research.upsert_known_schedule") as mock_upsert_known,
             patch("app.services.course_research._research_via_tiered_pipeline") as mock_tiered,
             patch("app.services.course_research.create_browser_use_client") as mock_bu,
@@ -183,11 +172,14 @@ class TestKnownSchedulesFastPath:
                 force_refresh=False,
             )
 
-        mock_analyze_fit.assert_called_once()
-        mock_upsert_known.assert_called_once()
+        # Pipeline skipped — fast path used
         mock_tiered.assert_not_called()
         mock_bu.assert_not_called()
-        assert result.fit_evaluation == fit_payload
+        # No server-side backfill — fit analysis is the frontend's job
+        mock_analyze_fit.assert_not_called()
+        mock_upsert_known.assert_not_called()
+        # fit_evaluation is always None in the response
+        assert result.fit_evaluation is None
 
     @pytest.mark.asyncio
     async def test_fast_path_refreshes_stale_cache_reference(self):
@@ -238,25 +230,10 @@ class TestKnownSchedulesFastPath:
             updated_at="2026-02-01T00:00:00+00:00",
             data_source="tiered_pipeline",
         )
-        fit_payload = {
-            "fitness_score": 7.1,
-            "fitness_max": 10.0,
-            "trend_label": "Manageable",
-            "categories": [],
-            "alerts": [],
-            "recommendation": ["Keep your current load balance"],
-            "study_hours_min": 12,
-            "study_hours_max": 18,
-            "user_input_feedback": None,
-        }
-        mock_fit = MagicMock()
-        mock_fit.model_dump.return_value = fit_payload
-
         with (
             patch("app.services.course_research.get_supabase_client") as mock_client_fn,
             patch("app.services.course_research.get_known_schedule", return_value=mock_known_row),
             patch("app.services.course_research.get_course_research_cache", return_value=refreshed_row),
-            patch("app.services.fit_analysis.analyze_fit", return_value=mock_fit),
             patch("app.services.course_research.upsert_known_schedule") as mock_upsert_known,
             patch("app.services.course_research._research_via_tiered_pipeline") as mock_tiered,
             patch("app.services.course_research.create_browser_use_client") as mock_bu,
@@ -271,14 +248,17 @@ class TestKnownSchedulesFastPath:
                 force_refresh=False,
             )
 
-        assert mock_upsert_known.call_count == 2
+        # Snapshot refresh writes exactly once (for the refreshed course data)
+        assert mock_upsert_known.call_count == 1
         mock_tiered.assert_not_called()
         mock_bu.assert_not_called()
+        # Course data updated from fresh cache row
         assert result.results[0].cache_id == "fresh-cache-id"
         assert result.results[0].professor_name == "Shalev, Aaron D"
         assert result.results[0].logistics is not None
         assert result.results[0].logistics.rate_my_professor.rating == 5
-        assert result.fit_evaluation == fit_payload
+        # fit_evaluation is always None — frontend runs it fresh
+        assert result.fit_evaluation is None
         refreshed_payload = mock_upsert_known.call_args_list[-1].kwargs["assembled_payload"]
         assert refreshed_payload["results"][0]["cache_id"] == "fresh-cache-id"
 

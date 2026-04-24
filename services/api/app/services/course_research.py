@@ -448,7 +448,7 @@ async def research_courses(
                                     cache_client,
                                     signature=signature,
                                     assembled_payload=refreshed_response.model_dump(mode="json"),
-                                    fit_evaluation=cached_fit,
+                                    fit_evaluation=None,
                                 )
                                 _log.info(
                                     "[fast-path] refreshed stale cache references for signature %s",

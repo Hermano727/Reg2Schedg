@@ -1,0 +1,172 @@
+# Fit-analysis calibration scenarios.
+# Each entry defines a schedule, expected score range, and why.
+#
+# Run: python calibrate.py
+# Run single: python calibrate.py --filter "cse120_math103b_mgt128r"
+#
+# Fields:
+#   id          - unique slug for filtering
+#   label       - human-readable name
+#   expected    - [min, max] fitness_score range (inclusive, tolerance ±0.5 applied at runtime)
+#   why         - reason the range was chosen (for future reference)
+#   courses     - list of courses with rmp, meetings, logistics
+
+scenarios:
+  - id: cse120_math103b_mgt128r
+    label: "CSE 120 + MATH 103B + MGT 128R (2 hard + 1 easy)"
+    expected: [5.5, 7.5]
+    why: >
+      avg_rmp 3.73 falls in moderate bucket but 2 hard-outlier courses (CSE 120 RMP 4.3,
+      MATH 103B RMP 4.1) anchor difficulty. User-reported actual: 5.5. Target: 6.5.
+    courses:
+      - code: CSE 120
+        professor: Voelker
+        rmp_difficulty: 4.3
+        attendance: false
+        textbook: true
+        podcasts: true
+        grade_breakdown: "PA 30%, Midterm 30%, Final 40%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "11:00 AM", end: "12:20 PM"}
+          - {type: Discussion, days: F, start: "10:00 AM", end: "10:50 AM"}
+      - code: MATH 103B
+        professor: Rogalski
+        rmp_difficulty: 4.1
+        attendance: false
+        textbook: true
+        podcasts: false
+        grade_breakdown: "HW 20%, Midterm 40%, Final 40%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "09:00 AM", end: "09:50 AM"}
+      - code: MGT 128R
+        professor: Staff
+        rmp_difficulty: 2.8
+        attendance: false
+        textbook: false
+        podcasts: true
+        grade_breakdown: "Participation 20%, Case 40%, Final 40%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "02:00 PM", end: "03:20 PM"}
+
+  - id: hard_3_all_hard
+    label: "CSE 120 + MATH 103B + CSE 123 (all hard)"
+    expected: [5.0, 7.0]
+    why: >
+      All 3 courses are upper-div hard (avg RMP ~4.1). No attendance required.
+      Should land in 5-7 range. Was 3.5 before calibration fixes (cache+prompt regression).
+    courses:
+      - code: CSE 120
+        professor: Voelker
+        rmp_difficulty: 4.3
+        attendance: false
+        textbook: true
+        podcasts: true
+        grade_breakdown: "PA 30%, Midterm 30%, Final 40%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "11:00 AM", end: "12:20 PM"}
+          - {type: Discussion, days: F, start: "10:00 AM", end: "10:50 AM"}
+      - code: MATH 103B
+        professor: Rogalski
+        rmp_difficulty: 4.1
+        attendance: false
+        textbook: true
+        podcasts: false
+        grade_breakdown: "HW 20%, Midterm 40%, Final 40%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "09:00 AM", end: "09:50 AM"}
+      - code: CSE 123
+        professor: Schulman
+        rmp_difficulty: 4.0
+        attendance: false
+        textbook: false
+        podcasts: true
+        grade_breakdown: "PA 40%, Midterm 25%, Final 35%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "02:00 PM", end: "02:50 PM"}
+          - {type: Discussion, days: W, start: "04:00 PM", end: "04:50 PM"}
+
+  - id: easy_3_gened
+    label: "3 easy gen-ed courses"
+    expected: [1.0, 3.5]
+    why: All low-RMP (~2.0), podcasts available, no attendance. Genuinely light quarter.
+    courses:
+      - code: HUM 1
+        professor: Staff
+        rmp_difficulty: 2.1
+        attendance: false
+        textbook: false
+        podcasts: true
+        grade_breakdown: "Essays 60%, Participation 40%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "10:00 AM", end: "10:50 AM"}
+      - code: ANTH 2
+        professor: Staff
+        rmp_difficulty: 1.9
+        attendance: false
+        textbook: false
+        podcasts: true
+        grade_breakdown: "Quizzes 30%, Final 70%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "09:30 AM", end: "10:50 AM"}
+      - code: TDGE 11
+        professor: Staff
+        rmp_difficulty: 2.0
+        attendance: true
+        textbook: false
+        podcasts: true
+        grade_breakdown: "Participation 50%, Project 50%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "12:30 PM", end: "01:50 PM"}
+
+  - id: heavy_5_mixed
+    label: "5 courses, hard CS + light elective"
+    expected: [7.0, 9.0]
+    why: 5 courses with avg RMP ~3.9, most are hard CS. Heavy quarter by any measure.
+    courses:
+      - code: CSE 130
+        professor: Jhala
+        rmp_difficulty: 4.5
+        attendance: false
+        textbook: false
+        podcasts: true
+        grade_breakdown: "PA 40%, Midterm 30%, Final 30%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "10:00 AM", end: "10:50 AM"}
+          - {type: Discussion, days: Tu, start: "10:00 AM", end: "10:50 AM"}
+      - code: CSE 101
+        professor: Impagliazzo
+        rmp_difficulty: 4.2
+        attendance: false
+        textbook: true
+        podcasts: false
+        grade_breakdown: "HW 30%, Midterms 35%, Final 35%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "11:00 AM", end: "11:50 AM"}
+      - code: MATH 102
+        professor: Tesler
+        rmp_difficulty: 4.0
+        attendance: false
+        textbook: true
+        podcasts: false
+        grade_breakdown: "HW 25%, Midterm 35%, Final 40%"
+        meetings:
+          - {type: Lecture, days: MWF, start: "02:00 PM", end: "02:50 PM"}
+      - code: CSE 110
+        professor: Griswold
+        rmp_difficulty: 3.8
+        attendance: true
+        textbook: false
+        podcasts: true
+        grade_breakdown: "Project 50%, HW 25%, Final 25%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "12:30 PM", end: "01:50 PM"}
+          - {type: Discussion, days: F, start: "02:00 PM", end: "02:50 PM"}
+      - code: PHIL 28
+        professor: Staff
+        rmp_difficulty: 2.8
+        attendance: false
+        textbook: true
+        podcasts: true
+        grade_breakdown: "Essays 70%, Participation 30%"
+        meetings:
+          - {type: Lecture, days: TuTh, start: "09:30 AM", end: "10:50 AM"}

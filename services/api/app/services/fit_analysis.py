@@ -166,11 +166,15 @@ def compute_workload_signals(results: list[CourseResearchResult]) -> dict:
                 skipped_meetings += 1
 
     avg_difficulty = round(sum(difficulties) / len(difficulties), 2) if difficulties else None
+    max_difficulty = round(max(difficulties), 2) if difficulties else None
+    hard_course_count = sum(1 for d in difficulties if d >= 4.0)
     return {
         "attendance_required": attendance_required,
         "textbook_required": textbook_required,
         "no_podcasts": no_podcasts,
         "avg_rmp_difficulty": avg_difficulty,
+        "max_rmp_difficulty": max_difficulty,
+        "hard_course_count": hard_course_count,
         "missing_logistics": missing_logistics,
         "total": course_count,
         "course_count": course_count,
@@ -323,36 +327,25 @@ def build_fit_prompt(
         f"- Courses requiring textbook: {workload['textbook_required']}\n"
         f"- Courses without podcast recordings: {workload['no_podcasts']}\n"
         f"- Average RateMyProfessor difficulty: {diff_str} (scale 1–5; if N/A treat as moderate 3.0)\n"
+        f"- Hardest single course RMP difficulty: {workload['max_rmp_difficulty'] if workload['max_rmp_difficulty'] is not None else 'N/A'}\n"
+        f"- Courses with RMP difficulty ≥ 4.0 (hard): {workload['hard_course_count']} of {workload['course_count']}\n"
         f"- Courses with missing logistics: {missing_str}\n\n"
-        "## Scoring Calibration — course count is the primary baseline driver\n"
-        "A schedule with more courses must almost always score higher than one with fewer, "
-        "unless all added courses have avg_rmp_difficulty ≤ 2.5. "
-        "Per-course factors adjust within the range; they do not override volume.\n\n"
-        "CRITICAL RULE — career alignment does NOT affect scores: fitness_score and the "
-        "Workload, Schedule Fit, and GPA Risk categories are objective measures of course "
-        "difficulty and schedule load. They must NOT be adjusted downward because courses "
-        "align with the student's major or career goals. Motivation does not make hard "
-        "courses easier. Only Life Balance and Commute Load may reflect the student's "
-        "personal context.\n\n"
-        "Baseline fitness_score ranges by course count and RMP difficulty:\n"
-        "| course_count | avg_rmp_difficulty | baseline fitness_score |\n"
-        "|---|---|---|\n"
-        "| 3 | ≤ 3.0 (easy) | 1–3 |\n"
-        "| 3 | 3.0–4.0 (moderate) | 3–5 |\n"
-        "| 3 | ≥ 4.0 (hard) | 5–7 |\n"
-        "| 4 | ≤ 3.0 (easy) | 3–5 |\n"
-        "| 4 | 3.0–4.0 (moderate) | 4–6 |\n"
-        "| 4 | ≥ 4.0 (hard) | 6–8 |\n"
-        "| 5 | ≤ 3.0 (easy) | 5–7 |\n"
-        "| 5 | ≥ 3.0 (moderate+) | 7–9 |\n"
-        "| 6+ | any | 8–10 |\n\n"
-        "Secondary modifier for weekly_contact_hours: "
-        "< 12h/week → subtract 0.5 from baseline; 12–18h/week → neutral; > 18h/week → add 0.5–1.0.\n\n"
-        "Reference examples (interpolate — do NOT copy these exact scores):\n"
-        "• 3 courses (CSE 120, MATH 103B, CSE 123), avg_rmp 4.2, weekly_contact_hours 12h → "
-        "fitness_score ≈ 5.5–6.5, trend_label 'Moderately Hard', study_hours 25–35/week\n"
-        "• 5 courses, avg_rmp 3.8, weekly_contact_hours 19.5h, attendance required 4/5 → "
-        "fitness_score ≈ 7.5–8.0, trend_label 'Heavy Load', study_hours 30–40/week\n\n"
+        "## Scoring Calibration\n"
+        "Rules (apply in order):\n"
+        "1. course_count sets the floor — more courses must score higher unless RMP ≤ 2.5 across all.\n"
+        "2. Career/major alignment never lowers scores. Workload/GPA Risk/Schedule Fit are objective.\n"
+        "3. Baseline by (course_count, avg_rmp): "
+        "3+easy→1-3, 3+mod→3-5, 3+hard→5-7 | "
+        "4+easy→3-5, 4+mod→4-6, 4+hard→6-8 | "
+        "5+easy→5-7, 5+mod+→7-9 | 6+→8-10\n"
+        "4. Contact hours modifier: <12h/wk→-0.5, 12-18h→neutral, >18h→+0.5-1.0\n"
+        "5. Hard outlier rule (avg hides brutal courses): "
+        "1 course RMP≥4.0→+0.5; 2+ courses RMP≥4.0→+1.0-1.5; max_rmp≥4.5→+0.5 more. "
+        "CSE 120 (OS, RMP 4.3) + easy elective is NOT a moderate schedule.\n"
+        "Anchors: "
+        "3×hard(RMP4.2)→5.5-6.5 | "
+        "3×mixed(2hard+1easy,RMP3.7avg)→6.0-7.0,20-30h/wk | "
+        "5×mod-hard,19h/wk→7.5-8.0\n\n"
         "## Task\n"
         "Return JSON matching the schema exactly. Fields:\n"
         "- fitness_score: number 1–10 (1 = easy quarter, 10 = brutal)\n"

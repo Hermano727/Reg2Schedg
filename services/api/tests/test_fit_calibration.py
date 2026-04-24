@@ -16,11 +16,21 @@ Each scenario documents:
 Add new scenarios whenever a real-world mis-score is reported.
 """
 
+import os
+
 import pytest
 
 from app.models.course_parse import SectionMeeting
 from app.models.research import CourseLogistics, CourseResearchResult, RateMyProfessorStats
 from app.services.fit_analysis import analyze_fit
+
+# Skip the entire module when GEMINI_API_KEY is absent (e.g. CI without secrets).
+# To run locally: ensure GEMINI_API_KEY is set in your .env or shell.
+# To run in CI: add GEMINI_API_KEY as a repository secret and pass it to the job.
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GEMINI_API_KEY"),
+    reason="GEMINI_API_KEY not set — skipping Gemini integration tests",
+)
 
 
 # ---------------------------------------------------------------------------

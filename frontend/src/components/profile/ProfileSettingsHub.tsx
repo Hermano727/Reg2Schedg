@@ -193,7 +193,7 @@ function AvatarButton({
 // Linked emails section
 // ---------------------------------------------------------------------------
 
-function LinkedEmailsSection({ userId, primaryEmail }: { userId: string; primaryEmail: string }) {
+function LinkedEmailsSection({ primaryEmail }: { primaryEmail: string }) {
   const [adding, setAdding] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -210,13 +210,10 @@ function LinkedEmailsSection({ userId, primaryEmail }: { userId: string; primary
     setErrorMsg("");
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email: trimmed,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: `${window.location.origin}/auth/link-callback?userId=${userId}`,
-        },
-      });
+      const { error } = await supabase.auth.updateUser(
+        { email: trimmed },
+        { emailRedirectTo: `${window.location.origin}/auth/callback?next=/profile` },
+      );
       if (error) throw error;
       setStatus("sent");
     } catch (err) {
@@ -298,7 +295,7 @@ function LinkedEmailsSection({ userId, primaryEmail }: { userId: string; primary
               </div>
               {status === "sent" && (
                 <p className="flex items-center gap-1.5 text-xs text-hub-success">
-                  <Check className="h-3 w-3" /> Check your UCSD inbox for the verification link.
+                  <Check className="h-3 w-3" /> Confirmation link sent — click it in your UCSD inbox to finish linking.
                 </p>
               )}
               {status === "error" && (
@@ -399,7 +396,7 @@ function ProfileSection({
       <div className="border-t border-white/[0.06]" />
 
       {/* Linked emails */}
-      <LinkedEmailsSection userId={userId} primaryEmail={email} />
+      <LinkedEmailsSection primaryEmail={email} />
 
       <div className="border-t border-white/[0.06]" />
 

@@ -368,8 +368,15 @@ def build_fit_prompt(
         "(no bullet character, no trailing period, complete thought, 10–25 words). General schedule observations only.\n"
         + (
             "- user_input_feedback: object with two arrays:\n"
-            "  academic_alignment: 1–3 plain strings — where the student's courses genuinely support their stated goals/major/career. Name courses.\n"
-            "  practical_risks: 1–3 plain strings — workload, timing, or schedule factors that conflict with their stated context (external commitments, worries). Name courses.\n"
+            "  academic_alignment: 1–3 plain strings. Each must surface a NON-OBVIOUS insight specific to this student's career path or goals.\n"
+            "  BAD (do not write this): 'CSE 120 supports your CS major.' — stating that a CS course matches a CS major is useless.\n"
+            "  GOOD: Lead with the concrete skill or outcome the course builds, then connect it to a specific career moment — e.g. a job function, interview topic, or industry context the student will actually encounter.\n"
+            "  Examples of the right level of specificity:\n"
+            "    'CSE 120's OS internals (scheduling, virtual memory) come up directly in systems-level technical interviews at top software companies'\n"
+            "    'MATH 103B's abstract algebra is the foundation of cryptography and compilers — relevant if targeting security or language tooling roles'\n"
+            "    'MGT 128R gives you a business lens rare among CS graduates, which differentiates you for product or startup engineering roles'\n"
+            "  Name the course, name the specific concept or outcome, and tie it to the student's stated career or concern.\n"
+            "  practical_risks: 1–3 plain strings — concrete workload, timing, or schedule tensions tied to what the student told you (commitments, concerns, commute). Name courses and be specific about the conflict.\n"
             "  Tailor the Life Balance and Commute Load categories to the student's stated profile.\n"
             if context_block else
             "- user_input_feedback: null\n"

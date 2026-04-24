@@ -9,7 +9,7 @@ export default function LoginPage() {
     <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12">
       <PageHeader
         title="Sign in"
-        subtitle="Existing accounts only for email and password. New passwords are created on the sign-up page."
+        subtitle="Use Google, or the email and password you set on Create account. New here? Start with Create account or Google."
       />
       <Suspense
         fallback={

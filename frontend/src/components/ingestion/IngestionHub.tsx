@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, HelpCircle, Upload, X } from "lucide-react";
 import { DropZone } from "@/components/ingestion/DropZone";
@@ -74,16 +75,18 @@ export function IngestionHub({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onToggleCollapse}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/[0.1] px-3 text-xs font-medium text-hub-text-secondary transition hover:border-hub-cyan/35 hover:text-hub-cyan"
+              onClick={isLocked ? undefined : onToggleCollapse}
+              disabled={isLocked}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/[0.1] px-3 text-xs font-medium text-hub-text-secondary transition hover:border-hub-cyan/35 hover:text-hub-cyan disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/[0.1] disabled:hover:text-hub-text-secondary"
             >
               <Upload className="h-3.5 w-3.5" />
-              Add files
+              {isLocked ? "UCSD verification required" : "Add files"}
             </button>
             <button
               type="button"
-              onClick={onToggleCollapse}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.1] text-hub-text-muted hover:text-hub-text"
+              onClick={isLocked ? undefined : onToggleCollapse}
+              disabled={isLocked}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.1] text-hub-text-muted hover:text-hub-text disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-hub-text-muted"
               aria-label="Expand schedule panel"
             >
               <ChevronDown className="h-4 w-4" />
@@ -137,11 +140,19 @@ export function IngestionHub({
       </div>
 
       <motion.div layout>
-        {isLocked && !isDashboardExpanded ? (
+        {isLocked ? (
           <div className="rounded-2xl border border-white/[0.08] bg-hub-bg/35 px-6 py-8">
             <div className="max-w-xl rounded-lg border border-hub-gold/30 bg-hub-gold/[0.07] px-4 py-3 text-sm text-hub-text-secondary">
-              <p className="font-semibold text-hub-text mb-1">UCSD students only</p>
-              <p>Reg2Schedg is currently only for UCSD students. Sign in with your @ucsd.edu account to upload your schedule.</p>
+              <p className="font-semibold text-hub-text mb-1">Schedule upload needs UCSD verification</p>
+              <p>
+                WebReg research uses UCSD-only data sources. Add a verified{" "}
+                <span className="text-hub-text">@ucsd.edu</span> address in{" "}
+                <Link href="/profile" className="text-hub-cyan underline-offset-2 hover:underline">
+                  Profile
+                </Link>{" "}
+                (Link email), or sign in with Google using an account whose email is{" "}
+                <span className="text-hub-text">@ucsd.edu</span>.
+              </p>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <a
@@ -154,7 +165,7 @@ export function IngestionHub({
                 href="/login"
                 className="text-sm font-medium text-hub-text-secondary transition hover:text-hub-text"
               >
-                Already have a UCSD account? Sign in
+                Sign in
               </a>
             </div>
           </div>

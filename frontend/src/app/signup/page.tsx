@@ -9,7 +9,7 @@ export default function SignupPage() {
     <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12">
       <PageHeader
         title="Create account"
-        subtitle="Email registration creates a password identity. Google and GitHub create or sign in a separate identity."
+        subtitle="For schedule analysis, create a UCSD email account or add a verified @ucsd.edu in your profile."
       />
       <Suspense
         fallback={

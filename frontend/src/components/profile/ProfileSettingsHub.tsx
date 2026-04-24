@@ -202,7 +202,7 @@ function LinkedEmailsSection({ userId, primaryEmail }: { userId: string; primary
   async function handleLink() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed.endsWith("@ucsd.edu")) {
-      setErrorMsg("Only @ucsd.edu emails can be linked for UCSD verification.");
+      setErrorMsg("Only @ucsd.edu addresses can be linked for WebReg schedule verification.");
       setStatus("error");
       return;
     }
@@ -260,7 +260,7 @@ function LinkedEmailsSection({ userId, primaryEmail }: { userId: string; primary
           >
             <div className="space-y-2 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
               <p className="text-xs text-hub-text-secondary">
-                Link your <span className="text-hub-cyan">@ucsd.edu</span> email to unlock full access.
+                Link your <span className="text-hub-cyan">@ucsd.edu</span> email to unlock WebReg schedule upload.
                 We&apos;ll send a verification link to that address.
               </p>
               <div className="flex gap-2">

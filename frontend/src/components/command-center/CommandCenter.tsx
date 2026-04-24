@@ -1005,9 +1005,10 @@ export function CommandCenter() {
 
   const handleManualSubmit = useCallback(
     () => {
+      if (!authed || !isUcsdUser) return;
       void runIngestionFlow(undefined);
     },
-    [runIngestionFlow],
+    [authed, isUcsdUser, runIngestionFlow],
   );
 
   const classCount = phase === "dashboard" ? viewClasses.length : classes.length;
@@ -1240,13 +1241,13 @@ export function CommandCenter() {
                         quarterLabel={displayedQuarterLabel}
                         isLocked={!authed || !isUcsdUser}
                       />
-                      {!authed || !isUcsdUser ? (
+                      {!authed ? (
                         <div className='max-w-2xl border-t border-white/[0.08] pt-4'>
                           <p className='text-sm font-semibold text-hub-text'>
-                            For users without a UCSD email: preview an example output
+                            Preview an example output before signing in
                           </p>
                           <p className='mt-1.5 text-sm leading-relaxed text-hub-text-secondary'>
-                            Open a researched sample schedule to preview the dashboard, professor data, and workload analysis before signing in.
+                            Open a researched sample schedule to preview the dashboard, professor data, and workload analysis.
                           </p>
                           <button
                             type='button'
@@ -1256,6 +1257,20 @@ export function CommandCenter() {
                           >
                             {isExampleLoading ? "Loading example..." : "View example schedule"}
                           </button>
+                        </div>
+                      ) : null}
+                      {authed && !isUcsdUser ? (
+                        <div className='max-w-2xl border-t border-white/[0.08] pt-4'>
+                          <p className='text-sm font-semibold text-hub-text'>
+                            Schedule upload is UCSD-verified
+                          </p>
+                          <p className='mt-1.5 text-sm leading-relaxed text-hub-text-secondary'>
+                            Link a <span className='text-hub-text'>@ucsd.edu</span> address in{" "}
+                            <a href='/profile' className='text-hub-cyan hover:underline'>
+                              Profile
+                            </a>{" "}
+                            (Link email), or use Google sign-in with a school email, to unlock WebReg uploads. Community and the rest of the hub stay available with any account.
+                          </p>
                         </div>
                       ) : null}
                     </div>

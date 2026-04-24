@@ -835,15 +835,18 @@ export function CommandCenter() {
             const id = window.setTimeout(() => resolve(), remaining);
             timeoutsRef.current.push(id);
           });
-          // Always prefer backend-cached fit evaluation when available.
-          // This keeps repeated uploads deterministic and skips an unnecessary Gemini call.
           const cachedFit = response.fit_evaluation ?? null;
-          const fitPromise = cachedFit
-            ? Promise.resolve(cachedFit)
-            : (async () => {
-                const fitContext = await loadProfileFitContext();
-                return analyzeFit(response.results, fitContext ?? undefined);
-              })().catch(() => null);
+          // Always load profile context first — if the user has onboarding data, run a
+          // fresh fit so user_input_feedback is populated. Fall back to the cached fit
+          // only when the user has no profile (unauthenticated or empty onboarding).
+          const fitPromise = (async () => {
+            const fitContext = await loadProfileFitContext();
+            const hasProfile =
+              fitContext !== null &&
+              Object.values(fitContext).some((v) => v !== undefined);
+            if (cachedFit && !hasProfile) return cachedFit;
+            return analyzeFit(response.results, fitContext ?? undefined);
+          })().catch(() => null);
           const [fitResult] = await Promise.all([fitPromise, minWaitPromise]);
 
           if (fitResult) {

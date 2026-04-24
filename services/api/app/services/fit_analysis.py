@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from datetime import datetime
@@ -12,6 +13,8 @@ from app.models.research import CourseResearchResult
 
 
 load_dotenv()
+
+_LOG = logging.getLogger(__name__)
 
 
 class FitAlert(BaseModel):
@@ -133,20 +136,34 @@ def compute_workload_signals(results: list[CourseResearchResult]) -> dict:
     no_podcasts = 0
     difficulties: list[float] = []
     missing_logistics: list[str] = []
+    course_count = len(results)
+    total_weekly_minutes = 0
+    skipped_meetings = 0
 
     for r in results:
         if r.logistics is None:
             missing_logistics.append(r.course_code)
-            continue
-        if r.logistics.attendance_required:
-            attendance_required += 1
-        if r.logistics.textbook_required:
-            textbook_required += 1
-        if r.logistics.podcasts_available is False:
-            no_podcasts += 1
-        diff = r.logistics.rate_my_professor.difficulty if r.logistics.rate_my_professor else None
-        if diff is not None:
-            difficulties.append(diff)
+        else:
+            if r.logistics.attendance_required:
+                attendance_required += 1
+            if r.logistics.textbook_required:
+                textbook_required += 1
+            if r.logistics.podcasts_available is False:
+                no_podcasts += 1
+            diff = r.logistics.rate_my_professor.difficulty if r.logistics.rate_my_professor else None
+            if diff is not None:
+                difficulties.append(diff)
+
+        for m in r.meetings:
+            if m.section_type.lower() not in ("lecture", "lab", "discussion"):
+                continue
+            days = parse_days(m.days or "")
+            start = parse_minutes(m.start_time or "")
+            end = parse_minutes(m.end_time or "")
+            if days and start is not None and end is not None and end > start:
+                total_weekly_minutes += len(days) * (end - start)
+            else:
+                skipped_meetings += 1
 
     avg_difficulty = round(sum(difficulties) / len(difficulties), 2) if difficulties else None
     return {
@@ -155,7 +172,10 @@ def compute_workload_signals(results: list[CourseResearchResult]) -> dict:
         "no_podcasts": no_podcasts,
         "avg_rmp_difficulty": avg_difficulty,
         "missing_logistics": missing_logistics,
-        "total": len(results),
+        "total": course_count,
+        "course_count": course_count,
+        "weekly_contact_hours": round(total_weekly_minutes / 60, 1),
+        "skipped_meetings": skipped_meetings,
     }
 
 
@@ -281,6 +301,11 @@ def build_fit_prompt(
     diff_str = str(avg_diff) if avg_diff is not None else "N/A"
     missing = workload["missing_logistics"]
     missing_str = ", ".join(missing) if missing else "none"
+    skipped_note = (
+        f" (note: {workload['skipped_meetings']} meeting sections had incomplete time data and were excluded)"
+        if workload["skipped_meetings"] > 0
+        else ""
+    )
 
     context_block = _build_user_context_block(user_context) if user_context else ""
 
@@ -292,11 +317,32 @@ def build_fit_prompt(
         "## Detected time conflicts (programmatic)\n"
         f"{conflicts_block}\n\n"
         "## Workload signals\n"
+        f"- Course count: {workload['course_count']}\n"
+        f"- Total weekly contact hours (lectures + labs + discussions): {workload['weekly_contact_hours']}h{skipped_note}\n"
         f"- Courses requiring attendance: {workload['attendance_required']} of {workload['total']}\n"
         f"- Courses requiring textbook: {workload['textbook_required']}\n"
         f"- Courses without podcast recordings: {workload['no_podcasts']}\n"
-        f"- Average RateMyProfessor difficulty: {diff_str}\n"
+        f"- Average RateMyProfessor difficulty: {diff_str} (scale 1–5; if N/A treat as moderate 3.0)\n"
         f"- Courses with missing logistics: {missing_str}\n\n"
+        "## Scoring Calibration — course count is the primary baseline driver\n"
+        "A schedule with more courses must almost always score higher than one with fewer, "
+        "unless all added courses have avg_rmp_difficulty ≤ 2.5. "
+        "Per-course factors adjust within the range; they do not override volume.\n\n"
+        "Baseline fitness_score ranges by course count and RMP difficulty:\n"
+        "| course_count | avg_rmp_difficulty | baseline fitness_score |\n"
+        "|---|---|---|\n"
+        "| 3 | any | 2–4 |\n"
+        "| 4 | ≤ 3.0 (easy) | 3–5 |\n"
+        "| 4 | 3.0–4.0 (moderate) | 4–6 |\n"
+        "| 4 | ≥ 4.0 (hard) | 6–8 |\n"
+        "| 5 | ≤ 3.0 (easy) | 5–7 |\n"
+        "| 5 | ≥ 3.0 (moderate+) | 7–9 |\n"
+        "| 6+ | any | 8–10 |\n\n"
+        "Secondary modifier for weekly_contact_hours: "
+        "< 12h/week → subtract 0.5 from baseline; 12–18h/week → neutral; > 18h/week → add 0.5–1.0.\n\n"
+        "Reference example (interpolate — do NOT copy these exact scores):\n"
+        "5 courses, avg_rmp 3.8, weekly_contact_hours 19.5h, attendance required 4/5 → "
+        "fitness_score ≈ 7.5–8.0, trend_label 'Heavy Load', study_hours 30–40/week\n\n"
         "## Task\n"
         "Return JSON matching the schema exactly. Fields:\n"
         "- fitness_score: number 1–10 (1 = easy quarter, 10 = brutal)\n"
@@ -310,7 +356,8 @@ def build_fit_prompt(
         "Each has label, score (1–10 where 10 = hardest/most stressful), max (10.0), "
         "color (hex — use '#e3b12f' for scores 5–7, '#34d399' for scores ≤4, '#e3b12f' for scores >7; "
         "never use red), detail (one sentence). "
-        "Score Workload from RMP difficulty + attendance + no-podcast burden. "
+        "Score Workload using course count and weekly_contact_hours as primary inputs, "
+        "then adjust up/down based on RMP difficulty, attendance requirements, and no-podcast burden. "
         "Score Schedule Fit from time conflicts, back-to-back gaps, and overall day spread. "
         "Score GPA Risk from average RMP difficulty and grading policies. "
         "Score Life Balance using external commitments and total unit load. "
@@ -324,7 +371,7 @@ def build_fit_prompt(
             "  academic_alignment: 1–3 plain strings — where the student's courses genuinely support their stated goals/major/career. Name courses.\n"
             "  practical_risks: 1–3 plain strings — workload, timing, or schedule factors that conflict with their stated context (external commitments, worries). Name courses.\n"
             "  Tailor the Life Balance and Commute Load categories to the student's stated profile.\n"
-            if user_context else
+            if context_block else
             "- user_input_feedback: null\n"
         )
         + "Rules: hedge if data is missing; no markdown fences in your JSON response."
@@ -347,4 +394,15 @@ def analyze_fit(
             response_schema=FitAnalysisResult,
         ),
     )
-    return FitAnalysisResult.model_validate_json(response.text)
+    result = FitAnalysisResult.model_validate_json(response.text)
+
+    _COURSE_FLOORS = {3: 1.5, 4: 3.0, 5: 5.0, 6: 7.0}
+    floor = _COURSE_FLOORS.get(min(workload["course_count"], 6), 7.0)
+    if result.fitness_score < floor:
+        _LOG.warning(
+            "fitness_score %.1f below soft floor %.1f for %d courses — applying floor",
+            result.fitness_score, floor, workload["course_count"],
+        )
+        result = result.model_copy(update={"fitness_score": floor})
+
+    return result

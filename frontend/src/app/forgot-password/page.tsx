@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<ForgotPasswordSkeleton />}>
+      <ForgotPasswordContent />
+    </Suspense>
+  );
+}
+
+function ForgotPasswordContent() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
   const [email, setEmail] = useState("");
@@ -88,6 +96,20 @@ export default function ForgotPasswordPage() {
           Back to sign in
         </Link>
       </p>
+    </main>
+  );
+}
+
+function ForgotPasswordSkeleton() {
+  return (
+    <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12">
+      <div className="mb-6">
+        <h1 className="font-[family-name:var(--font-outfit)] text-4xl font-semibold text-hub-text">Reset password</h1>
+        <p className="mt-2 text-sm leading-relaxed text-hub-text-secondary">Loading...</p>
+      </div>
+      <div className="glass-panel rounded-xl border border-white/[0.08] p-6">
+        <div className="h-11 w-full animate-pulse rounded-lg border border-white/[0.08] bg-hub-bg/50" />
+      </div>
     </main>
   );
 }

@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordSkeleton />}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
@@ -144,6 +152,16 @@ export default function ResetPasswordPage() {
         )}
 
         {error ? <p className="mt-4 text-sm text-amber-200/90">{error}</p> : null}
+      </div>
+    </main>
+  );
+}
+
+function ResetPasswordSkeleton() {
+  return (
+    <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12">
+      <div className="glass-panel rounded-xl border border-white/[0.08] p-6">
+        <p className="text-sm text-hub-text-secondary">Validating reset link...</p>
       </div>
     </main>
   );

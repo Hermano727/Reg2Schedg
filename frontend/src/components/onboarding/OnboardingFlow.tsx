@@ -813,6 +813,14 @@ export function OnboardingFlow({ userId, onComplete }: Props) {
     }));
   }, [data.major]);
 
+  useEffect(() => {
+    if (!showSkipWarning) return;
+    const timeoutId = window.setTimeout(() => {
+      setShowSkipWarning(false);
+    }, 5000);
+    return () => window.clearTimeout(timeoutId);
+  }, [showSkipWarning]);
+
   function go(delta: number) {
     const next = slide + delta;
     if (next < 0 || next >= SLIDE_COUNT) return;

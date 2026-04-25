@@ -495,6 +495,15 @@ export function CommandCenter() {
     }));
   }, [lookupCourseCode, lookupProfessorName]);
 
+  const handleOpenUploadPicker = useCallback(() => {
+    const ingestInput = document.getElementById("ingest-input") as HTMLInputElement | null;
+    if (ingestInput) {
+      ingestInput.click();
+      return;
+    }
+    document.getElementById("attach-schedule")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   const workspaceRef = useRef<DossierScheduleWorkspaceHandle | null>(null);
   const timeoutsRef = useRef<number[]>([]);
   const processingLockRef = useRef(false);
@@ -1134,13 +1143,14 @@ export function CommandCenter() {
                           transition={{ duration: 0.45, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
                           className='mt-8 flex flex-col gap-3 sm:flex-row'
                         >
-                          <a
-                            href='#attach-schedule'
+                          <button
+                            type='button'
+                            onClick={handleOpenUploadPicker}
                             className='inline-flex items-center justify-center gap-2 rounded-full border border-hub-cyan/40 bg-hub-cyan/12 px-5 py-3 text-sm font-semibold text-hub-cyan transition hover:border-hub-cyan/60 hover:bg-hub-cyan/18'
                           >
                             Attach your schedule
                             <ChevronRight className='h-4 w-4' />
-                          </a>
+                          </button>
                           <button
                             type='button'
                             onClick={() => setShowExampleModal(true)}
@@ -1148,6 +1158,14 @@ export function CommandCenter() {
                           >
                             <Images className='h-4 w-4' />
                             See what to upload
+                          </button>
+                          <button
+                            type='button'
+                            onClick={handleOpenLookup}
+                            className='inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.02] px-5 py-3 text-sm font-medium text-hub-text-secondary transition hover:border-white/[0.24] hover:bg-white/[0.05] hover:text-hub-text'
+                          >
+                            <Search className='h-4 w-4' />
+                            Look up single class
                           </button>
                         </motion.div>
                       </div>

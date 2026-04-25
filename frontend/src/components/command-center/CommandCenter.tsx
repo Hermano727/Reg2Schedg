@@ -1244,24 +1244,22 @@ export function CommandCenter() {
                         quarterLabel={displayedQuarterLabel}
                         isLocked={!authed || !isUcsdUser}
                       />
-                      {!authed ? (
-                        <div className='max-w-2xl border-t border-white/[0.08] pt-4'>
-                          <p className='text-sm font-semibold text-hub-text'>
-                            Preview an example output before signing in
-                          </p>
-                          <p className='mt-1.5 text-sm leading-relaxed text-hub-text-secondary'>
-                            Open a researched sample schedule to preview the dashboard, professor data, and workload analysis.
-                          </p>
-                          <button
-                            type='button'
-                            onClick={handleViewExampleOutput}
-                            disabled={isExampleLoading}
-                            className='mt-3 inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14] disabled:cursor-wait disabled:opacity-60'
-                          >
-                            {isExampleLoading ? "Loading example..." : "View example schedule"}
-                          </button>
-                        </div>
-                      ) : null}
+                      <div className='max-w-2xl border-t border-white/[0.08] pt-4'>
+                        <p className='text-sm font-semibold text-hub-text'>
+                          Preview an example output
+                        </p>
+                        <p className='mt-1.5 text-sm leading-relaxed text-hub-text-secondary'>
+                          Open a researched sample schedule to preview the dashboard, professor data, and workload analysis.
+                        </p>
+                        <button
+                          type='button'
+                          onClick={handleViewExampleOutput}
+                          disabled={isExampleLoading}
+                          className='mt-3 inline-flex items-center gap-2 rounded-lg border border-hub-cyan/30 bg-hub-cyan/[0.08] px-4 py-2 text-sm font-medium text-hub-cyan transition hover:border-hub-cyan/50 hover:bg-hub-cyan/[0.14] disabled:cursor-wait disabled:opacity-60'
+                        >
+                          {isExampleLoading ? "Loading example..." : "View example schedule"}
+                        </button>
+                      </div>
                       {authed && !isUcsdUser ? (
                         <div className='max-w-2xl border-t border-white/[0.08] pt-4'>
                           <p className='text-sm font-semibold text-hub-text'>

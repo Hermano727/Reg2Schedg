@@ -37,7 +37,7 @@ _log = logging.getLogger(__name__)
 router = APIRouter()
 
 STALE_AFTER_DAYS = 30
-PUBLIC_DEMO_PLAN_ID = "750711e7-131b-4de5-9e43-aaea6fc713db"
+PUBLIC_DEMO_PLAN_ID = "0ad64ded-ffca-4eeb-8307-51a86f02c2ae"
 
 
 def _is_stale(updated_at_str: str | None) -> bool:
